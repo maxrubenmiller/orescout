@@ -30,10 +30,17 @@ land-management and mining-claim data, shown on a map with color-coded legality 
 - Verified end-to-end via the API: Great Basin NP → RED, Red Rock Canyon NCA → YELLOW/KNOWN,
   open BLM → GREEN, private Las Vegas → no-data UNKNOWN (the expected §6.4.1 private gap).
 
+**Overlay tiles + region gate are live:**
+- pg_tileserv publishes **only** `tiles.legality_polygons` (verified: `public.pins` is not exposed)
+  at `http://localhost:7800/tiles.legality_polygons/{z}/{x}/{y}.pbf` — real MVT tiles served over NV.
+- `public.supported_region` populated (8-state boundaries, `scripts/etl/load_supported_region.sh`),
+  so the Stage-0 gate now returns **OUT_OF_REGION** outside NV/CA/AZ/CO/UT/NM/OR/ID (verified:
+  Texas → OUT_OF_REGION, NV → real verdict). `web/public/assets/us-states.geojson` is the
+  all-states asset for the frontend out-of-scope mask.
+
 **Still to do (data/integration):** SMA cross-check (the slice used PAD-US `Mang_Name` alone);
-the **v4 download + all-8-states** run (re-confirm literals); populate `supported_region` (the
-in-region gate is disabled while empty); the **live MLRS claim check** (still a stub → a `dataGap`);
-serve the overlay as vector tiles via pg_tileserv. Then: the web frontend (plan §6.12).
+the **v4 download + all-8-states** run (re-confirm literals); the **live MLRS claim check** (still a
+stub → a `dataGap`). Then: the web frontend (plan §6.12), which can now render the overlay tiles.
 
 ### Reproduce the NV slice
 ```bash
