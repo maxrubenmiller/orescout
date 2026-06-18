@@ -7,11 +7,16 @@
 -- PAD-US/SMA data is in `staging`; the MapLibre styles and the API both read the
 -- resulting `verdict`, never the raw codes.
 --
--- ⚠ Provisional constants to confirm against real data in Half 2 (§6.6.1.1):
---   (1) private own_type values ('PVT'/'PRIVATE'/'PVL' is a guess)
---   (2) exact SMA agency-code spellings
---   (3) gap_sts type — compared here as text; ogr2ogr may load it as integer.
--- The LOGIC is locked; only these literals/types are provisional.
+-- Literals CONFIRMED against live PAD-US data (NV slice, §6.6.1.1) on 2026-06-18:
+--   Des_Tp domain    : ACEC AGRE CONE FOTH HCA IRA LCA LHCA LOTH LP LREC MIL NCA NF
+--                      NM NP NRA NWR OTHE PCON PPRK PUB REC RECE RMA RNA SCA SDA SHCA
+--                      SOTH SP SREC SRMA TRIBL UNKE WA WSA WSR
+--   Own_Type domain  : DESG DIST FED JNT LOC NGO PVT STAT TRIB UNK   (private = PVT, tribal = TRIB)
+--   GAP_Sts          : '1'..'4' (text)
+--   Mang_Name domain : BLM CITY CNTY DOD DOE FWS NGO NPS NRCS OTHS PVT REG SDC SDNR
+--                      SDOL SFW SLB SPR TRIB UNKL USACE USBR USFS
+-- The manager classifier accepts BOTH PAD-US Mang_Name and SMA ADMIN_AGENCY_CODE vocabularies
+-- (they overlap on the common agencies; no code collides). Re-confirm on the v4 / 8-state run.
 --
 -- Idempotent: every function is CREATE OR REPLACE.
 -- ============================================================================
@@ -39,17 +44,18 @@ CREATE OR REPLACE FUNCTION orescout_classify_padus(
   RETURNS TABLE(verdict text, reason text) LANGUAGE sql IMMUTABLE AS $$
     SELECT
       CASE
-        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','NWRA','SP','MIL','WIL','RNA') THEN 'RED'
-        WHEN upper(coalesce(own_type,'')) IN ('PVT','PRIVATE','PVL')               THEN 'RED'
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE')               THEN 'YELLOW'
+        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL')      THEN 'RED'
+        WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')                        THEN 'RED'
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR')         THEN 'YELLOW'
         WHEN gap_sts IN ('1','2')                                                  THEN 'YELLOW'
         ELSE NULL
       END,
       CASE
-        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','NWRA','SP','MIL','WIL','RNA')
+        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL')
           THEN 'Protected designation: ' || des_tp
-        WHEN upper(coalesce(own_type,'')) IN ('PVT','PRIVATE','PVL') THEN 'Private land'
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE')
+        WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')
+          THEN CASE WHEN upper(own_type)='TRIB' THEN 'Tribal land' ELSE 'Private land' END
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR')
           THEN 'Ambiguous designation: ' || des_tp
         WHEN gap_sts IN ('1','2') THEN 'GAP status ' || gap_sts || ' (strict protection)'
         ELSE NULL
@@ -57,21 +63,26 @@ CREATE OR REPLACE FUNCTION orescout_classify_padus(
 $$;
 
 -- ---- Classify the SMA surface-management agency code -----------------------
+-- Accepts BOTH PAD-US Mang_Name and SMA ADMIN_AGENCY_CODE vocabularies (§6.6.1.1).
 CREATE OR REPLACE FUNCTION orescout_classify_sma(agency text)
   RETURNS TABLE(verdict text, reason text) LANGUAGE sql IMMUTABLE AS $$
     SELECT
       CASE
-        WHEN upper(agency) IN ('NPS','FWS','BIA','ARMY','NAVY','USAF','USMC',
-                               'USACE','DOD','NTVALL','NTVPIC','PVT')  THEN 'RED'
-        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND')         THEN 'YELLOW'
-        WHEN upper(agency) IN ('BLM','USFS')                          THEN 'GREEN'
+        WHEN upper(agency) IN ('NPS','FWS','BIA','TRIB','ARMY','NAVY','USAF','USMC',
+                               'USACE','DOD','DOE','NTVALL','NTVPIC','PVT')          THEN 'RED'
+        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND','CITY','CNTY','REG',
+                               'SDC','SDNR','SDOL','SFW','SLB','SPR','NGO','NRCS',
+                               'OTHS','UNKL')                                       THEN 'YELLOW'
+        WHEN upper(agency) IN ('BLM','USFS')                                        THEN 'GREEN'
         ELSE NULL
       END,
       CASE
-        WHEN upper(agency) IN ('NPS','FWS','BIA','ARMY','NAVY','USAF','USMC',
-                               'USACE','DOD','NTVALL','NTVPIC','PVT')
+        WHEN upper(agency) IN ('NPS','FWS','BIA','TRIB','ARMY','NAVY','USAF','USMC',
+                               'USACE','DOD','DOE','NTVALL','NTVPIC','PVT')
           THEN 'Managing agency ' || agency || ' — closed to casual collecting'
-        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND')
+        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND','CITY','CNTY','REG',
+                               'SDC','SDNR','SDOL','SFW','SLB','SPR','NGO','NRCS',
+                               'OTHS','UNKL')
           THEN 'Managing agency ' || agency || ' — permit / varies'
         WHEN upper(agency) IN ('BLM','USFS')
           THEN 'Managing agency ' || agency || ' — generally open'

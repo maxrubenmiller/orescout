@@ -19,10 +19,33 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   `X-Api-Key` auth, CORS. EF Core migration created the `pins` table (geom column, GIST/GIN
   indexes, updated_at trigger). All endpoints smoke-tested end-to-end.
 
-**Not yet (data/ETL-dependent — see plan §6.6.1.1):** the static unify that builds
-`tiles.legality_polygons`, the nightly claims tiles, the live MLRS claim check, and populating
-`supported_region`. Until those land, `/assessment` returns a cautious YELLOW/UNKNOWN with
-`dataGaps` explaining why. Next up after that: the web frontend (plan §6.12).
+**ETL — Nevada validation slice is working** (the Half-2 spatial unify, proven against real data):
+- Pulled 2,753 real PAD-US features for NV from the Phase-0-verified live FeatureServer
+  (`scripts/etl/pull_nv_padus.sh`), loaded to `staging.padus_staging` via ogr2ogr.
+- §6.6.1.1 inspection corrected the provisional classifier literals against reality:
+  private `Own_Type`=`PVT` (+ `TRIB`), added `TRIBL`/`WSR` designations and the real `Mang_Name`
+  manager codes (`TRIB`,`DOE`,`CITY`,`SPR`,…); `gap_sts` confirmed text. Tier-A fixtures now 20/20.
+- `scripts/etl/unify.sql` bakes the verdict into `tiles.legality_polygons` (`ST_MakeValid` repairs
+  the ~3% invalid rings). Result: 519 RED / 1818 YELLOW / 416 GREEN.
+- Verified end-to-end via the API: Great Basin NP → RED, Red Rock Canyon NCA → YELLOW/KNOWN,
+  open BLM → GREEN, private Las Vegas → no-data UNKNOWN (the expected §6.4.1 private gap).
+
+**Still to do (data/integration):** SMA cross-check (the slice used PAD-US `Mang_Name` alone);
+the **v4 download + all-8-states** run (re-confirm literals); populate `supported_region` (the
+in-region gate is disabled while empty); the **live MLRS claim check** (still a stub → a `dataGap`);
+serve the overlay as vector tiles via pg_tileserv. Then: the web frontend (plan §6.12).
+
+### Reproduce the NV slice
+```bash
+docker compose up -d postgres
+./scripts/etl/pull_nv_padus.sh data/nv                              # pull real PAD-US (NV)
+PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
+ogr2ogr -f PostgreSQL "$PG" data/nv/padus_0.geojson -nln staging.padus_staging \
+  -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -t_srs EPSG:4326 -overwrite
+for p in 1 2; do ogr2ogr -f PostgreSQL "$PG" data/nv/padus_${p}.geojson \
+  -nln staging.padus_staging -nlt PROMOTE_TO_MULTI -append; done
+docker compose exec -T postgres psql -U postgres -d miningapp -f /dev/stdin < scripts/etl/unify.sql
+```
 
 ## Quick start
 

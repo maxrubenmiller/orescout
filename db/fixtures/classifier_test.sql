@@ -16,20 +16,25 @@ BEGIN
     SELECT * FROM (VALUES
       -- des_tp,  own_type,   gap_sts, agency,  expected
       ('NP'::text,  NULL::text, NULL::text, 'NPS'::text, 'RED'::text),
-      ('WA',   NULL,      '1',  'USFS', 'RED'),
-      ('WSA',  NULL,      NULL, 'BLM',  'RED'),
-      (NULL,   'PVT',     NULL, 'PVT',  'RED'),
-      (NULL,   'PRIVATE', NULL, 'USFS', 'RED'),
-      (NULL,   NULL,      NULL, 'BIA',  'RED'),
-      (NULL,   NULL,      NULL, 'ARMY', 'RED'),
-      ('WA',   NULL,      NULL, NULL,   'RED'),
-      (NULL,   NULL,      NULL, 'BLM',  'GREEN'),
-      (NULL,   NULL,      '3',  'BLM',  'GREEN'),
-      ('NM',   NULL,      NULL, 'BLM',  'YELLOW'),
-      ('ACEC', NULL,      NULL, 'BLM',  'YELLOW'),
-      (NULL,   NULL,      NULL, 'ST',   'YELLOW'),
-      (NULL,   NULL,      '2',  'BLM',  'YELLOW'),
-      (NULL,   NULL,      NULL, NULL,   NULL)
+      ('WA',    NULL,   '1',  'USFS', 'RED'),
+      ('WSA',   NULL,   NULL, 'BLM',  'RED'),
+      ('TRIBL', NULL,   NULL, 'BLM',  'RED'),    -- tribal designation (confirmed code)
+      (NULL,    'PVT',  NULL, 'PVT',  'RED'),    -- private ownership (confirmed: PVT)
+      (NULL,    'TRIB', NULL, 'USFS', 'RED'),    -- tribal ownership overrides open manager
+      (NULL,    NULL,   NULL, 'BIA',  'RED'),
+      (NULL,    NULL,   NULL, 'TRIB', 'RED'),    -- tribal manager (PAD-US Mang_Name)
+      (NULL,    NULL,   NULL, 'DOE',  'RED'),    -- DOE land, e.g. NV Test Site (confirmed code)
+      (NULL,    NULL,   NULL, 'ARMY', 'RED'),
+      ('WA',    NULL,   NULL, NULL,   'RED'),
+      (NULL,    NULL,   NULL, 'BLM',  'GREEN'),
+      (NULL,    NULL,   '3',  'BLM',  'GREEN'),
+      ('NM',    NULL,   NULL, 'BLM',  'YELLOW'),
+      ('ACEC',  NULL,   NULL, 'BLM',  'YELLOW'),
+      ('WSR',   NULL,   NULL, 'BLM',  'YELLOW'), -- Wild & Scenic River (confirmed code)
+      (NULL,    NULL,   NULL, 'ST',   'YELLOW'),
+      (NULL,    NULL,   NULL, 'SPR',  'YELLOW'), -- state park/rec manager (PAD-US Mang_Name)
+      (NULL,    NULL,   '2',  'BLM',  'YELLOW'),
+      (NULL,    NULL,   NULL, NULL,   NULL)
     ) AS t(des_tp, own_type, gap_sts, agency, expected)
   LOOP
     total := total + 1;
