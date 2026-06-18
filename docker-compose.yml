@@ -30,6 +30,8 @@ services:
       # Connect as the low-privilege role created in 01_init.sql — it can see ONLY the
       # `tiles` schema, so public.pins (user data) can never be auto-published (§6.8 gap G).
       DATABASE_URL: postgresql://tileserv_ro:tileserv@postgres:5432/miningapp
+      # Allow the browser (MapLibre) to fetch tiles cross-origin from the Vite dev server.
+      TS_CORSORIGINS: "*"
     ports:
       - "7800:7800"
     depends_on:

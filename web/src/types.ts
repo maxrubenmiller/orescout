@@ -1,0 +1,72 @@
+// Canonical API types (mirror PROJECT_PLAN.md §6.2). Keep in sync with the C# DTOs.
+
+export type CollectingStatus = 'GREEN' | 'YELLOW' | 'RED' | 'OUT_OF_REGION';
+export type AmbiguityType = 'KNOWN' | 'UNKNOWN' | null;
+
+export interface ActiveClaim {
+  serialNumber: string;
+  claimName: string | null;
+  type: string | null;
+  status: string | null; // CSE_DISP: Active | Pending | Filed | ...
+  mlrsUrl: string;
+}
+
+export interface Assessment {
+  collectingStatus: CollectingStatus;
+  ambiguityType: AmbiguityType;
+  collectingStatusReason: string;
+  landManager: string | null;
+  unitName: string | null;
+  protectionStatus: string | null;
+  activeClaims: ActiveClaim[] | null; // null = not checked
+  warnings: string[];
+  cannotModel: string[];
+  dataGaps: string[];
+  dataVintage: string | null;
+  disclaimer: string;
+  assessmentDate: string;
+}
+
+export type PinStatus = 'want_to_visit' | 'visited';
+
+export interface Pin {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  notes: string | null;
+  status: PinStatus;
+  tags: string[];
+  assessmentSnapshot: Assessment | null;
+  assessmentDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePinRequest {
+  lat: number;
+  lng: number;
+  title: string;
+  notes?: string | null;
+  status?: PinStatus;
+}
+
+export interface GeocodeResult {
+  label: string;
+  lat: number;
+  lng: number;
+  type: string | null;
+}
+
+export interface Meta {
+  padUsVersion: string | null;
+  padUsDate: string | null;
+  smaDate: string | null;
+  claimsAsOf: string | null;
+  supportedStates: string[];
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}

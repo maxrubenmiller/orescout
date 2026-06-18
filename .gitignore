@@ -17,12 +17,14 @@ appsettings.Local.json
 node_modules/
 dist/
 .vite/
-web/.env*
+web/.env
+web/.env.local
 
 # ---- Secrets / local config ----
 .env
 .env.*
 !.env.example
+!web/.env.example
 
 # ---- ETL working files (large, downloaded, never committed) ----
 # NOTE: anchored with a leading slash so this does NOT match source folders like
