@@ -16,8 +16,10 @@ public interface IAssessmentService
 /// Stages 1 and 2 are data/integration dependent: until the ETL builds legality_polygons and the
 /// live MLRS client lands, those resolve to honest `dataGaps` rather than fabricated verdicts.
 /// </summary>
-public class AssessmentService(NpgsqlDataSource db) : IAssessmentService
+public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAssessmentService
 {
+    private static int Rank(string v) => v switch { "RED" => 3, "YELLOW" => 2, "GREEN" => 1, _ => 0 };
+
     public async Task<AssessmentResponse> AssessAsync(double lat, double lng, CancellationToken ct)
     {
         await using var conn = await db.OpenConnectionAsync(ct);
@@ -71,12 +73,27 @@ public class AssessmentService(NpgsqlDataSource db) : IAssessmentService
             }
         }
 
-        // ---- Stage 2: live claims overlay (not yet implemented) ------------
-        // When implemented: live MLRS 100m-buffer point query -> activeClaims; any not-closed
-        // claim (Active OR Pending) escalates to YELLOW with a warning (§6.4 Stage 2).
-        List<ActiveClaim>? activeClaims = null;
-        dataGaps.Add("Live mining-claims check not yet implemented — Phase-1 (§5.2). " +
-                     "Verify active claims at reports.blm.gov before prospecting.");
+        // ---- Stage 2: live claims overlay (§6.4 Stage 2) -------------------
+        // Any not-closed claim (Active OR Pending) within the 100m buffer escalates the
+        // verdict UP to YELLOW (never down, never RED). Claim failure -> partial result.
+        var warnings = new List<string>();
+        var claimsResult = await claims.GetClaimsAsync(lat, lng, ct);
+        var activeClaims = claimsResult.Claims;
+        if (claimsResult.DataGap is not null) dataGaps.Add(claimsResult.DataGap);
+
+        if (activeClaims is { Count: > 0 })
+        {
+            // A claim only exists on federal mineral estate, so it both escalates an open/GREEN
+            // point to YELLOW and resolves a no-data UNKNOWN into a KNOWN (claimed) reason.
+            // An existing RED or known-YELLOW base keeps its verdict/reason; the claim adds a warning.
+            if (Rank(status) < Rank("YELLOW") || ambiguity == "UNKNOWN")
+            {
+                status = "YELLOW";
+                ambiguity = "KNOWN";
+                reason = "Recorded mining claim(s) within 100m — verify before prospecting.";
+            }
+            warnings.Add(ClaimWarning(activeClaims));
+        }
 
         return new AssessmentResponse
         {
@@ -87,13 +104,26 @@ public class AssessmentService(NpgsqlDataSource db) : IAssessmentService
             UnitName = unitName,
             ProtectionStatus = protection,
             ActiveClaims = activeClaims,
-            Warnings = [],
+            Warnings = warnings,
             CannotModel = [.. AssessmentText.CannotModel],
             DataGaps = dataGaps,
             DataVintage = dataVintage ?? "not yet ingested (Phase-1 ETL pending)",
             Disclaimer = AssessmentText.Disclaimer,
             AssessmentDate = now,
         };
+    }
+
+    private static string ClaimWarning(List<ActiveClaim> claims)
+    {
+        // Break down by the real CSE_DISP values (Active / Pending / Filed / ...) rather than
+        // assuming a fixed vocabulary.
+        var byStatus = claims
+            .GroupBy(c => string.IsNullOrWhiteSpace(c.Status) ? "unknown" : c.Status!.ToLowerInvariant())
+            .OrderByDescending(g => g.Count())
+            .Select(g => $"{g.Count()} {g.Key}");
+        return $"Mining claim(s) within 100m: {claims.Count} ({string.Join(", ", byStatus)}). " +
+               "A claimant holds mineral rights; verify before prospecting. " +
+               "Casual hand-tool collecting may still be allowed.";
     }
 
     private static (string status, string? ambiguity, string reason) NoData() =>

@@ -21,6 +21,10 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connString));
 
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
+// Live BLM MLRS claims check (typed HttpClient; per-request 10s timeout in the service).
+builder.Services.AddHttpClient<IClaimsService, MlrsClaimsService>(http =>
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("OreScout/0.1"));
+
 // Typed HttpClient for the Nominatim proxy — single egress point, descriptive UA (§6.2).
 builder.Services.AddHttpClient<IGeocoder, NominatimGeocoder>((sp, http) =>
 {

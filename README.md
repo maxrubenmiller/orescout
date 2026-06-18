@@ -38,9 +38,16 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   Texas → OUT_OF_REGION, NV → real verdict). `web/public/assets/us-states.geojson` is the
   all-states asset for the frontend out-of-scope mask.
 
+**Live mining-claims check is implemented** (`MlrsClaimsService`, plan §5.1/§6.4 Stage 2):
+- Live BLM MLRS 100m-buffer query; any not-closed claim escalates the verdict up to YELLOW
+  (never RED) with a disposition-accurate warning + per-claim MLRS deep-links, and resolves a
+  no-data `UNKNOWN` into `KNOWN` (a claim proves federal mineral estate). Verified at Round
+  Mountain (active claim) and open BLM (filed claims). 10s timeout; on failure the land verdict
+  is still returned with `activeClaims:null` + a `dataGap` (§6.3 partial-failure, verified).
+
 **Still to do (data/integration):** SMA cross-check (the slice used PAD-US `Mang_Name` alone);
-the **v4 download + all-8-states** run (re-confirm literals); the **live MLRS claim check** (still a
-stub → a `dataGap`). Then: the web frontend (plan §6.12), which can now render the overlay tiles.
+the **v4 download + all-8-states** run (re-confirm literals). Then: the web frontend (plan §6.12),
+which can now render the overlay tiles and call the fully-working assessment API.
 
 ### Reproduce the NV slice
 ```bash
