@@ -19,16 +19,19 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   `X-Api-Key` auth, CORS. EF Core migration created the `pins` table (geom column, GIST/GIN
   indexes, updated_at trigger). All endpoints smoke-tested end-to-end.
 
-**ETL — Nevada validation slice is working** (the Half-2 spatial unify, proven against real data):
-- Pulled 2,753 real PAD-US features for NV from the Phase-0-verified live FeatureServer
-  (`scripts/etl/pull_nv_padus.sh`), loaded to `staging.padus_staging` via ogr2ogr.
-- §6.6.1.1 inspection corrected the provisional classifier literals against reality:
-  private `Own_Type`=`PVT` (+ `TRIB`), added `TRIBL`/`WSR` designations and the real `Mang_Name`
-  manager codes (`TRIB`,`DOE`,`CITY`,`SPR`,…); `gap_sts` confirmed text. Tier-A fixtures now 20/20.
+**ETL — all 8 states loaded** (the Half-2 spatial unify, real data):
+- Pulled **74,870 real PAD-US features** across NV/CA/AZ/CO/UT/NM/OR/ID from the Phase-0-verified
+  live FeatureServer (`scripts/etl/pull_states_padus.sh`), loaded to `staging.padus_staging`.
+- §6.6.1.1 inspection **at scale** confirmed the classifier domains across all 8 states and added 9
+  manager codes that appear in CA/CO/OR but not NV (`RWD/JNT/UNK/OTHF/BOEM/ARS/NOAA/BPA/OTHR` →
+  YELLOW). Result: **0** features with an unmapped verdict. Tier-A fixtures 20/20.
 - `scripts/etl/unify.sql` bakes the verdict into `tiles.legality_polygons` (`ST_MakeValid` repairs
-  the ~3% invalid rings). Result: 519 RED / 1818 YELLOW / 416 GREEN.
-- Verified end-to-end via the API: Great Basin NP → RED, Red Rock Canyon NCA → YELLOW/KNOWN,
-  open BLM → GREEN, private Las Vegas → no-data UNKNOWN (the expected §6.4.1 private gap).
+  invalid rings). Result: **12,469 RED / 58,994 YELLOW / 3,407 GREEN** polygons.
+- Verified end-to-end: every NP (Yosemite/Grand Canyon/Rocky Mtn/Zion/Crater Lake/Carlsbad) → RED,
+  Sawtooth Wilderness (ID) → RED, open BLM → GREEN, downtown Denver → no-data UNKNOWN (private).
+  Overlays render across all states (tile bounds now span the full 8-state region).
+- *Source is the live PAD-US v3.0 layer; data-currency upgrade to PAD-US 4.2 is a documented
+  follow-up (TODO.md / ScienceBase item 65294599d34e44db0e2ed7cf).*
 
 **Overlay tiles + region gate are live:**
 - pg_tileserv publishes **only** `tiles.legality_polygons` (verified: `public.pins` is not exposed)

@@ -37,7 +37,7 @@ SELECT
     s.unit_nm,
     'GAP ' || s.gap_sts || COALESCE(' / ' || s.des_tp, ''),
     s.state_nm,
-    'PAD-US v3.0 (live layer, NV slice 2026-06-18)'
+    'PAD-US v3.0 (live layer, 8-state 2026-06-18)'
 FROM staging.padus_staging s
 CROSS JOIN LATERAL orescout_base_verdict(s.des_tp, s.own_type, s.gap_sts, s.mang_name) bv
 WHERE bv.verdict IS NOT NULL

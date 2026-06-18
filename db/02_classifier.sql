@@ -7,7 +7,10 @@
 -- PAD-US/SMA data is in `staging`; the MapLibre styles and the API both read the
 -- resulting `verdict`, never the raw codes.
 --
--- Literals CONFIRMED against live PAD-US data (NV slice, §6.6.1.1) on 2026-06-18:
+-- Literals CONFIRMED against live PAD-US data across ALL 8 states (§6.6.1.1) on 2026-06-18
+-- (74,870 features). The manager classifier covers the full Mang_Name domain incl. special-
+-- district / other-federal / unknown codes (RWD/JNT/UNK/OTHF/BOEM/ARS/NOAA/BPA/OTHR → YELLOW)
+-- that appear in CA/CO/OR but not NV. NV-only baseline kept below for reference:
 --   Des_Tp domain    : ACEC AGRE CONE FOTH HCA IRA LCA LHCA LOTH LP LREC MIL NCA NF
 --                      NM NP NRA NWR OTHE PCON PPRK PUB REC RECE RMA RNA SCA SDA SHCA
 --                      SOTH SP SREC SRMA TRIBL UNKE WA WSA WSR
@@ -70,9 +73,9 @@ CREATE OR REPLACE FUNCTION orescout_classify_sma(agency text)
       CASE
         WHEN upper(agency) IN ('NPS','FWS','BIA','TRIB','ARMY','NAVY','USAF','USMC',
                                'USACE','DOD','DOE','NTVALL','NTVPIC','PVT')          THEN 'RED'
-        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND','CITY','CNTY','REG',
-                               'SDC','SDNR','SDOL','SFW','SLB','SPR','NGO','NRCS',
-                               'OTHS','UNKL')                                       THEN 'YELLOW'
+        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','OTHF','UND','UNK','CITY','CNTY',
+                               'REG','RWD','SDC','SDNR','SDOL','SFW','SLB','SPR','NGO',
+                               'NRCS','OTHS','OTHR','UNKL','JNT','BOEM','ARS','NOAA','BPA') THEN 'YELLOW'
         WHEN upper(agency) IN ('BLM','USFS')                                        THEN 'GREEN'
         ELSE NULL
       END,
@@ -80,9 +83,9 @@ CREATE OR REPLACE FUNCTION orescout_classify_sma(agency text)
         WHEN upper(agency) IN ('NPS','FWS','BIA','TRIB','ARMY','NAVY','USAF','USMC',
                                'USACE','DOD','DOE','NTVALL','NTVPIC','PVT')
           THEN 'Managing agency ' || agency || ' — closed to casual collecting'
-        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','UND','CITY','CNTY','REG',
-                               'SDC','SDNR','SDOL','SFW','SLB','SPR','NGO','NRCS',
-                               'OTHS','UNKL')
+        WHEN upper(agency) IN ('ST','LG','USBR','OTHFE','OTHF','UND','UNK','CITY','CNTY',
+                               'REG','RWD','SDC','SDNR','SDOL','SFW','SLB','SPR','NGO',
+                               'NRCS','OTHS','OTHR','UNKL','JNT','BOEM','ARS','NOAA','BPA')
           THEN 'Managing agency ' || agency || ' — permit / varies'
         WHEN upper(agency) IN ('BLM','USFS')
           THEN 'Managing agency ' || agency || ' — generally open'
