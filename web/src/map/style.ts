@@ -3,6 +3,11 @@ import type { FeatureCollection } from 'geojson';
 import { tileBaseUrl, mapboxToken } from '../api';
 import type { Basemap } from '../store';
 
+// The MapLibre map is created once on mount; Fast Refresh won't recreate it, so edits to the
+// map style/source-layers would otherwise leave a stale map until a hard refresh. Force a full
+// reload when this module changes during dev.
+if (import.meta.hot) import.meta.hot.accept(() => window.location.reload());
+
 const SUPPORTED = ['NV', 'CA', 'AZ', 'CO', 'UT', 'NM', 'OR', 'ID'];
 
 // MVT vector-layer name as ENCODED IN THE TILE by pg_tileserv = the full schema-qualified

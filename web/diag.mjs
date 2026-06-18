@@ -57,7 +57,7 @@ await page.reload({ waitUntil: 'networkidle' }).catch(() => {});
 await page.waitForTimeout(3000);
 
 // Fly to Great Basin NP (a known RED area) and let the legality tiles load.
-await page.evaluate(() => (window).__map?.jumpTo({ center: [-114.30, 39.0], zoom: 10 }));
+await page.evaluate(() => (window).__map?.jumpTo({ center: [-114.28849, 38.94092], zoom: 13 }));
 await page.waitForTimeout(6000);
 const features = await page.evaluate(() => {
   const m = (window).__map;
