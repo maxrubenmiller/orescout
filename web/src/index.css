@@ -31,7 +31,10 @@ a { color: #2563eb; }
 .icon-btn:hover { background: rgba(255,255,255,0.12); }
 
 .stage { position: relative; flex: 1; min-height: 0; }
-.map-root { position: absolute; inset: 0; }
+/* maplibre-gl.css forces .maplibregl-map{position:relative} (same specificity, loaded later),
+   which would override an absolute+inset fill. Use explicit width/height so the container fills
+   .stage regardless of the position value. */
+.map-root { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* ---- Search ---- */
 .search { display: flex; gap: 6px; align-items: center; flex: 1; max-width: 560px; }

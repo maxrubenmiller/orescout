@@ -5,9 +5,11 @@ import type { Basemap } from '../store';
 
 const SUPPORTED = ['NV', 'CA', 'AZ', 'CO', 'UT', 'NM', 'OR', 'ID'];
 
-// MVT vector-layer name as published by pg_tileserv (the table name without schema).
-export const LEGALITY_SRC_LAYER = 'legality_polygons';
-export const CLAIMS_SRC_LAYER = 'claims_polygons';
+// MVT vector-layer name as ENCODED IN THE TILE by pg_tileserv = the full schema-qualified
+// table id (verified by decoding a .pbf). NOTE: the TileJSON `vector_layers[].id` reports it
+// WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_polygons`.
+export const LEGALITY_SRC_LAYER = 'tiles.legality_polygons';
+export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 
 export function basemapTiles(b: Basemap): { tiles: string[]; attribution: string } {
   if (b === 'satellite') {

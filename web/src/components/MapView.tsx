@@ -27,6 +27,7 @@ export default function MapView() {
       zoom: 6,
     });
     mapRef.current = map;
+    if (import.meta.env.DEV) (window as unknown as { __map: maplibregl.Map }).__map = map;
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
     const ensureHatch = () => { if (!map.hasImage('hatch')) map.addImage('hatch', makeHatch()); };
