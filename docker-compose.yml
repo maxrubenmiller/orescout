@@ -1,0 +1,40 @@
+# OreScout dev infrastructure (PROJECT_PLAN.md §6.8).
+# Postgres+PostGIS and pg_tileserv run in Docker; the API and React app run natively.
+#
+# On first boot the files in ./db (01_init.sql, 02_classifier.sql) auto-run via the
+# postgres entrypoint (/docker-entrypoint-initdb.d). The fixtures/ subdirectory is NOT
+# auto-run — it is invoked manually by db/run-fixtures.sh.
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: orescout-postgres
+    environment:
+      POSTGRES_DB: miningapp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d miningapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pg_tileserv:
+    image: pramsey/pg_tileserv:latest
+    container_name: orescout-tileserv
+    environment:
+      # Connect as the low-privilege role created in 01_init.sql — it can see ONLY the
+      # `tiles` schema, so public.pins (user data) can never be auto-published (§6.8 gap G).
+      DATABASE_URL: postgresql://tileserv_ro:tileserv@postgres:5432/miningapp
+    ports:
+      - "7800:7800"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:

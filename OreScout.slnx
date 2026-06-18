@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OreScout.Api/OreScout.Api.csproj" />
+  </Folder>
+</Solution>

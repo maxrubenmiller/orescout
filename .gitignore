@@ -1,0 +1,38 @@
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Local tool config ----
+.claude/settings.local.json
+
+# ---- .NET ----
+bin/
+obj/
+*.user
+appsettings.Development.json
+appsettings.Local.json
+*.env
+
+# ---- Node / web (Phase 2) ----
+node_modules/
+dist/
+.vite/
+web/.env*
+
+# ---- Secrets / local config ----
+.env
+.env.*
+!.env.example
+
+# ---- ETL working files (large, downloaded, never committed) ----
+# NOTE: anchored with a leading slash so this does NOT match source folders like
+# src/OreScout.Api/Data/ (macOS is case-insensitive, so an unanchored `data/` would).
+/data/
+*.gdb/
+*.shp
+*.geojson
+!web/public/assets/us-states.geojson
+claims_pull.geojson
+
+# ---- Docker volumes ----
+pgdata/

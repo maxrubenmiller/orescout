@@ -1,0 +1,156 @@
+using Npgsql;
+using OreScout.Api.Models;
+
+namespace OreScout.Api.Services;
+
+public interface IAssessmentService
+{
+    Task<AssessmentResponse> AssessAsync(double lat, double lng, CancellationToken ct);
+}
+
+/// <summary>
+/// The /assessment engine (PROJECT_PLAN.md §5.2 / §6.4). Implements the contract end-to-end:
+///   Stage 0  in-region gate -> OUT_OF_REGION
+///   Stage 1  read the baked `verdict` from tiles.legality_polygons (most-restrictive overlap)
+///   Stage 2  live claims overlay
+/// Stages 1 and 2 are data/integration dependent: until the ETL builds legality_polygons and the
+/// live MLRS client lands, those resolve to honest `dataGaps` rather than fabricated verdicts.
+/// </summary>
+public class AssessmentService(NpgsqlDataSource db) : IAssessmentService
+{
+    public async Task<AssessmentResponse> AssessAsync(double lat, double lng, CancellationToken ct)
+    {
+        await using var conn = await db.OpenConnectionAsync(ct);
+        var now = DateTimeOffset.UtcNow;
+        var dataGaps = new List<string>();
+
+        // ---- Stage 0: in-region gate ---------------------------------------
+        if (!await InRegionAsync(conn, lat, lng, ct))
+        {
+            return Base(now) with
+            {
+                CollectingStatus = "OUT_OF_REGION",
+                CollectingStatusReason =
+                    "Outside the supported region (NV, CA, AZ, CO, UT, NM, OR, ID).",
+            };
+        }
+
+        var dataVintage = await ScalarAsync(conn,
+            "SELECT value FROM public.meta WHERE key = 'padus_version'", ct);
+
+        // ---- Stage 1: baked base verdict from the unified legality layer ----
+        bool legalityReady = await ScalarAsync(conn,
+            "SELECT to_regclass('tiles.legality_polygons')::text", ct) is not null;
+
+        string status, reason;
+        string? ambiguity = null, landManager = null, unitName = null, protection = null;
+
+        if (!legalityReady)
+        {
+            // ETL has not built the layer yet (§6.6.1.1). Be honest, don't fabricate.
+            dataGaps.Add("Legality layer not yet ingested — Phase-1 ETL pending (§6.6.1.1). " +
+                         "Land-status verdict is provisional.");
+            (status, ambiguity, reason) = NoData();
+        }
+        else
+        {
+            var row = await QueryMostRestrictiveAsync(conn, lat, lng, ct);
+            if (row is null)
+            {
+                (status, ambiguity, reason) = NoData();
+            }
+            else
+            {
+                status = row.Verdict;
+                reason = row.Reason ?? row.Verdict;
+                landManager = row.LandManager;
+                unitName = row.UnitName;
+                protection = row.ProtectionStatus;
+                dataVintage ??= row.DataVintage;
+                ambiguity = status == "YELLOW" ? "KNOWN" : null;
+            }
+        }
+
+        // ---- Stage 2: live claims overlay (not yet implemented) ------------
+        // When implemented: live MLRS 100m-buffer point query -> activeClaims; any not-closed
+        // claim (Active OR Pending) escalates to YELLOW with a warning (§6.4 Stage 2).
+        List<ActiveClaim>? activeClaims = null;
+        dataGaps.Add("Live mining-claims check not yet implemented — Phase-1 (§5.2). " +
+                     "Verify active claims at reports.blm.gov before prospecting.");
+
+        return new AssessmentResponse
+        {
+            CollectingStatus = status,
+            AmbiguityType = ambiguity,
+            CollectingStatusReason = reason,
+            LandManager = landManager,
+            UnitName = unitName,
+            ProtectionStatus = protection,
+            ActiveClaims = activeClaims,
+            Warnings = [],
+            CannotModel = [.. AssessmentText.CannotModel],
+            DataGaps = dataGaps,
+            DataVintage = dataVintage ?? "not yet ingested (Phase-1 ETL pending)",
+            Disclaimer = AssessmentText.Disclaimer,
+            AssessmentDate = now,
+        };
+    }
+
+    private static (string status, string? ambiguity, string reason) NoData() =>
+        ("YELLOW", "UNKNOWN",
+         "No land-management data here — treat as possibly private; verify ownership before entering.");
+
+    private AssessmentResponse Base(DateTimeOffset now) => new()
+    {
+        CollectingStatus = "YELLOW",
+        CollectingStatusReason = "",
+        Warnings = [],
+        CannotModel = [.. AssessmentText.CannotModel],
+        DataGaps = [],
+        Disclaimer = AssessmentText.Disclaimer,
+        AssessmentDate = now,
+    };
+
+    private static async Task<bool> InRegionAsync(NpgsqlConnection conn, double lat, double lng, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("SELECT orescout_in_region(@lat, @lng)", conn);
+        cmd.Parameters.AddWithValue("lat", lat);
+        cmd.Parameters.AddWithValue("lng", lng);
+        return (bool)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    private static async Task<string?> ScalarAsync(NpgsqlConnection conn, string sql, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : result.ToString();
+    }
+
+    private async Task<LegalityRow?> QueryMostRestrictiveAsync(
+        NpgsqlConnection conn, double lat, double lng, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT verdict, reason, land_manager, unit_nm, protection_status, data_vintage
+            FROM tiles.legality_polygons
+            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(@lng, @lat), 4326))
+            ORDER BY orescout_rank(verdict) DESC
+            LIMIT 1
+            """;
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("lat", lat);
+        cmd.Parameters.AddWithValue("lng", lng);
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        if (!await r.ReadAsync(ct)) return null;
+        return new LegalityRow(
+            r.GetString(0),
+            r.IsDBNull(1) ? null : r.GetString(1),
+            r.IsDBNull(2) ? null : r.GetString(2),
+            r.IsDBNull(3) ? null : r.GetString(3),
+            r.IsDBNull(4) ? null : r.GetString(4),
+            r.IsDBNull(5) ? null : r.GetString(5));
+    }
+
+    private record LegalityRow(
+        string Verdict, string? Reason, string? LandManager,
+        string? UnitName, string? ProtectionStatus, string? DataVintage);
+}
