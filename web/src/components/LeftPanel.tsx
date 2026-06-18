@@ -36,10 +36,10 @@ function Layers() {
       </section>
       <section>
         <h4>Data layers</h4>
-        <label className="chk disabled" title="Claims tiles not yet ingested">
-          <input type="checkbox" checked={layers.claims} onChange={() => toggle('claims')} disabled /> Active mining claims <em>(coming soon)</em>
+        <label className="chk">
+          <input type="checkbox" checked={layers.claims} onChange={() => toggle('claims')} /> <span className="sw sw-claims" /> Active mining claims
         </label>
-        <p className="hint">Claims still show per-location when you click the map.</p>
+        <p className="hint">Orange = recorded BLM claims (zoom to ~9+ to see them). Also listed per-location when you click the map.</p>
       </section>
       <section>
         <h4>Base map</h4>

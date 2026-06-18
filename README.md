@@ -48,9 +48,13 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   Mountain (active claim) and open BLM (filed claims). 10s timeout; on failure the land verdict
   is still returned with `activeClaims:null` + a `dataGap` (§6.3 partial-failure, verified).
 
-**Still to do (data/integration):** SMA cross-check (the slice used PAD-US `Mang_Name` alone);
-the **v4 download + all-8-states** run (re-confirm literals). Then: the web frontend (plan §6.12),
-which can now render the overlay tiles and call the fully-working assessment API.
+**Mining claims overlay (nightly tiles):** `scripts/etl/refresh_claims.sh` ingests all not-closed
+BLM MLRS claims for the 8 states into `tiles.claims_polygons` (**487,842 claims**), served as
+vector tiles; the frontend "Active mining claims" layer renders them orange (minzoom 9). The
+per-point live MLRS check in `/assessment` is unchanged. (Still to automate: a nightly schedule.)
+
+**Still to do:** PAD-US 4.2 data-currency upgrade; PostGIS→503 edge case; frontend polish. The
+SMA cross-check was evaluated and dropped (decision #28 — LimitedScale too coarse). See `TODO.md`.
 
 ### Reproduce the NV slice
 ```bash

@@ -116,6 +116,7 @@ a { color: #2563eb; }
   background-image: repeating-linear-gradient(45deg, #888 0 1.5px, transparent 1.5px 5px);
   background-color: #fff;
 }
+.sw-claims { background: #FF8C00; }
 
 /* ---- Pins ---- */
 .pin-list { list-style: none; margin: 0; padding: 0; }
