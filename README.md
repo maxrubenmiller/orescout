@@ -100,6 +100,71 @@ order and the production path are in [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §6.8 
 
 These are designed but **not built in the POC**, captured here so the intent isn't lost.
 
+### Future: schedule the nightly claims refresh (production)
+
+`scripts/etl/refresh_claims.sh` currently runs **manually**: it pulls ~488k claims and
+DROP+reloads `tiles.claims_polygons` (~7–8 min). To make it a true unattended *nightly* job it
+needs hardening, containerizing, and a trigger. Scheduling is a **production concern** — there is
+nothing to schedule against until a network-reachable Postgres exists (Azure Database for
+PostgreSQL). The local dev DB (`localhost:5432`, Docker) is not reachable by a cloud runner, so
+**don't wire a scheduler against local dev** — just run the script by hand there.
+
+**Prerequisite:** the app deployed with a managed Postgres endpoint + the `tiles` schema and
+`tileserv_ro` role provisioned (see §6.8/§6.11).
+
+**Step 1 — harden the script (reusable across *any* scheduler — this is the real work).**
+- **Decouple from Docker:** replace `docker compose exec -T postgres psql …` with a direct
+  connection from an env var — `psql "$DATABASE_URL"` and ogr2ogr `PG:"$PGCONN"`. No `docker
+  compose` in the job.
+- **Atomic swap** so the live overlay never goes empty mid-refresh and a failed pull can't destroy
+  good data. Load into a *new* table, create its indexes + `GRANT`, sanity-check the row count,
+  then swap in one transaction:
+  ```sql
+  -- after loading tiles.claims_polygons_new (+ indexes + GRANT SELECT TO tileserv_ro):
+  BEGIN;
+    ALTER TABLE IF EXISTS tiles.claims_polygons RENAME TO claims_polygons_old;
+    ALTER TABLE tiles.claims_polygons_new          RENAME TO claims_polygons;
+  COMMIT;
+  DROP TABLE IF EXISTS tiles.claims_polygons_old;
+  ```
+  If the pull/load fails, abort before the swap — yesterday's data stays live.
+- **Sanity gate:** only swap if the new row count is within, say, ±25% of the previous load —
+  guards against an upstream outage returning a near-empty set and silently blanking the overlay.
+- **Concurrency guard:** `flock` (cron) or the scheduler's single-instance setting so two runs
+  never overlap.
+- **Exit non-zero on any failure** (pull error, zero rows, load error) so the trigger/alert sees it.
+
+**Step 2 — containerize (the GDAL dependency).** The job needs `ogr2ogr` (GDAL) + `psql` +
+`curl`/`python3`; build a small image so it runs anywhere (reused by every scheduler option):
+```dockerfile
+FROM ghcr.io/osgeo/gdal:alpine-small-latest
+RUN apk add --no-cache postgresql-client curl python3 bash
+COPY scripts/etl/refresh_claims.sh /app/refresh_claims.sh
+ENTRYPOINT ["/app/refresh_claims.sh"]
+```
+Pass `DATABASE_URL` as a secret/env var.
+
+**Step 3 — pick a trigger** (the only scheduler-specific, ~15-line piece):
+- **Azure Container Apps Job — recommended for prod.** Scheduled (cron) job that scales to zero
+  between runs, on a private network to the managed Postgres, decoupled from the web tier:
+  `az containerapp job create --trigger-type Schedule --cron-expression "0 3 * * *"
+  --image <ACR>/claims-refresh --secrets database-url=… --env-vars DATABASE_URL=secretref:database-url`.
+- **GitHub Actions scheduled workflow — simplest / interim.** Keeps the schedule in the repo and is
+  the natural place to build+push the image to ACR. `on: schedule: [{ cron: "0 3 * * *" }]`, run
+  the container, connect to Azure PG over SSL (firewall-allow the runner, or use a self-hosted
+  runner on the private network).
+- **cron / launchd** — only if you already run an always-on host with GDAL + DB access; no built-in
+  retries/alerting and it won't fire on a sleeping machine. Not recommended for PaaS hosting.
+
+**Step 4 — observability & alerting (a *silently stale* claims layer is a safety issue).**
+- Log row count + duration each run; the script already stamps `public.meta.claims_as_of`.
+- **Alert on:** (a) job failure, and (b) **freshness** — `claims_as_of` older than ~2 days means
+  the anti-claim-jumping overlay is stale. Surface the vintage in the UI (`/meta.claimsAsOf`) and
+  page someone if it goes stale.
+
+**Cadence:** nightly (~3am). The source updates near-daily (`Modified` was yesterday), so daily
+captures it. PROJECT_PLAN.md §6.6.2.
+
 ### Future: KML export (Google Earth)
 
 The POC exports pins as **GPX only** (`GET /api/v1/pins/{id}/export?format=gpx`) — GPX covers Gaia
