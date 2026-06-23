@@ -54,6 +54,7 @@ export default function MapView() {
     const apply = () => {
       const v = (id: string, on: boolean) =>
         map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+      v('legality-open', layers.open);
       v('legality-prohibited', layers.prohibited);
       v('legality-prohibited-outline', layers.prohibited);
       v('legality-ambiguous', layers.ambiguous);

@@ -32,7 +32,8 @@ function Layers() {
         <h4>Legality overlay</h4>
         <label className="chk"><input type="checkbox" checked={layers.prohibited} onChange={() => toggle('prohibited')} /> <span className="sw sw-red" /> Prohibited (red)</label>
         <label className="chk"><input type="checkbox" checked={layers.ambiguous} onChange={() => toggle('ambiguous')} /> <span className="sw sw-hatch" /> Ambiguous (grey)</label>
-        <p className="hint">No overlay = generally open. A decision-support tool, not legal advice.</p>
+        <label className="chk"><input type="checkbox" checked={layers.open} onChange={() => toggle('open')} /> <span className="sw sw-open" /> Confirmed open (green)</label>
+        <p className="hint">Green = confirmed open for casual collecting (opt-in). No overlay = open or unknown. A decision-support tool, not legal advice.</p>
       </section>
       <section>
         <h4>Data layers</h4>

@@ -22,8 +22,8 @@ interface UIState {
   // Map config
   basemap: Basemap;
   setBasemap: (b: Basemap) => void;
-  layers: { prohibited: boolean; ambiguous: boolean; claims: boolean };
-  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'claims') => void;
+  layers: { prohibited: boolean; ambiguous: boolean; open: boolean; claims: boolean };
+  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'open' | 'claims') => void;
 
   // Imperative fly-to (MapView watches flyTarget)
   flyTarget: FlyTarget | null;
@@ -43,7 +43,7 @@ export const useUI = create<UIState>((set) => ({
 
   basemap: 'satellite',
   setBasemap: (b) => set({ basemap: b }),
-  layers: { prohibited: true, ambiguous: true, claims: false },
+  layers: { prohibited: true, ambiguous: true, open: false, claims: false },
   toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 
   flyTarget: null,

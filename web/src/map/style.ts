@@ -66,6 +66,16 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
     layers: [
       { id: 'basemap', type: 'raster', source: 'basemap' },
 
+      // Confirmed-open overlay (opt-in, default off). A slight green shading affirmatively marking
+      // land confirmed open for casual collecting ("GREEN must be earned", §6.4.1). Drawn FIRST so
+      // the red/grey overlays win where they overlap (e.g. CA confirm-open YELLOW over former-GREEN).
+      {
+        id: 'legality-open', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
+        filter: ['==', ['get', 'verdict'], 'GREEN'],
+        layout: { visibility: 'none' },
+        paint: { 'fill-color': '#3FAE5A', 'fill-opacity': 0.22 },
+      },
+
       // Legality overlays (filter on the baked `verdict`).
       {
         id: 'legality-prohibited', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
