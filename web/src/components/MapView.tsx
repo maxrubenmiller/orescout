@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useUI } from '../store';
-import { usePins } from '../hooks';
+import { usePins, useAssessment } from '../hooks';
 import { basemapTiles, buildStyle, emptyFC, makeHatch, pointFC } from '../map/style';
 
 export default function MapView() {
@@ -16,6 +16,8 @@ export default function MapView() {
   const basemap = useUI((s) => s.basemap);
   const selectedPoint = useUI((s) => s.selectedPoint);
   const { data: pins } = usePins();
+  // Same cached query the panel uses (React Query dedupes by key) — drives the pin's verdict color.
+  const { data: assessment } = useAssessment(selectedPoint);
 
   // Create the map once.
   useEffect(() => {
@@ -84,10 +86,12 @@ export default function MapView() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const data = selectedPoint ? pointFC([selectedPoint]) : emptyFC();
+    const data = selectedPoint
+      ? pointFC([{ ...selectedPoint, props: { verdict: assessment?.collectingStatus ?? 'LOADING' } }])
+      : emptyFC();
     const set = () => (map.getSource('selected') as maplibregl.GeoJSONSource | undefined)?.setData(data);
     if (loadedRef.current) set(); else map.once('load', set);
-  }, [selectedPoint]);
+  }, [selectedPoint, assessment]);
 
   return <div ref={containerRef} className="map-root" />;
 }

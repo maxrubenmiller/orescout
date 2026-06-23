@@ -116,9 +116,18 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         },
       },
       {
+        // The dropped click pin, colored by the assessment verdict (grey while loading /
+        // out-of-region). White stroke keeps it visible over a same-colored overlay.
         id: 'selected', type: 'circle', source: 'selected',
         paint: {
-          'circle-radius': 8, 'circle-color': '#f59e0b',
+          'circle-radius': 8,
+          'circle-color': [
+            'match', ['get', 'verdict'],
+            'GREEN', '#2e9e4f',   // confirmed open
+            'YELLOW', '#f59e0b',  // ambiguous / verify (amber)
+            'RED', '#cc2200',     // prohibited
+            /* loading / OUT_OF_REGION / unknown */ '#9aa0a6',
+          ],
           'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2,
         },
       },
