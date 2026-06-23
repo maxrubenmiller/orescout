@@ -1,0 +1,137 @@
+[
+  {
+    "id": 1,
+    "place": "Idyllwild",
+    "state": "CA",
+    "note": "San Bernardino NF inholding",
+    "lat": 33.7402774,
+    "lng": -116.718942,
+    "source": "nominatim"
+  },
+  {
+    "id": 2,
+    "place": "Wrightwood",
+    "state": "CA",
+    "note": "Angeles/San Bernardino NF inholding",
+    "lat": 34.3556399,
+    "lng": -117.6291741,
+    "source": "nominatim"
+  },
+  {
+    "id": 3,
+    "place": "Greer",
+    "state": "AZ",
+    "note": "Apache-Sitgreaves NF inholding",
+    "lat": 34.0100477,
+    "lng": -109.4587014,
+    "source": "nominatim"
+  },
+  {
+    "id": 4,
+    "place": "Strawberry",
+    "state": "AZ",
+    "note": "Tonto NF inholding",
+    "lat": 34.4068363,
+    "lng": -111.495222,
+    "source": "nominatim"
+  },
+  {
+    "id": 5,
+    "place": "Ward",
+    "state": "CO",
+    "note": "Roosevelt NF inholding",
+    "lat": 40.0722604,
+    "lng": -105.5079178,
+    "source": "nominatim"
+  },
+  {
+    "id": 6,
+    "place": "Alta",
+    "state": "UT",
+    "note": "Uinta-Wasatch-Cache NF private townsite",
+    "lat": 40.5904037,
+    "lng": -111.635216,
+    "source": "nominatim"
+  },
+  {
+    "id": 7,
+    "place": "Brian Head",
+    "state": "UT",
+    "note": "Dixie NF inholding",
+    "lat": 37.6927551,
+    "lng": -112.850776,
+    "source": "nominatim"
+  },
+  {
+    "id": 8,
+    "place": "Cloudcroft",
+    "state": "NM",
+    "note": "Lincoln NF inholding",
+    "lat": 32.9576648,
+    "lng": -105.742721,
+    "source": "nominatim"
+  },
+  {
+    "id": 9,
+    "place": "Jemez Springs",
+    "state": "NM",
+    "note": "Santa Fe NF inholding",
+    "lat": 35.76851,
+    "lng": -106.6921555,
+    "source": "nominatim"
+  },
+  {
+    "id": 10,
+    "place": "Government Camp",
+    "state": "OR",
+    "note": "Mt Hood NF inholding",
+    "lat": 45.3041033,
+    "lng": -121.7547596,
+    "source": "nominatim"
+  },
+  {
+    "id": 11,
+    "place": "Atlanta",
+    "state": "ID",
+    "note": "Boise NF inholding",
+    "lat": 43.8015666,
+    "lng": -115.1267474,
+    "source": "nominatim"
+  },
+  {
+    "id": 12,
+    "place": "Stanley",
+    "state": "ID",
+    "note": "Sawtooth NRA private townsite",
+    "lat": 44.2161414,
+    "lng": -114.9378523,
+    "source": "nominatim"
+  },
+  {
+    "id": 13,
+    "place": "Lamoille",
+    "state": "NV",
+    "note": "Humboldt-Toiyabe NF edge inholding",
+    "lat": 40.7279826,
+    "lng": -115.478392,
+    "source": "nominatim"
+  },
+  {
+    "id": 14,
+    "place": "Kohls Ranch",
+    "state": "AZ",
+    "note": "Tonto NF ranch/resort inholding",
+    "lat": 34.3234474,
+    "lng": -111.0937564,
+    "source": "nominatim"
+  },
+  {
+    "id": 15,
+    "place": "Cartwright Ranch (52610 7 Springs Rd)",
+    "state": "AZ",
+    "note": "Tonto NF undeveloped ranch inholding",
+    "lat": 33.961887,
+    "lng": -111.86512,
+    "source": "provided"
+  }
+]
