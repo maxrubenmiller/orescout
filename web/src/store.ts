@@ -10,7 +10,12 @@ interface UIState {
   // Selected point (the dropped pin being assessed)
   selectedPoint: LatLng | null;
   panelOpen: boolean;
+  // When set, the panel is showing a SAVED pin: it renders that pin's immutable
+  // assessment snapshot (not a fresh live verdict) and compares it to live for drift.
+  // null = a fresh map click → live assessment. (§6.5 snapshot contract.)
+  viewedPinId: string | null;
   assess: (p: LatLng) => void;
+  viewPin: (id: string, p: LatLng) => void;
   closePanel: () => void;
 
   // Left panel
@@ -33,8 +38,12 @@ interface UIState {
 export const useUI = create<UIState>((set) => ({
   selectedPoint: null,
   panelOpen: false,
-  assess: (p) => set({ selectedPoint: p, panelOpen: true }),
-  closePanel: () => set({ panelOpen: false, selectedPoint: null }),
+  viewedPinId: null,
+  // A fresh map click is always a live assessment — clear any viewed-pin context.
+  assess: (p) => set({ selectedPoint: p, viewedPinId: null, panelOpen: true }),
+  // Opening a saved pin: show its stored snapshot (+ live drift comparison).
+  viewPin: (id, p) => set({ selectedPoint: p, viewedPinId: id, panelOpen: true }),
+  closePanel: () => set({ panelOpen: false, selectedPoint: null, viewedPinId: null }),
 
   leftPanelOpen: true,
   leftTab: 'layers',

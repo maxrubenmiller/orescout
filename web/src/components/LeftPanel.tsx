@@ -61,13 +61,14 @@ function Layers() {
 function Pins() {
   const { data: pins, isLoading } = usePins();
   const flyTo = useUI((s) => s.flyTo);
-  const assess = useUI((s) => s.assess);
+  const viewPin = useUI((s) => s.viewPin);
   const del = useDeletePin();
 
   if (isLoading) return <p className="muted">Loading…</p>;
   if (!pins || pins.length === 0) return <p className="muted">No saved pins yet. Click the map and “Save this location”.</p>;
 
-  const goTo = (p: Pin) => { flyTo(p.lat, p.lng, 13); assess({ lat: p.lat, lng: p.lng }); };
+  // Open the saved pin = show its stored snapshot (+ drift check), NOT a fresh assessment.
+  const goTo = (p: Pin) => { flyTo(p.lat, p.lng, 13); viewPin(p.id, { lat: p.lat, lng: p.lng }); };
 
   const exportGpx = async (p: Pin) => {
     const blob = await api.exportPin(p.id);

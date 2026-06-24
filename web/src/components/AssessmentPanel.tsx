@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { useUI } from '../store';
-import { useAssessment, useCreatePin } from '../hooks';
+import { useActiveAssessment, useCreatePin } from '../hooks';
 import type { Assessment, CollectingStatus, AmbiguityType } from '../types';
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? iso
+    : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 function verdictMeta(status: CollectingStatus, amb: AmbiguityType) {
   switch (status) {
@@ -19,27 +26,64 @@ export default function AssessmentPanel() {
   const point = useUI((s) => s.selectedPoint);
   const open = useUI((s) => s.panelOpen);
   const close = useUI((s) => s.closePanel);
-  const { data, isLoading, isError, error } = useAssessment(point);
+  const viewedPinId = useUI((s) => s.viewedPinId);
+  const a = useActiveAssessment(point, viewedPinId);
 
   if (!open || !point) return null;
+
+  // In snapshot view the stored snapshot renders immediately; the live fetch only powers
+  // the drift check. In live view we wait on the fetch.
+  const showLiveLoading = !a.isSnapshotView && a.liveLoading;
+  const showLiveError = !a.isSnapshotView && a.liveError;
 
   return (
     <div className="panel assessment">
       <div className="panel-head">
-        <strong>Location assessment</strong>
+        <strong>{a.isSnapshotView ? 'Saved location' : 'Location assessment'}</strong>
         <button className="icon-btn" onClick={close} aria-label="Close">✕</button>
       </div>
       <div className="panel-body">
         <div className="coords">{point.lat.toFixed(5)}, {point.lng.toFixed(5)}</div>
-        {isLoading && <p className="muted">Assessing…</p>}
-        {isError && <p className="error">Couldn’t assess this location: {(error as Error).message}</p>}
-        {data && <Result a={data} lat={point.lat} lng={point.lng} />}
+
+        {a.isSnapshotView && a.snapshotDate && (
+          <p className="snapshot-note">📌 Saved snapshot — assessed {formatDate(a.snapshotDate)}.</p>
+        )}
+        {a.isSnapshotView && a.snapshotMissing && (
+          <p className="muted small">No saved snapshot for this pin — showing current status.</p>
+        )}
+        {a.drift && a.display && a.live && <DriftBanner snapshot={a.display} live={a.live} />}
+
+        {showLiveLoading && <p className="muted">Assessing…</p>}
+        {showLiveError && (
+          <p className="error">Couldn’t assess this location: {(a.liveErrorObj as Error)?.message}</p>
+        )}
+        {a.display && (
+          <Result a={a.display} lat={point.lat} lng={point.lng} showSaveForm={!a.isSnapshotView} />
+        )}
       </div>
     </div>
   );
 }
 
-function Result({ a, lat, lng }: { a: Assessment; lat: number; lng: number }) {
+// Saved verdict ≠ current verdict — the safety-critical signal (§6.5). Shows what you
+// saved vs what the data says now; tells the user to re-verify before acting on a stale pin.
+function DriftBanner({ snapshot, live }: { snapshot: Assessment; live: Assessment }) {
+  const s = verdictMeta(snapshot.collectingStatus, snapshot.ambiguityType);
+  const l = verdictMeta(live.collectingStatus, live.ambiguityType);
+  return (
+    <div className="drift" role="alert">
+      <div className="drift-head">⚠ Status may have changed since you saved this</div>
+      <div className="drift-row">
+        Saved as <span className={`pill ${s.cls}`}>{s.label}</span>
+        {' → now '}
+        <span className={`pill ${l.cls}`}>{l.label}</span>
+      </div>
+      <div className="small">Public-land data lags real ownership — verify with the managing agency before you go.</div>
+    </div>
+  );
+}
+
+function Result({ a, lat, lng, showSaveForm }: { a: Assessment; lat: number; lng: number; showSaveForm: boolean }) {
   const v = verdictMeta(a.collectingStatus, a.ambiguityType);
   return (
     <>
@@ -65,7 +109,7 @@ function Result({ a, lat, lng }: { a: Assessment; lat: number; lng: number }) {
         <ul className="datagaps">{a.dataGaps.map((g, i) => <li key={i}>ℹ {g}</li>)}</ul>
       )}
 
-      <SaveForm lat={lat} lng={lng} />
+      {showSaveForm && <SaveForm lat={lat} lng={lng} />}
 
       <details className="cannot">
         <summary>What this doesn’t model</summary>

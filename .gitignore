@@ -39,3 +39,4 @@ claims_pull.geojson
 # ---- Docker volumes ----
 pgdata/
 diag_waterways.png
+diag_snapshot.png

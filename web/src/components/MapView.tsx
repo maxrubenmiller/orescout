@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useUI } from '../store';
-import { usePins, useAssessment } from '../hooks';
+import { usePins, useActiveAssessment } from '../hooks';
 import { basemapTiles, buildStyle, emptyFC, makeHatch, pointFC } from '../map/style';
 
 export default function MapView() {
@@ -15,9 +15,12 @@ export default function MapView() {
   const layers = useUI((s) => s.layers);
   const basemap = useUI((s) => s.basemap);
   const selectedPoint = useUI((s) => s.selectedPoint);
+  const viewedPinId = useUI((s) => s.viewedPinId);
   const { data: pins } = usePins();
-  // Same cached query the panel uses (React Query dedupes by key) — drives the pin's verdict color.
-  const { data: assessment } = useAssessment(selectedPoint);
+  // Same resolver the panel uses (React Query dedupes by key) — drives the pin's verdict
+  // color. For a viewed saved pin this is the SNAPSHOT verdict, not a fresh live one.
+  const active = useActiveAssessment(selectedPoint, viewedPinId);
+  const selectedVerdict = active.display?.collectingStatus ?? 'LOADING';
 
   // Create the map once.
   useEffect(() => {
@@ -88,11 +91,11 @@ export default function MapView() {
     const map = mapRef.current;
     if (!map) return;
     const data = selectedPoint
-      ? pointFC([{ ...selectedPoint, props: { verdict: assessment?.collectingStatus ?? 'LOADING' } }])
+      ? pointFC([{ ...selectedPoint, props: { verdict: selectedVerdict } }])
       : emptyFC();
     const set = () => (map.getSource('selected') as maplibregl.GeoJSONSource | undefined)?.setData(data);
     if (loadedRef.current) set(); else map.once('load', set);
-  }, [selectedPoint, assessment]);
+  }, [selectedPoint, selectedVerdict]);
 
   return <div ref={containerRef} className="map-root" />;
 }
