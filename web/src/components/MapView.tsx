@@ -61,6 +61,7 @@ export default function MapView() {
       v('legality-prohibited-outline', layers.prohibited);
       v('legality-ambiguous', layers.ambiguous);
       v('mining-claims', layers.claims);
+      v('waterways', layers.waterways);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [layers]);

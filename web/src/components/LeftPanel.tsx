@@ -41,6 +41,10 @@ function Layers() {
           <input type="checkbox" checked={layers.claims} onChange={() => toggle('claims')} /> <span className="sw sw-claims" /> Active mining claims
         </label>
         <p className="hint">Orange = recorded BLM claims (zoom to ~9+ to see them). Also listed per-location when you click the map.</p>
+        <label className="chk">
+          <input type="checkbox" checked={layers.waterways} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways (CA)
+        </label>
+        <p className="hint">Blue = streams &amp; rivers (zoom to ~10+). Reference only — does not affect the legality verdict.</p>
       </section>
       <section>
         <h4>Base map</h4>

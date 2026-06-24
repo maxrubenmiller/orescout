@@ -15,6 +15,7 @@ const SUPPORTED = ['NV', 'CA', 'AZ', 'CO', 'UT', 'NM', 'OR', 'ID'];
 // WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_polygons`.
 export const LEGALITY_SRC_LAYER = 'tiles.legality_polygons';
 export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
+export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
 
 export function basemapTiles(b: Basemap): { tiles: string[]; attribution: string } {
   if (b === 'satellite') {
@@ -60,6 +61,11 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         tiles: [`${tileBaseUrl}/tiles.claims_polygons/{z}/{x}/{y}.pbf`],
         minzoom: 0, maxzoom: 14,
       },
+      waterways: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.waterways/{z}/{x}/{y}.pbf`],
+        minzoom: 0, maxzoom: 14,
+      },
       selected: { type: 'geojson', data: emptyFC() },
       pins: { type: 'geojson', data: emptyFC() },
     },
@@ -98,6 +104,19 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         id: 'mining-claims', type: 'fill', source: 'claims', 'source-layer': CLAIMS_SRC_LAYER,
         minzoom: 9, layout: { visibility: 'none' },
         paint: { 'fill-color': '#FF8C00', 'fill-opacity': 0.35, 'fill-outline-color': '#CC6600' },
+      },
+
+      // Waterways (reference-only — CA streams; never feeds the verdict engine, §6.13).
+      // 740k dense polylines: minzoom 10 keeps low zooms readable (cf. claims minzoom 9).
+      {
+        id: 'waterways', type: 'line', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
+        minzoom: 10, layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
+        paint: {
+          'line-color': '#2f6fb0',
+          'line-opacity': 0.85,
+          // taper width with zoom so dense networks stay legible
+          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 14, 1.6, 17, 3],
+        },
       },
 
       // Out-of-scope states mask (grey everything except the 8 supported).
