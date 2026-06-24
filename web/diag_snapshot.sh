@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 KEY="${ORESCOUT_API_KEY:-dev-local-key-change-me}"
-API="http://localhost:5000/api/v1"
+API="http://localhost:5167/api/v1"
 H=(-H "X-Api-Key: $KEY" -H "Content-Type: application/json")
 # Great Basin NP — known RED (national park) land.
 LL='{"lat":38.94092,"lng":-114.28849,"status":"want_to_visit"}'

@@ -4,7 +4,8 @@ import type {
   Assessment, CreatePinRequest, GeocodeResult, Meta, Pin, PinStatus,
 } from './types';
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api/v1';
+// API runs on 5167 (not 5000 — macOS AirPlay Receiver squats 5000). See PROJECT_PLAN.md §6.8 / #34.
+const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5167/api/v1';
 const KEY = import.meta.env.VITE_API_KEY ?? '';
 
 export class ApiError extends Error {

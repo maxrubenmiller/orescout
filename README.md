@@ -83,12 +83,12 @@ docker compose up -d postgres
 # 3. Create the pins table
 cd src/OreScout.Api && dotnet ef database update && cd ../..
 
-# 4. Run the API  (http://localhost:5000)
+# 4. Run the API  (http://localhost:5167 — NOT 5000; macOS AirPlay Receiver squats port 5000)
 dotnet run --project src/OreScout.Api
 
 # Smoke test (default dev key in appsettings.json):
-curl localhost:5000/api/v1/health
-curl -H "X-Api-Key: dev-local-key-change-me" "localhost:5000/api/v1/assessment?lat=39.5&lng=-117.0"
+curl localhost:5167/api/v1/health
+curl -H "X-Api-Key: dev-local-key-change-me" "localhost:5167/api/v1/assessment?lat=39.5&lng=-117.0"
 ```
 
 Tile server (optional until overlays exist): `docker compose up -d pg_tileserv`. Full bootstrap
