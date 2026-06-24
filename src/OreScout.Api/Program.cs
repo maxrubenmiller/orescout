@@ -21,6 +21,12 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connString));
 
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
+// Central 5xx chokepoint: core-dependency-down → 503, bugs → 500, structured logging (§6.3 #33).
+// AddProblemDetails is only the fallback for paths the handler declines (e.g. client cancellation);
+// the handler itself writes the canonical { error: { code, message } } shape on real failures.
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 // Live BLM MLRS claims check (typed HttpClient; per-request 10s timeout in the service).
 builder.Services.AddHttpClient<IClaimsService, MlrsClaimsService>(http =>
     http.DefaultRequestHeaders.UserAgent.ParseAdd("OreScout/0.1"));
@@ -46,7 +52,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
+// Order: CORS outermost so its headers are applied even on the error response the handler writes
+// (the frontend is cross-origin and must be able to read the 503 body). The exception handler then
+// wraps the API-key middleware + all endpoints.
 app.UseCors();
+app.UseExceptionHandler();
 app.UseMiddleware<ApiKeyMiddleware>();
 
 app.MapApiV1();
