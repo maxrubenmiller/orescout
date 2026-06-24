@@ -1,0 +1,55 @@
+{
+  "_description": "Tier-B golden-coordinate integration fixtures (PROJECT_PLAN.md §6.4.2). Each point is run two ways that must agree: the live /assessment endpoint AND a direct tiles.legality_polygons most-restrictive point lookup. Coordinates are interior points (ST_PointOnSurface) of large, eyeball-stable PAD-US units, so they survive boundary shifts in an ETL re-run (e.g. PAD-US 4.2). 'expect' = final /assessment collectingStatus; 'tileBase' = the Stage-1 base verdict from the direct tile lookup (null = no polygon there). GREEN points were chosen with no recorded claim within ~2km so the live Stage-2 claims overlay does not flake the fixture. Run: scripts/run-tier-b.sh.",
+  "_note": "Stage-2 live-claim escalation (open land + active claim -> YELLOW) is intentionally NOT a gating Tier-B fixture: it depends on the live BLM MLRS endpoint and is non-deterministic. It is covered by the live-claims integration path verified separately.",
+  "fixtures": [
+    { "name": "Tohono O'Odham Nation, AZ", "state": "AZ", "lat": 32.14970, "lng": -112.05419, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation (own_type TRIB)" },
+    { "name": "Navajo Nation, AZ", "state": "AZ", "lat": 35.95443, "lng": -109.58524, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "Arizona State Trust Land", "state": "AZ", "lat": 32.43743, "lng": -109.71873, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State trust land (SDOL)" },
+    { "name": "Grand Canyon-Parashant National Monument, AZ", "state": "AZ", "lat": 36.31767, "lng": -113.60723, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Monument (Des_Tp NM)" },
+    { "name": "Tonto National Forest, AZ", "state": "AZ", "lat": 33.81555, "lng": -111.56304, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open National Forest, GAP 3" },
+
+    { "name": "Death Valley Wilderness, CA (E)", "state": "CA", "lat": 36.47035, "lng": -117.08849, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "NPS Wilderness (GAP 1 / WA)" },
+    { "name": "Death Valley Wilderness, CA (S)", "state": "CA", "lat": 35.80305, "lng": -116.82455, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "NPS Wilderness (GAP 1 / WA)" },
+    { "name": "Mojave Trails National Monument, CA", "state": "CA", "lat": 34.66323, "lng": -114.89370, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Monument (Des_Tp NM)" },
+    { "name": "Excelsior Roadless Area, CA", "state": "CA", "lat": 38.00590, "lng": -118.67376, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Inventoried Roadless Area on NF, GAP 3" },
+
+    { "name": "Southern Ute Reservation, CO", "state": "CO", "lat": 37.11017, "lng": -107.65526, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "Weminuche Wilderness, CO", "state": "CO", "lat": 37.59992, "lng": -107.40508, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "USFS Wilderness (GAP 1 / WA)" },
+    { "name": "Colorado State Land Board parcel (SE)", "state": "CO", "lat": 38.05757, "lng": -104.25156, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State land (SLB)" },
+    { "name": "White River National Forest, CO", "state": "CO", "lat": 39.43861, "lng": -106.64097, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open National Forest, GAP 3" },
+
+    { "name": "Frank Church-River of No Return Wilderness, ID", "state": "ID", "lat": 45.06713, "lng": -114.83897, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "USFS Wilderness (GAP 1 / WA)" },
+    { "name": "Selway-Bitterroot Wilderness, ID", "state": "ID", "lat": 46.10669, "lng": -114.84479, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "USFS Wilderness (GAP 1 / WA)" },
+    { "name": "Idaho Department of Lands parcel", "state": "ID", "lat": 46.93429, "lng": -115.89930, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State land (SDOL)" },
+    { "name": "Sawtooth National Recreation Area, ID", "state": "ID", "lat": 44.05691, "lng": -114.87123, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Recreation Area (Des_Tp NRA)" },
+    { "name": "Secesh Roadless Area, ID", "state": "ID", "lat": 45.13680, "lng": -115.51946, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Inventoried Roadless Area on NF, GAP 3" },
+
+    { "name": "Navajo Nation, NM", "state": "NM", "lat": 36.31846, "lng": -108.65876, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "White Sands Missile Range, NM", "state": "NM", "lat": 33.11820, "lng": -106.42444, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "DOD military (Des_Tp MIL)" },
+    { "name": "New Mexico State Trust Land", "state": "NM", "lat": 34.19399, "lng": -106.26782, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State land (SLB)" },
+    { "name": "Carlsbad Field Office BLM, NM", "state": "NM", "lat": 32.91230, "lng": -104.85128, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open BLM public land, GAP 3" },
+
+    { "name": "Great Basin National Park, NV", "state": "NV", "lat": 38.94092, "lng": -114.28849, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "NPS National Park" },
+    { "name": "Nevada Test and Training Range, NV", "state": "NV", "lat": 37.37805, "lng": -116.41418, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "DOD military (Des_Tp MIL)" },
+    { "name": "Black Rock Desert NCA, NV", "state": "NV", "lat": 41.13871, "lng": -119.13031, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Conservation Area (Des_Tp NCA)" },
+    { "name": "Basin and Range National Monument, NV", "state": "NV", "lat": 37.97373, "lng": -115.39681, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Monument (Des_Tp NM)" },
+    { "name": "Bristlecone Field Office BLM, NV", "state": "NV", "lat": 39.08960, "lng": -115.90048, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open BLM public land, GAP 3" },
+
+    { "name": "Warm Springs Reservation, OR", "state": "OR", "lat": 44.86155, "lng": -121.41475, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "Oregon Forest Development Fund (state), OR", "state": "OR", "lat": 44.71204, "lng": -122.43272, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State land (SLB)" },
+    { "name": "Oregon state rangeland (SE)", "state": "OR", "lat": 43.13651, "lng": -117.96660, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State land (SDOL)" },
+    { "name": "Vale Malheur Field Office BLM, OR", "state": "OR", "lat": 43.12723, "lng": -117.62265, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open BLM public land, GAP 3" },
+
+    { "name": "Uintah and Ouray Reservation, UT", "state": "UT", "lat": 39.99082, "lng": -109.55464, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "Navajo Nation, UT", "state": "UT", "lat": 37.22968, "lng": -109.35833, "expect": "RED", "ambiguity": null, "tileBase": "RED", "why": "Tribal reservation" },
+    { "name": "Great Salt Lake sovereign land, UT", "state": "UT", "lat": 40.96284, "lng": -112.51442, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "State sovereign land (SDNR)" },
+    { "name": "Grand Staircase-Escalante National Monument, UT", "state": "UT", "lat": 37.43081, "lng": -111.74702, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "National Monument (Des_Tp NM)" },
+    { "name": "Salt Lake Field Office BLM, UT", "state": "UT", "lat": 41.64886, "lng": -113.31950, "expect": "GREEN", "ambiguity": null, "tileBase": "GREEN", "why": "Open BLM public land, GAP 3" },
+
+    { "name": "Reno NV (urban, unmapped)", "state": "NV", "lat": 39.52963, "lng": -119.81379, "expect": "YELLOW", "ambiguity": "UNKNOWN", "tileBase": null, "why": "In-region but no PAD-US polygon -> no-data cautious (possibly private)" },
+    { "name": "Phoenix AZ (urban, unmapped)", "state": "AZ", "lat": 33.44838, "lng": -112.07404, "expect": "YELLOW", "ambiguity": "UNKNOWN", "tileBase": null, "why": "In-region but no PAD-US polygon -> no-data cautious (possibly private)" },
+
+    { "name": "Central Texas (out of region)", "state": "TX", "lat": 31.0, "lng": -99.0, "expect": "OUT_OF_REGION", "ambiguity": null, "tileBase": null, "why": "Outside the 8 states -> Stage-0 in-region gate fires first" },
+    { "name": "Pacific Ocean (out of region)", "state": "--", "lat": 35.0, "lng": -140.0, "expect": "OUT_OF_REGION", "ambiguity": null, "tileBase": null, "why": "Outside the 8 states -> Stage-0 in-region gate fires first" }
+  ]
+}
