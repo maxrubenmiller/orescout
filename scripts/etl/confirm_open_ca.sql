@@ -34,7 +34,11 @@ FROM (
             ST_CollectionExtract(
               ST_MakeValid(ST_Difference(g.geom,
                 COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  FROM (SELECT geom FROM tiles.legality_polygons
+  -- ST_Subdivide the (sometimes very large) GREEN polygons into ≤256-vertex pieces so each piece
+  -- only matches a handful of local CAL FIRE buffers. Without this, a big BLM desert GREEN polygon
+  -- ST_DWithin-matches most of the 57k buffers and the per-polygon ST_Union blows up (v4.1 exposed
+  -- this — a whole-polygon run hung >12 min). The dumped difference pieces are identical either way.
+  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM tiles.legality_polygons
         WHERE state_nm='CA' AND verdict='GREEN' AND source_key='padus') g
   LEFT JOIN LATERAL (
     SELECT ST_Union(cb.geom) AS buf FROM staging.calfire_buf cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)

@@ -20,6 +20,13 @@
     { "des_tp": null,    "own_type": null,   "gap_sts": null, "sma_agency": "ST",   "expected": "YELLOW", "why": "State Trust / state manager" },
     { "des_tp": null,    "own_type": null,   "gap_sts": null, "sma_agency": "SPR",  "expected": "YELLOW", "why": "State park/rec manager (PAD-US Mang_Name)" },
     { "des_tp": null,    "own_type": null,   "gap_sts": "2",  "sma_agency": "BLM",  "expected": "YELLOW", "why": "GAP-2 escalates an otherwise-open BLM spot" },
+    { "des_tp": "SW",    "own_type": null,   "gap_sts": null, "sma_agency": "USFS", "expected": "RED",    "why": "v4.1 #35: State Wilderness overrides an open manager" },
+    { "des_tp": "NSBV",  "own_type": null,   "gap_sts": null, "sma_agency": "BLM",  "expected": "YELLOW", "why": "v4.1 #35: Natl Scenic/Botanical/Volcanic Area" },
+    { "des_tp": "REA",   "own_type": null,   "gap_sts": null, "sma_agency": "USFS", "expected": "YELLOW", "why": "v4.1 #35: Research/Educational Area" },
+    { "des_tp": "RANE",  "own_type": null,   "gap_sts": null, "sma_agency": "BLM",  "expected": "YELLOW", "why": "v4.1 #35: Ranch Easement (designation signal, not PVT own)" },
+    { "des_tp": "HCAE",  "own_type": null,   "gap_sts": null, "sma_agency": "BLM",  "expected": "YELLOW", "why": "v4.1 #35: Historic/Cultural Area" },
+    { "des_tp": "NG",    "own_type": null,   "gap_sts": null, "sma_agency": "USFS", "expected": "GREEN",  "why": "v4.1 #35: National Grassland — open like National Forest" },
+    { "des_tp": "NT",    "own_type": null,   "gap_sts": null, "sma_agency": "USFS", "expected": "GREEN",  "why": "v4.1 #35: Natl Scenic/Historic Trail — underlying land open" },
     { "des_tp": null,    "own_type": null,   "gap_sts": null, "sma_agency": null,   "expected": null,     "why": "No signal -> request-time no-data -> YELLOW/UNKNOWN" }
   ]
 }

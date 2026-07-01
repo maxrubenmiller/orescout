@@ -20,8 +20,10 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   indexes, updated_at trigger). All endpoints smoke-tested end-to-end.
 
 **ETL — all 8 states loaded** (the Half-2 spatial unify, real data):
-- Pulled **74,870 real PAD-US features** across NV/CA/AZ/CO/UT/NM/OR/ID from the Phase-0-verified
-  live FeatureServer (`scripts/etl/pull_states_padus.sh`), loaded to `staging.padus_staging`.
+- **86,913 PAD-US 4.1 features** across NV/CA/AZ/CO/UT/NM/OR/ID, ingested from the ScienceBase
+  **State GDB downloads** via `scripts/etl/load_padus_gdb.sh` → `staging.padus_staging`. (The earlier
+  live-REST pull, `pull_states_padus.sh`, was retired — the AGOL query API rate-limits bulk pulls;
+  see PROJECT_PLAN §6.6.1 / decision #35.)
 - §6.6.1.1 inspection **at scale** confirmed the classifier domains across all 8 states and added 9
   manager codes that appear in CA/CO/OR but not NV (`RWD/JNT/UNK/OTHF/BOEM/ARS/NOAA/BPA/OTHR` →
   YELLOW). Result: **0** features with an unmapped verdict. Tier-A fixtures 20/20.
@@ -56,16 +58,15 @@ per-point live MLRS check in `/assessment` is unchanged. (Still to automate: a n
 **Still to do:** PAD-US 4.2 data-currency upgrade; PostGIS→503 edge case; frontend polish. The
 SMA cross-check was evaluated and dropped (decision #28 — LimitedScale too coarse). See `TODO.md`.
 
-### Reproduce the NV slice
+### Rebuild the legality layer (PAD-US 4.1)
 ```bash
 docker compose up -d postgres
-./scripts/etl/pull_nv_padus.sh data/nv                              # pull real PAD-US (NV)
-PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
-ogr2ogr -f PostgreSQL "$PG" data/nv/padus_0.geojson -nln staging.padus_staging \
-  -nlt PROMOTE_TO_MULTI -lco GEOMETRY_NAME=geom -t_srs EPSG:4326 -overwrite
-for p in 1 2; do ogr2ogr -f PostgreSQL "$PG" data/nv/padus_${p}.geojson \
-  -nln staging.padus_staging -nlt PROMOTE_TO_MULTI -append; done
-docker compose exec -T postgres psql -U postgres -d miningapp -f /dev/stdin < scripts/etl/unify.sql
+# Manual prereq (~yearly): download the 8 state zips from ScienceBase item 6759abcf… into
+# data/padus_gdb/ (ScienceBase Next is browser-gated — no scriptable URL). Then:
+./scripts/etl/load_padus_gdb.sh                                     # unzip + ogr2ogr -> staging.padus_staging
+docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/unify.sql          # bake verdicts -> tiles
+docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/confirm_open_ca.sql # CA confirm-open
+./scripts/run-fixtures.sh && ./scripts/run-tier-b.sh               # Tier-A + Tier-B gate
 ```
 
 ## Quick start

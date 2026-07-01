@@ -34,6 +34,14 @@ BEGIN
       (NULL,    NULL,   NULL, 'ST',   'YELLOW'),
       (NULL,    NULL,   NULL, 'SPR',  'YELLOW'), -- state park/rec manager (PAD-US Mang_Name)
       (NULL,    NULL,   '2',  'BLM',  'YELLOW'),
+      -- PAD-US 4.1 reconciliation (#35): new Des_Tp codes
+      ('SW',    NULL,   NULL, 'USFS', 'RED'),    -- State Wilderness overrides an open manager
+      ('NSBV',  NULL,   NULL, 'BLM',  'YELLOW'), -- Natl Scenic/Botanical/Volcanic Area
+      ('REA',   NULL,   NULL, 'USFS', 'YELLOW'), -- Research/Educational Area
+      ('RANE',  NULL,   NULL, 'BLM',  'YELLOW'), -- Ranch Easement (designation signal, not PVT own)
+      ('HCAE',  NULL,   NULL, 'BLM',  'YELLOW'), -- Historic/Cultural Area
+      ('NG',    NULL,   NULL, 'USFS', 'GREEN'),  -- National Grassland: open like National Forest
+      ('NT',    NULL,   NULL, 'USFS', 'GREEN'),  -- Natl Scenic/Historic Trail: underlying land open
       (NULL,    NULL,   NULL, NULL,   NULL)
     ) AS t(des_tp, own_type, gap_sts, agency, expected)
   LOOP

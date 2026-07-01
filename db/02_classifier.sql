@@ -21,6 +21,14 @@
 -- The manager classifier accepts BOTH PAD-US Mang_Name and SMA ADMIN_AGENCY_CODE vocabularies
 -- (they overlap on the common agencies; no code collides). Re-confirm on the v4 / 8-state run.
 --
+-- PAD-US 4.1 reconciliation (2026-07-01, decision #35): re-confirmed against v4.1 (86,913 feats,
+-- 8 states) — 0 no-signal, 0 unmapped managers. 21 new Des_Tp codes appeared; 15 already resolved
+-- via manager/own_type. New designation mappings added ("GREEN must be earned", #30):
+--   SW (State Wilderness) -> RED;  NSBV (Natl Scenic/Botanical/Volcanic), REA (Research/Educational),
+--   RANE (Ranch Easement), HCAE (Historic/Cultural Area) -> YELLOW.
+--   NG (National Grassland) and NT (Natl Scenic/Historic Trail) intentionally left GREEN — the
+--   underlying USFS land is open; the trail/grassland designation does not close casual collecting.
+--
 -- Idempotent: every function is CREATE OR REPLACE.
 -- ============================================================================
 
@@ -47,18 +55,18 @@ CREATE OR REPLACE FUNCTION orescout_classify_padus(
   RETURNS TABLE(verdict text, reason text) LANGUAGE sql IMMUTABLE AS $$
     SELECT
       CASE
-        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL')      THEN 'RED'
+        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL','SW')      THEN 'RED'
         WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')                        THEN 'RED'
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR')         THEN 'YELLOW'
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE')         THEN 'YELLOW'
         WHEN gap_sts IN ('1','2')                                                  THEN 'YELLOW'
         ELSE NULL
       END,
       CASE
-        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL')
+        WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL','SW')
           THEN 'Protected designation: ' || des_tp
         WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')
           THEN CASE WHEN upper(own_type)='TRIB' THEN 'Tribal land' ELSE 'Private land' END
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR')
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE')
           THEN 'Ambiguous designation: ' || des_tp
         WHEN gap_sts IN ('1','2') THEN 'GAP status ' || gap_sts || ' (strict protection)'
         ELSE NULL

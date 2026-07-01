@@ -38,7 +38,7 @@ SELECT
     s.unit_nm,
     'GAP ' || s.gap_sts || COALESCE(' / ' || s.des_tp, ''),
     s.state_nm,
-    'PAD-US v3.0 (live layer, 8-state 2026-06-18)',
+    'PAD-US 4.1 (ScienceBase State GDB, 8-state 2026-07-01)',
     'padus'
 FROM staging.padus_staging s
 CROSS JOIN LATERAL orescout_base_verdict(s.des_tp, s.own_type, s.gap_sts, s.mang_name) bv
@@ -52,5 +52,9 @@ CREATE INDEX legality_state_idx   ON tiles.legality_polygons (state_nm);
 
 -- pg_tileserv's low-priv role must be able to read it (§6.8).
 GRANT SELECT ON tiles.legality_polygons TO tileserv_ro;
+
+-- Stamp the data vintage into meta so /meta + the panel report the shipping version (#35).
+UPDATE public.meta SET value = 'PAD-US 4.1'                    WHERE key = 'padus_version';
+UPDATE public.meta SET value = '2024 (ScienceBase State GDB)'  WHERE key = 'padus_date';
 
 SELECT verdict, count(*) AS polygons FROM tiles.legality_polygons GROUP BY verdict ORDER BY verdict;
