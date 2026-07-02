@@ -73,7 +73,18 @@ public static class ApiEndpoints
         {
             if (string.IsNullOrWhiteSpace(q))
                 return Err(400, "bad_request", "Query parameter 'q' is required.");
-            return Results.Ok(await geo.SearchAsync(q, ct));
+            try
+            {
+                return Results.Ok(await geo.SearchAsync(q, ct));
+            }
+            // Nominatim down or timed out (the HttpClient timeout surfaces as an OCE) is a
+            // degraded dependency, not a bug → 503, retryable. Client aborts still propagate.
+            catch (Exception ex) when (ex is HttpRequestException
+                || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+            {
+                return Err(503, "geocode_unavailable",
+                    "Geocoding is temporarily unavailable. Please try again shortly.");
+            }
         });
 
     // ---- Assessment --------------------------------------------------------

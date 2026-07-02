@@ -21,6 +21,9 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connString));
 
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
+// Shared in-memory cache shielding the external upstreams (§6.10): geocode 24h, MLRS claims 1h.
+builder.Services.AddMemoryCache();
+
 // Central 5xx chokepoint: core-dependency-down → 503, bugs → 500, structured logging (§6.3 #33).
 // AddProblemDetails is only the fallback for paths the handler declines (e.g. client cancellation);
 // the handler itself writes the canonical { error: { code, message } } shape on real failures.
