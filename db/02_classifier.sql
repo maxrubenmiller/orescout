@@ -29,6 +29,16 @@
 --   NG (National Grassland) and NT (Natl Scenic/Historic Trail) intentionally left GREEN — the
 --   underlying USFS land is open; the trail/grassland designation does not close casual collecting.
 --
+-- IMP-08 tightening (2026-07-02, decision #36, "GREEN must be earned"): designation codes that
+-- previously fell through to manager-GREEN now contribute YELLOW —
+--   REC (permitted-use recreation areas: ski resorts incl. Alta/Snowbird, campgrounds, summer-home
+--        tracts — third-party rights), SDA (special designations: geological/geothermal areas, often
+--        designated BECAUSE collecting is restricted), HCA/LHCA/SHCA (archaeological/historical —
+--        ARPA territory), RMA (mineral reserve areas), SCA (state conservation), UNKE (unknown
+--        easement). own_type UNK/LOC (unknown/local ownership) likewise no longer earns GREEN.
+-- IRA (Inventoried Roadless) deliberately stays GREEN: roadless restricts mechanized travel, not
+-- casual hand-tool collecting; the underlying NF is open (same reasoning as NG/NT in #35).
+--
 -- Idempotent: every function is CREATE OR REPLACE.
 -- ============================================================================
 
@@ -57,7 +67,9 @@ CREATE OR REPLACE FUNCTION orescout_classify_padus(
       CASE
         WHEN upper(des_tp) IN ('NP','WA','WSA','NWR','SP','MIL','RNA','TRIBL','SW')      THEN 'RED'
         WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')                        THEN 'RED'
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE')         THEN 'YELLOW'
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE',
+                               'REC','SDA','HCA','LHCA','SHCA','RMA','SCA','UNKE')  THEN 'YELLOW'
+        WHEN upper(coalesce(own_type,'')) IN ('UNK','LOC')                          THEN 'YELLOW'
         WHEN gap_sts IN ('1','2')                                                  THEN 'YELLOW'
         ELSE NULL
       END,
@@ -66,8 +78,11 @@ CREATE OR REPLACE FUNCTION orescout_classify_padus(
           THEN 'Protected designation: ' || des_tp
         WHEN upper(coalesce(own_type,'')) IN ('PVT','TRIB')
           THEN CASE WHEN upper(own_type)='TRIB' THEN 'Tribal land' ELSE 'Private land' END
-        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE')
+        WHEN upper(des_tp) IN ('NM','ACEC','NCA','NRA','SWA','CONE','WSR','NSBV','REA','RANE','HCAE',
+                               'REC','SDA','HCA','LHCA','SHCA','RMA','SCA','UNKE')
           THEN 'Ambiguous designation: ' || des_tp
+        WHEN upper(coalesce(own_type,'')) IN ('UNK','LOC')
+          THEN 'Ownership unknown/local — not confirmed open'
         WHEN gap_sts IN ('1','2') THEN 'GAP status ' || gap_sts || ' (strict protection)'
         ELSE NULL
       END;

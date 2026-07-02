@@ -41,6 +41,12 @@ for f in scripts/etl/confirm_open_*.sql; do
   esac
 done
 
+# ---- 1b. classifier functions (CREATE OR REPLACE — idempotent) ---------------
+# The baked verdicts are whatever the installed functions say: re-apply them so a classifier
+# edit (e.g. #36) cannot be silently skipped on a rebuild (IMP-08).
+echo "[rebuild] db/02_classifier.sql (classifier functions)..."
+"${PSQL[@]}" < db/02_classifier.sql >/dev/null
+
 # ---- 2. unify ---------------------------------------------------------------
 echo "[rebuild] unify.sql (PAD-US base verdicts)…"
 "${PSQL[@]}" < scripts/etl/unify.sql >/dev/null
