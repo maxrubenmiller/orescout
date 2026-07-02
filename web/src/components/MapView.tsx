@@ -62,6 +62,7 @@ export default function MapView() {
       v('legality-open', layers.open);
       v('legality-prohibited', layers.prohibited);
       v('legality-prohibited-outline', layers.prohibited);
+      v('legality-ambiguous-base', layers.ambiguous);
       v('legality-ambiguous', layers.ambiguous);
       v('mining-claims', layers.claims);
       v('waterways', layers.waterways);

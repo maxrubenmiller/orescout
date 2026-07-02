@@ -120,6 +120,7 @@ a { color: #2563eb; }
 .chk { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
 .chk.disabled { color: var(--muted); }
 .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.hint.warn { color: #92400e; } /* stale-data flag — same amber as .warnings */
 .sw { width: 16px; height: 16px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
 .sw-red { background: #cc2200; }
 .sw-hatch {
