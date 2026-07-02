@@ -77,8 +77,11 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAs
         // 1) Near a RED boundary: a GPS-holding user within 500 m of (but not inside) a
         //    prohibited unit gets an explicit "verify your exact location" nudge.
         // 2) Stale vintage: land-status data older than ~2 years is flagged on every result.
+        // Skip the near-boundary warning when the point is already RED: RED units span many
+        // rows, so a per-row "not covered" check can otherwise name the very unit the user is
+        // inside (caught by independent verification at Montezuma Easement, CO).
         var warnings = new List<string>();
-        if (legalityReady)
+        if (legalityReady && status != "RED")
         {
             var nearRed = await NearbyRedUnitAsync(conn, lat, lng, ct);
             if (nearRed is not null)
