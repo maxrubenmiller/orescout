@@ -32,6 +32,10 @@ services:
       DATABASE_URL: postgresql://tileserv_ro:tileserv@postgres:5432/miningapp
       # Allow the browser (MapLibre) to fetch tiles cross-origin from the Vite dev server.
       TS_CORSORIGINS: "*"
+      # A cold-cache, ~12-tile-concurrent initial viewport can nudge past the 10s default on dev
+      # hardware even with the generalized low-zoom layer (IMP-07). In production a CDN absorbs
+      # this; locally a longer statement window beats intermittent blank overlay tiles.
+      TS_DBTIMEOUT: "30"
     ports:
       - "7800:7800"
     depends_on:

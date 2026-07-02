@@ -67,6 +67,13 @@ for f in scripts/etl/confirm_open_*.sql; do
   echo "[rebuild]   +$((after - before)) confirm-open rows"
 done
 
+# ---- 3b. generalized low-zoom layer (IMP-07) --------------------------------
+echo "[rebuild] build_lowzoom.sql (generalized z<9 layer)..."
+"${PSQL[@]}" < scripts/etl/build_lowzoom.sql >/dev/null
+lz=$(q "SELECT count(*) FROM tiles.legality_lowzoom")
+[ "$lz" -gt 0 ] || fail "build_lowzoom produced 0 rows"
+echo "[rebuild]   legality_lowzoom: $lz rows"
+
 # ---- 4./5. fixture gates ----------------------------------------------------
 echo "[rebuild] Tier-A classifier fixtures…"
 ./scripts/run-fixtures.sh

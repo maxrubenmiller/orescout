@@ -162,3 +162,15 @@ a { color: #2563eb; }
   .panel.left { left: 0; top: 0; bottom: 0; width: 86%; max-width: 320px; border-radius: 0; }
   .brand { display: none; }
 }
+
+/* IMP-07: fail-loud banner when overlay vector tiles fail to load (map-root is the positioning
+   context; keep above the map canvas, below panels/modals). */
+.map-tile-error {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 15; max-width: 480px; padding: 8px 12px;
+  background: #7c2d12; color: #fff; border-radius: 6px;
+  font-size: 13px; line-height: 1.35; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.map-tile-error button {
+  margin-left: 10px; background: none; border: none; color: #fff; cursor: pointer; font-size: 13px;
+}

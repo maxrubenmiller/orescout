@@ -14,8 +14,16 @@ const SUPPORTED = ['NV', 'CA', 'AZ', 'CO', 'UT', 'NM', 'OR', 'ID'];
 // table id (verified by decoding a .pbf). NOTE: the TileJSON `vector_layers[].id` reports it
 // WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_polygons`.
 export const LEGALITY_SRC_LAYER = 'tiles.legality_polygons';
+export const LEGALITY_LOWZOOM_SRC_LAYER = 'tiles.legality_lowzoom';
 export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
+
+// Below this zoom the legality overlay renders from the generalized `tiles.legality_lowzoom`
+// layer (simplified + sub-pixel polygons dropped at ETL, scripts/etl/build_lowzoom.sql). The
+// full-resolution table produced 1-3 MB tiles at z5-6 that blew pg_tileserv's 10s statement
+// timeout under a normal concurrent viewport fetch -> HTTP 500 -> RED/YELLOW land silently
+// rendered blank at state-wide zooms (IMP-07 / review finding F-3).
+export const LOWZOOM_SPLIT = 9;
 
 export function basemapTiles(b: Basemap): { tiles: string[]; attribution: string } {
   if (b === 'satellite') {
@@ -54,7 +62,13 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
       legality: {
         type: 'vector',
         tiles: [`${tileBaseUrl}/tiles.legality_polygons/{z}/{x}/{y}.pbf`],
-        minzoom: 0, maxzoom: 14,
+        // Never fetched below the split (all its layers carry minzoom) — belt & braces.
+        minzoom: LOWZOOM_SPLIT, maxzoom: 14,
+      },
+      legality_lowzoom: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.legality_lowzoom/{z}/{x}/{y}.pbf`],
+        minzoom: 0, maxzoom: LOWZOOM_SPLIT,
       },
       claims: {
         type: 'vector',
@@ -72,49 +86,10 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
     layers: [
       { id: 'basemap', type: 'raster', source: 'basemap' },
 
-      // Confirmed-open overlay (opt-in, default off). A slight green shading affirmatively marking
-      // land confirmed open for casual collecting ("GREEN must be earned", §6.4.1). Drawn FIRST so
-      // the red/grey overlays win where they overlap (e.g. CA confirm-open YELLOW over former-GREEN).
-      {
-        id: 'legality-open', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['==', ['get', 'verdict'], 'GREEN'],
-        layout: { visibility: 'none' },
-        paint: { 'fill-color': '#3FAE5A', 'fill-opacity': 0.22 },
-      },
-
-      // Legality overlays (filter on the baked `verdict`).
-      {
-        id: 'legality-prohibited', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['==', ['get', 'verdict'], 'RED'],
-        paint: { 'fill-color': '#CC2200', 'fill-opacity': 0.45 },
-      },
-      {
-        id: 'legality-prohibited-outline', type: 'line', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['==', ['get', 'verdict'], 'RED'],
-        paint: { 'line-color': '#991100', 'line-width': 1 },
-      },
-      // Fail-safe under-layer for YELLOW: a fill-pattern layer renders NOTHING if the 'hatch'
-      // sprite is missing (fill-color is ignored when a pattern is set), which would silently
-      // hide ambiguous land. This subtle grey-yellow tint sits beneath the hatch so a missing
-      // sprite degrades to a visible wash instead of invisible.
-      {
-        id: 'legality-ambiguous-base', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['==', ['get', 'verdict'], 'YELLOW'],
-        paint: { 'fill-color': '#B0A44E', 'fill-opacity': 0.18 },
-      },
-      {
-        id: 'legality-ambiguous', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['==', ['get', 'verdict'], 'YELLOW'],
-        paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.6 },
-      },
-
-      // Fail-safe catch-all: any baked verdict outside the known enum is a data bug — paint it
-      // loud magenta so it can never render as silent blank "open-looking" land.
-      {
-        id: 'legality-unknown-verdict', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
-        filter: ['!', ['in', ['get', 'verdict'], ['literal', ['RED', 'YELLOW', 'GREEN']]]],
-        paint: { 'fill-color': '#FF00CC', 'fill-opacity': 0.5 },
-      },
+      // Legality overlays, twice: generalized low-zoom set (z < LOWZOOM_SPLIT) + full-resolution
+      // detail set (z >= LOWZOOM_SPLIT). Identical styling; only source + zoom band differ.
+      ...legalityLayerSet('legality_lowzoom', LEGALITY_LOWZOOM_SRC_LAYER, '-lowzoom', { maxzoom: LOWZOOM_SPLIT }),
+      ...legalityLayerSet('legality', LEGALITY_SRC_LAYER, '', { minzoom: LOWZOOM_SPLIT }),
 
       // Active mining claims (nightly tiles — empty until ingested; renders nothing if 404).
       {
@@ -169,6 +144,59 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
       },
     ],
   };
+}
+
+// The five legality overlay layers for one source/zoom band. `suffix` distinguishes the ids
+// (''=detail, '-lowzoom'); MapView toggles both variants of each id.
+function legalityLayerSet(
+  source: string,
+  srcLayer: string,
+  suffix: string,
+  zoom: { minzoom?: number; maxzoom?: number },
+): StyleSpecification['layers'] {
+  return [
+    // Confirmed-open overlay (opt-in, default off). A slight green shading affirmatively marking
+    // land confirmed open for casual collecting ("GREEN must be earned", §6.4.1). Drawn FIRST so
+    // the red/grey overlays win where they overlap (e.g. CA confirm-open YELLOW over former-GREEN).
+    {
+      id: `legality-open${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['==', ['get', 'verdict'], 'GREEN'],
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': '#3FAE5A', 'fill-opacity': 0.22 },
+    },
+    // Legality overlays (filter on the baked `verdict`).
+    {
+      id: `legality-prohibited${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['==', ['get', 'verdict'], 'RED'],
+      paint: { 'fill-color': '#CC2200', 'fill-opacity': 0.45 },
+    },
+    {
+      id: `legality-prohibited-outline${suffix}`, type: 'line', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['==', ['get', 'verdict'], 'RED'],
+      paint: { 'line-color': '#991100', 'line-width': 1 },
+    },
+    // Fail-safe under-layer for YELLOW: a fill-pattern layer renders NOTHING if the 'hatch'
+    // sprite is missing (fill-color is ignored when a pattern is set), which would silently
+    // hide ambiguous land. This subtle grey-yellow tint sits beneath the hatch so a missing
+    // sprite degrades to a visible wash instead of invisible.
+    {
+      id: `legality-ambiguous-base${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['==', ['get', 'verdict'], 'YELLOW'],
+      paint: { 'fill-color': '#B0A44E', 'fill-opacity': 0.18 },
+    },
+    {
+      id: `legality-ambiguous${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['==', ['get', 'verdict'], 'YELLOW'],
+      paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.6 },
+    },
+    // Fail-safe catch-all: any baked verdict outside the known enum is a data bug — paint it
+    // loud magenta so it can never render as silent blank "open-looking" land.
+    {
+      id: `legality-unknown-verdict${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
+      filter: ['!', ['in', ['get', 'verdict'], ['literal', ['RED', 'YELLOW', 'GREEN']]]],
+      paint: { 'fill-color': '#FF00CC', 'fill-opacity': 0.5 },
+    },
+  ];
 }
 
 export function emptyFC(): FeatureCollection {

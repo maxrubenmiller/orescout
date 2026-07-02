@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useUI } from '../store';
@@ -9,6 +9,9 @@ export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const loadedRef = useRef(false);
+  // Fail-loud on overlay tile failures (IMP-07): a failed legality/claims tile means restricted
+  // land silently renders as blank/open-looking — surface it instead of swallowing it.
+  const [tileError, setTileError] = useState(false);
 
   const assess = useUI((s) => s.assess);
   const flyTarget = useUI((s) => s.flyTarget);
@@ -39,6 +42,14 @@ export default function MapView() {
     map.on('styleimagemissing', (e) => { if (e.id === 'hatch') ensureHatch(); });
     map.on('load', () => { ensureHatch(); loadedRef.current = true; });
 
+    // Overlay tile failures (pg_tileserv 5xx/timeouts) must not be silent — the failure mode is
+    // RED/YELLOW land rendering as blank. Basemap raster errors are excluded (third-party, and
+    // the map visibly greys without them anyway).
+    map.on('error', (e) => {
+      const src = (e as { sourceId?: string }).sourceId;
+      if (src && src !== 'basemap' && src !== 'states') setTileError(true);
+    });
+
     map.on('click', (e) => {
       assess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     });
@@ -59,11 +70,14 @@ export default function MapView() {
     const apply = () => {
       const v = (id: string, on: boolean) =>
         map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
-      v('legality-open', layers.open);
-      v('legality-prohibited', layers.prohibited);
-      v('legality-prohibited-outline', layers.prohibited);
-      v('legality-ambiguous-base', layers.ambiguous);
-      v('legality-ambiguous', layers.ambiguous);
+      // Each legality layer exists twice: detail ('') + generalized low-zoom ('-lowzoom').
+      for (const sfx of ['', '-lowzoom']) {
+        v(`legality-open${sfx}`, layers.open);
+        v(`legality-prohibited${sfx}`, layers.prohibited);
+        v(`legality-prohibited-outline${sfx}`, layers.prohibited);
+        v(`legality-ambiguous-base${sfx}`, layers.ambiguous);
+        v(`legality-ambiguous${sfx}`, layers.ambiguous);
+      }
       v('mining-claims', layers.claims);
       v('waterways', layers.waterways);
     };
@@ -98,5 +112,15 @@ export default function MapView() {
     if (loadedRef.current) set(); else map.once('load', set);
   }, [selectedPoint, selectedVerdict]);
 
-  return <div ref={containerRef} className="map-root" />;
+  return (
+    <div ref={containerRef} className="map-root">
+      {tileError && (
+        <div className="map-tile-error" role="alert">
+          ⚠ Some map overlay data failed to load — areas may be missing their red/grey shading.
+          Zoom or pan to retry.
+          <button onClick={() => setTileError(false)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
+    </div>
+  );
 }
