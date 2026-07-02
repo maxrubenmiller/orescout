@@ -35,6 +35,9 @@ for f in scripts/etl/confirm_open_*.sql; do
     *confirm_open_ca.sql)
       [ "$(q "SELECT to_regclass('staging.calfire_ownership') IS NOT NULL")" = "t" ] \
         || fail "staging.calfire_ownership missing — run scripts/etl/pull_calfire.sh first" ;;
+    *confirm_open_ut.sql)
+      [ "$(q "SELECT to_regclass('staging.ugrc_ownership') IS NOT NULL")" = "t" ] \
+        || fail "staging.ugrc_ownership missing — run scripts/etl/pull_ugrc.sh first" ;;
   esac
 done
 

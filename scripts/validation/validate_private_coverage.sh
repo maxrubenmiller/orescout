@@ -21,7 +21,9 @@ PLACES=(
 "3|Greer, Arizona, USA|AZ|Apache-Sitgreaves NF inholding"
 "4|Strawberry, Arizona, USA|AZ|Tonto NF inholding"
 "5|Ward, Colorado, USA|CO|Roosevelt NF inholding"
-"6|Alta, Utah, USA|UT|Uinta-Wasatch-Cache NF private townsite"
+# 6 (Alta) moved to a FIXED coordinate below (IMP-01): the Nominatim town centroid lands on
+#   land Utah SGID maps as Federal/USFS (0 m), i.e. NOT known-private — a bad ground-truth
+#   point. Replaced with SGID owner='Private' parcel interiors (state-authority-confirmed).
 "7|Brian Head, Utah, USA|UT|Dixie NF inholding"
 "8|Cloudcroft, New Mexico, USA|NM|Lincoln NF inholding"
 "9|Jemez Springs, New Mexico, USA|NM|Santa Fe NF inholding"
@@ -48,6 +50,10 @@ for row in "${PLACES[@]}"; do
 done
 echo "," >> "$tmp"
 printf '  {"id":15,"place":"Cartwright Ranch (52610 7 Springs Rd)","state":"AZ","note":"Tonto NF undeveloped ranch inholding","lat":33.961887,"lng":-111.865120,"source":"provided"}' >> "$tmp"
+echo "," >> "$tmp"
+printf '  {"id":6,"place":"Alta townsite (SGID private parcel)","state":"UT","note":"Wasatch NF private townsite; SGID/SITLA owner=Private, parcel interior","lat":40.588993,"lng":-111.643138,"source":"ugrc-sgid"}' >> "$tmp"
+echo "," >> "$tmp"
+printf '  {"id":16,"place":"Grizzly Gulch nr Alta (SGID private parcel)","state":"UT","note":"2.5 ha SGID owner=Private parcel (patented-claim country) inside PAD-US USFS GREEN","lat":40.567619,"lng":-111.624833,"source":"ugrc-sgid"}' >> "$tmp"
 echo "" >> "$tmp"; echo "]" >> "$tmp"
 mkdir -p db/fixtures
 python3 -c "import json;json.dump(json.load(open('$tmp')),open('$OUT','w'),indent=2)"
@@ -70,7 +76,7 @@ SELECT p.id, p.place, p.state, lr.verdict, lr.land_manager AS mgr, lr.unit_nm,
 FROM (VALUES ${VALUES}) AS p(id,place,state,lat,lng)
 LEFT JOIN LATERAL (
   SELECT verdict, land_manager, unit_nm FROM tiles.legality_polygons
-  WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(p.lng, p.lat),4326))
+  WHERE ST_Covers(geom, ST_SetSRID(ST_MakePoint(p.lng, p.lat),4326))
   ORDER BY orescout_rank(verdict) DESC LIMIT 1
 ) lr ON true;
 
