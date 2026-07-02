@@ -64,10 +64,14 @@ docker compose up -d postgres
 # Manual prereq (~yearly): download the 8 state zips from ScienceBase item 6759abcf… into
 # data/padus_gdb/ (ScienceBase Next is browser-gated — no scriptable URL). Then:
 ./scripts/etl/load_padus_gdb.sh                                     # unzip + ogr2ogr -> staging.padus_staging
-docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/unify.sql          # bake verdicts -> tiles
-docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/confirm_open_ca.sql # CA confirm-open
-./scripts/run-fixtures.sh && ./scripts/run-tier-b.sh               # Tier-A + Tier-B gate
+./scripts/etl/rebuild_legality.sh                                   # unify + ALL confirm-open steps + Tier-A/B gates
 ```
+
+> **Do not run `unify.sql` by hand.** It drops and rebuilds `tiles.legality_polygons` with PAD-US
+> rows only — the confirm-open YELLOW rows (CA CAL FIRE, …) come from the separate
+> `confirm_open_*.sql` scripts, so a bare unify silently reverts them to GREEN.
+> `rebuild_legality.sh` runs the full sequence, asserts each confirm-open step inserted rows, and
+> gates on the Tier-A + Tier-B fixtures (which include confirm-open golden points).
 
 ## Quick start
 
