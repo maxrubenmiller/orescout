@@ -41,6 +41,10 @@ export function useActiveAssessment(point: LatLng | null, viewedPinId: string | 
     (snapshot.collectingStatus !== live.data.collectingStatus ||
       snapshot.ambiguityType !== live.data.ambiguityType);
 
+  // Snapshot view where the background live re-check FAILED: drift can't be detected, so the
+  // saved verdict may be silently stale — the panel must warn rather than swallow the error.
+  const driftCheckFailed = isSnapshotView && live.isError;
+
   return {
     display,
     isSnapshotView,
@@ -52,6 +56,7 @@ export function useActiveAssessment(point: LatLng | null, viewedPinId: string | 
     liveError: live.isError,
     liveErrorObj: live.error,
     drift,
+    driftCheckFailed,
   };
 }
 

@@ -93,10 +93,27 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         filter: ['==', ['get', 'verdict'], 'RED'],
         paint: { 'line-color': '#991100', 'line-width': 1 },
       },
+      // Fail-safe under-layer for YELLOW: a fill-pattern layer renders NOTHING if the 'hatch'
+      // sprite is missing (fill-color is ignored when a pattern is set), which would silently
+      // hide ambiguous land. This subtle grey-yellow tint sits beneath the hatch so a missing
+      // sprite degrades to a visible wash instead of invisible.
+      {
+        id: 'legality-ambiguous-base', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
+        filter: ['==', ['get', 'verdict'], 'YELLOW'],
+        paint: { 'fill-color': '#B0A44E', 'fill-opacity': 0.18 },
+      },
       {
         id: 'legality-ambiguous', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
         filter: ['==', ['get', 'verdict'], 'YELLOW'],
         paint: { 'fill-pattern': 'hatch', 'fill-opacity': 0.6 },
+      },
+
+      // Fail-safe catch-all: any baked verdict outside the known enum is a data bug — paint it
+      // loud magenta so it can never render as silent blank "open-looking" land.
+      {
+        id: 'legality-unknown-verdict', type: 'fill', source: 'legality', 'source-layer': LEGALITY_SRC_LAYER,
+        filter: ['!', ['in', ['get', 'verdict'], ['literal', ['RED', 'YELLOW', 'GREEN']]]],
+        paint: { 'fill-color': '#FF00CC', 'fill-opacity': 0.5 },
       },
 
       // Active mining claims (nightly tiles — empty until ingested; renders nothing if 404).
