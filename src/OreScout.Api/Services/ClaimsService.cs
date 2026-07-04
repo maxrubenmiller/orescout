@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using OreScout.Api.Models;
 
 namespace OreScout.Api.Services;
@@ -17,20 +18,33 @@ public interface IClaimsService
 /// Queries the "Not Closed" claims layer with a 100m buffer around the point (raw point-
 /// intersect misses gaps between PLSS aliquots). On any failure/timeout it returns
 /// (null, dataGap) so the assessment degrades to a partial result rather than failing (§6.3).
+/// Successful results are cached 1h keyed on the coord rounded to 3 decimals (~110m, matching
+/// the buffer) to shield BLM from repeated identical clicks (§6.10); failures are NEVER cached,
+/// so recovery is immediate.
 /// </summary>
-public class MlrsClaimsService(HttpClient http, IConfiguration cfg, ILogger<MlrsClaimsService> log) : IClaimsService
+public class MlrsClaimsService(
+    HttpClient http, IMemoryCache cache, IConfiguration cfg, ILogger<MlrsClaimsService> log) : IClaimsService
 {
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
+
     private const string FailGap =
         "Mining claims data temporarily unavailable. Verify active claims at reports.blm.gov before prospecting.";
 
     public async Task<ClaimsResult> GetClaimsAsync(double lat, double lng, CancellationToken ct)
     {
+        var inv = CultureInfo.InvariantCulture;
+        var cacheKey = string.Create(inv, $"claims:{Math.Round(lat, 3)}:{Math.Round(lng, 3)}");
+        if (cache.TryGetValue(cacheKey, out ClaimsResult? cached) && cached is not null)
+        {
+            log.LogDebug("MLRS cache hit for {Lat},{Lng}", lat, lng);
+            return cached;
+        }
+
         var queryUrl = cfg["Mlrs:QueryUrl"]!;
         var caseUrlTpl = cfg["Mlrs:CaseDetailUrl"]!;
         var buffer = cfg.GetValue<int?>("Mlrs:BufferMeters") ?? 100;
         var timeout = TimeSpan.FromSeconds(cfg.GetValue<int?>("Mlrs:TimeoutSeconds") ?? 10);
 
-        var inv = CultureInfo.InvariantCulture;
         var geom = $"{{\"x\":{lng.ToString(inv)},\"y\":{lat.ToString(inv)},\"spatialReference\":{{\"wkid\":4326}}}}";
         string Q(string k, string v) => $"{k}={Uri.EscapeDataString(v)}";
         var url = queryUrl + "?" + string.Join("&",
@@ -48,6 +62,7 @@ public class MlrsClaimsService(HttpClient http, IConfiguration cfg, ILogger<Mlrs
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeout);
 
+            log.LogDebug("MLRS upstream query for {Lat},{Lng}", lat, lng);
             using var resp = await http.GetAsync(url, cts.Token);
             resp.EnsureSuccessStatusCode();
             await using var stream = await resp.Content.ReadAsStreamAsync(cts.Token);
@@ -73,7 +88,9 @@ public class MlrsClaimsService(HttpClient http, IConfiguration cfg, ILogger<Mlrs
                         string.Format(caseUrlTpl, Uri.EscapeDataString(serial))));
                 }
             }
-            return new ClaimsResult(claims, null);
+            var result = new ClaimsResult(claims, null);
+            cache.Set(cacheKey, result, CacheTtl); // successes only — failure paths below skip the cache
+            return result;
         }
         catch (Exception ex)
         {
