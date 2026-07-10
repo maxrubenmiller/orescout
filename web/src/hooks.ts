@@ -68,6 +68,20 @@ export function useMeta() {
   return useQuery({ queryKey: ['meta'], queryFn: api.meta, staleTime: Infinity });
 }
 
+/**
+ * Type-ahead geocode suggestions for the search box. Mirrors the backend's 24h geocode
+ * cache (§6.10); the ≤1 req/s upstream gate is enforced server-side, so the caller must
+ * DEBOUNCE `query` (don't fire per keystroke). Disabled for <3 chars.
+ */
+export function useGeocode(query: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['geocode', query],
+    queryFn: () => api.geocode(query),
+    enabled: enabled && query.trim().length >= 3,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
 export function useCreatePin() {
   const qc = useQueryClient();
   return useMutation({
