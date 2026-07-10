@@ -73,10 +73,28 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAs
             }
         }
 
+        // ---- §6.4 standing warnings (IMP-02) --------------------------------
+        // 1) Near a RED boundary: a GPS-holding user within 500 m of (but not inside) a
+        //    prohibited unit gets an explicit "verify your exact location" nudge.
+        // 2) Stale vintage: land-status data older than ~2 years is flagged on every result.
+        // Skip the near-boundary warning when the point is already RED: RED units span many
+        // rows, so a per-row "not covered" check can otherwise name the very unit the user is
+        // inside (caught by independent verification at Montezuma Easement, CO).
+        var warnings = new List<string>();
+        if (legalityReady && status != "RED")
+        {
+            var nearRed = await NearbyRedUnitAsync(conn, lat, lng, ct);
+            if (nearRed is not null)
+                warnings.Add($"Near boundary of {nearRed} — verify your exact location.");
+        }
+        var padUsDate = await ScalarAsync(conn,
+            "SELECT value FROM public.meta WHERE key = 'padus_date'", ct);
+        if (VintageYear(padUsDate) is { } year && now.Year - year >= 2)
+            warnings.Add($"Land status data may be outdated ({dataVintage ?? "PAD-US"}, {year}).");
+
         // ---- Stage 2: live claims overlay (§6.4 Stage 2) -------------------
         // Any not-closed claim (Active OR Pending) within the 100m buffer escalates the
         // verdict UP to YELLOW (never down, never RED). Claim failure -> partial result.
-        var warnings = new List<string>();
         var claimsResult = await claims.GetClaimsAsync(lat, lng, ct);
         var activeClaims = claimsResult.Claims;
         if (claimsResult.DataGap is not null) dataGaps.Add(claimsResult.DataGap);
@@ -159,10 +177,13 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAs
     private async Task<LegalityRow?> QueryMostRestrictiveAsync(
         NpgsqlConnection conn, double lat, double lng, CancellationToken ct)
     {
+        // ST_Covers (not ST_Contains): a point exactly ON a polygon's boundary must still
+        // match it, so a point on a Wilderness/WSA edge resolves most-restrictive (RED)
+        // instead of falling through to the surrounding open polygon (§6.4, IMP-02).
         const string sql = """
             SELECT verdict, reason, land_manager, unit_nm, protection_status, data_vintage
             FROM tiles.legality_polygons
-            WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(@lng, @lat), 4326))
+            WHERE ST_Covers(geom, ST_SetSRID(ST_MakePoint(@lng, @lat), 4326))
             ORDER BY orescout_rank(verdict) DESC
             LIMIT 1
             """;
@@ -178,6 +199,44 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAs
             r.IsDBNull(3) ? null : r.GetString(3),
             r.IsDBNull(4) ? null : r.GetString(4),
             r.IsDBNull(5) ? null : r.GetString(5));
+    }
+
+    /// <summary>
+    /// Nearest RED unit within 500 m that does NOT cover the point itself (§6.4 warning,
+    /// IMP-02). A point already inside RED is RED — the warning is for open/ambiguous
+    /// ground near the line. The bbox && filter keeps the GIST index in play; the
+    /// geography cast makes 500 m correct at any latitude.
+    /// </summary>
+    private static async Task<string?> NearbyRedUnitAsync(
+        NpgsqlConnection conn, double lat, double lng, CancellationToken ct)
+    {
+        const string sql = """
+            WITH pt AS (SELECT ST_SetSRID(ST_MakePoint(@lng, @lat), 4326) AS g)
+            SELECT COALESCE(unit_nm, reason, 'a protected area')
+            FROM tiles.legality_polygons, pt
+            WHERE verdict = 'RED'
+              AND geom && ST_Expand(pt.g, 0.01)
+              AND NOT ST_Covers(geom, pt.g)
+              AND ST_DWithin(geom::geography, pt.g::geography, 500)
+            ORDER BY ST_Distance(geom::geography, pt.g::geography)
+            LIMIT 1
+            """;
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("lat", lat);
+        cmd.Parameters.AddWithValue("lng", lng);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is null or DBNull ? null : (string)result;
+    }
+
+    /// <summary>
+    /// First 4-digit year in the meta padus_date value (e.g. "2024 (ScienceBase State GDB)").
+    /// Null when absent/unparseable — the staleness warning is then skipped, never thrown.
+    /// </summary>
+    private static int? VintageYear(string? padUsDate)
+    {
+        if (padUsDate is null) return null;
+        var m = System.Text.RegularExpressions.Regex.Match(padUsDate, @"\b(19|20)\d{2}\b");
+        return m.Success ? int.Parse(m.Value) : null;
     }
 
     private record LegalityRow(

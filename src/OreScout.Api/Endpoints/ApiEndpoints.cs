@@ -73,7 +73,18 @@ public static class ApiEndpoints
         {
             if (string.IsNullOrWhiteSpace(q))
                 return Err(400, "bad_request", "Query parameter 'q' is required.");
-            return Results.Ok(await geo.SearchAsync(q, ct));
+            try
+            {
+                return Results.Ok(await geo.SearchAsync(q, ct));
+            }
+            // Nominatim down or timed out (the HttpClient timeout surfaces as an OCE) is a
+            // degraded dependency, not a bug → 503, retryable. Client aborts still propagate.
+            catch (Exception ex) when (ex is HttpRequestException
+                || (ex is OperationCanceledException && !ct.IsCancellationRequested))
+            {
+                return Err(503, "geocode_unavailable",
+                    "Geocoding is temporarily unavailable. Please try again shortly.");
+            }
         });
 
     // ---- Assessment --------------------------------------------------------
@@ -101,8 +112,10 @@ public static class ApiEndpoints
         g.MapPost("/pins", async (CreatePinRequest req, OreScoutDbContext db,
             IAssessmentService svc, CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(req.Title))
-                return Err(400, "bad_request", "title is required.");
+            if (req.Lat is < -90 or > 90 || req.Lng is < -180 or > 180)
+                return Err(400, "invalid_coordinates", "lat must be -90..90 and lng -180..180.");
+            if (ValidateMetadata(req.Title, req.Notes) is { } err)
+                return err;
             var status = req.Status ?? "want_to_visit";
             if (!ValidStatuses.Contains(status))
                 return Err(400, "bad_request", "status must be 'want_to_visit' or 'visited'.");
@@ -130,8 +143,8 @@ public static class ApiEndpoints
         {
             var pin = await db.Pins.FindAsync([id], ct);
             if (pin is null) return Err(404, "not_found", "Pin not found.");
-            if (string.IsNullOrWhiteSpace(req.Title))
-                return Err(400, "bad_request", "title is required.");
+            if (ValidateMetadata(req.Title, req.Notes) is { } err)
+                return err;
             if (!ValidStatuses.Contains(req.Status))
                 return Err(400, "bad_request", "status must be 'want_to_visit' or 'visited'.");
 
@@ -170,6 +183,22 @@ public static class ApiEndpoints
     // ---- Helpers -----------------------------------------------------------
     private static IResult Err(int status, string code, string message) =>
         Results.Json(new ApiError(new ApiErrorBody(code, message)), statusCode: status);
+
+    /// <summary>
+    /// Shared POST/PUT pin metadata checks. Title cap matches the DB varchar(200) column
+    /// (a longer title previously escaped as a PostgresException → 500); the notes cap is
+    /// app-level sanity only (the column is TEXT). Returns null when valid.
+    /// </summary>
+    private static IResult? ValidateMetadata(string? title, string? notes)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+            return Err(400, "bad_request", "title is required.");
+        if (title.Trim().Length > 200)
+            return Err(400, "bad_request", "title must be 200 characters or fewer.");
+        if (notes is { Length: > 4000 })
+            return Err(400, "bad_request", "notes must be 4000 characters or fewer.");
+        return null;
+    }
 
     private static PinResponse ToResponse(Pin p)
     {

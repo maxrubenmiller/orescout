@@ -2,7 +2,8 @@
 # Sets up two saved pins (drift + stable), runs the headless snapshot-contract test,
 # then cleans up. See diag_snapshot.mjs. Idempotent-ish: deletes its own test pins at the end.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
 KEY="${ORESCOUT_API_KEY:-dev-local-key-change-me}"
 API="http://localhost:5167/api/v1"
 H=(-H "X-Api-Key: $KEY" -H "Content-Type: application/json")
@@ -35,4 +36,4 @@ docker compose exec -T postgres psql -tAq -U postgres -d miningapp -c \
   "UPDATE public.pins SET assessment_snapshot = jsonb_set(jsonb_set(assessment_snapshot, '{collectingStatus}', '\"GREEN\"'::jsonb), '{ambiguityType}', 'null'::jsonb) WHERE id='$DRIFT_ID';"
 
 echo "running headless contract test…"
-node "$(dirname "$0")/diag_snapshot.mjs"
+node "$SCRIPT_DIR/diag_snapshot.mjs"

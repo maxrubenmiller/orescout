@@ -8,6 +8,10 @@
 # Usage:  ./scripts/run-fixtures.sh        (requires `docker compose up -d` first)
 set -euo pipefail
 
+# Feed via stdin (not the container's /docker-entrypoint-initdb.d mount) so the fixtures of THIS
+# checkout run — the mount always points at the main working tree, which silently runs stale
+# fixtures when testing from a branch/worktree (IMP-08).
+cd "$(dirname "$0")/.."
 docker compose exec -T postgres \
   psql -v ON_ERROR_STOP=1 -U postgres -d miningapp \
-  -f /docker-entrypoint-initdb.d/fixtures/classifier_test.sql
+  < db/fixtures/classifier_test.sql

@@ -120,6 +120,7 @@ a { color: #2563eb; }
 .chk { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
 .chk.disabled { color: var(--muted); }
 .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.hint.warn { color: #92400e; } /* stale-data flag — same amber as .warnings */
 .sw { width: 16px; height: 16px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
 .sw-red { background: #cc2200; }
 .sw-hatch {
@@ -160,4 +161,16 @@ a { color: #2563eb; }
 @media (max-width: 768px) {
   .panel.left { left: 0; top: 0; bottom: 0; width: 86%; max-width: 320px; border-radius: 0; }
   .brand { display: none; }
+}
+
+/* IMP-07: fail-loud banner when overlay vector tiles fail to load (map-root is the positioning
+   context; keep above the map canvas, below panels/modals). */
+.map-tile-error {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 15; max-width: 480px; padding: 8px 12px;
+  background: #7c2d12; color: #fff; border-radius: 6px;
+  font-size: 13px; line-height: 1.35; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.map-tile-error button {
+  margin-left: 10px; background: none; border: none; color: #fff; cursor: pointer; font-size: 13px;
 }

@@ -42,6 +42,16 @@ BEGIN
       ('HCAE',  NULL,   NULL, 'BLM',  'YELLOW'), -- Historic/Cultural Area
       ('NG',    NULL,   NULL, 'USFS', 'GREEN'),  -- National Grassland: open like National Forest
       ('NT',    NULL,   NULL, 'USFS', 'GREEN'),  -- Natl Scenic/Historic Trail: underlying land open
+      -- IMP-08 tightening (#36): weak-affirmative tuples no longer earn GREEN
+      ('REC',   'DESG', '4',  'USFS', 'YELLOW'), -- permitted-use rec area (ski resorts, e.g. Alta)
+      ('SDA',   'DESG', '3',  'USFS', 'YELLOW'), -- special designation (geological/geothermal)
+      ('HCA',   'DESG', '4',  'USFS', 'YELLOW'), -- archaeological/historical area (ARPA)
+      ('RMA',   'DESG', '3',  'USFS', 'YELLOW'), -- mineral reserve area
+      ('SCA',   'FED',  '3',  'USFS', 'YELLOW'), -- state conservation area designation
+      ('UNKE',  'UNK',  '4',  'BLM',  'YELLOW'), -- unknown easement + unknown owner
+      (NULL,    'LOC',  '4',  'USFS', 'YELLOW'), -- local-government-owned under USFS mgmt
+      (NULL,    'UNK',  NULL, 'BLM',  'YELLOW'), -- unknown ownership never earns GREEN
+      ('IRA',   'DESG', '3',  'USFS', 'GREEN'),  -- roadless stays GREEN (locked intentional, #36)
       (NULL,    NULL,   NULL, NULL,   NULL)
     ) AS t(des_tp, own_type, gap_sts, agency, expected)
   LOOP

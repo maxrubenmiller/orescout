@@ -19,6 +19,10 @@ function verdictMeta(status: CollectingStatus, amb: AmbiguityType) {
       return amb === 'UNKNOWN'
         ? { label: 'Possibly private', cls: 'v-orange', blurb: 'No land-management data — verify ownership before entering.' }
         : { label: 'Ambiguous', cls: 'v-yellow', blurb: 'Verify the specific rules with the managing agency.' };
+    // Fail-safe: an unrecognized status (API/snapshot drift ahead of the UI) must degrade to a
+    // cautious render, never a crash or a blank panel.
+    default:
+      return { label: 'Unknown status', cls: 'v-grey', blurb: 'Unrecognized status — verify the rules independently with the managing agency before you go.' };
   }
 }
 
@@ -52,6 +56,12 @@ export default function AssessmentPanel() {
           <p className="muted small">No saved snapshot for this pin — showing current status.</p>
         )}
         {a.drift && a.display && a.live && <DriftBanner snapshot={a.display} live={a.live} />}
+        {a.driftCheckFailed && (
+          <div className="drift" role="alert">
+            <div className="drift-head">⚠ Couldn’t re-check current status</div>
+            <div className="small">Verify with the managing agency before you go.</div>
+          </div>
+        )}
 
         {showLiveLoading && <p className="muted">Assessing…</p>}
         {showLiveError && (

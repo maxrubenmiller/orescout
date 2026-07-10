@@ -50,6 +50,13 @@
     { "name": "Phoenix AZ (urban, unmapped)", "state": "AZ", "lat": 33.44838, "lng": -112.07404, "expect": "YELLOW", "ambiguity": "UNKNOWN", "tileBase": null, "why": "In-region but no PAD-US polygon -> no-data cautious (possibly private)" },
 
     { "name": "Central Texas (out of region)", "state": "TX", "lat": 31.0, "lng": -99.0, "expect": "OUT_OF_REGION", "ambiguity": null, "tileBase": null, "why": "Outside the 8 states -> Stage-0 in-region gate fires first" },
-    { "name": "Pacific Ocean (out of region)", "state": "--", "lat": 35.0, "lng": -140.0, "expect": "OUT_OF_REGION", "ambiguity": null, "tileBase": null, "why": "Outside the 8 states -> Stage-0 in-region gate fires first" }
+    { "name": "Pacific Ocean (out of region)", "state": "--", "lat": 35.0, "lng": -140.0, "expect": "OUT_OF_REGION", "ambiguity": null, "tileBase": null, "why": "Outside the 8 states -> Stage-0 in-region gate fires first" },
+
+    { "name": "CA confirm-open: Trinity foothills W of Redding", "state": "CA", "lat": 40.335416, "lng": -122.917564, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "calfire_ca unconfirmed-open row over PAD-US BLM GREEN; YELLOW comes ONLY from source_key=calfire_ca -> guards the confirm-open ETL step" },
+    { "name": "CA confirm-open: Sierra NF foothills nr Auberry", "state": "CA", "lat": 37.124395, "lng": -119.489168, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "calfire_ca unconfirmed-open row over PAD-US USFS GREEN; YELLOW comes ONLY from source_key=calfire_ca" },
+    { "name": "CA confirm-open: Carrizo Plain margin", "state": "CA", "lat": 35.080480, "lng": -119.463609, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "calfire_ca unconfirmed-open row over PAD-US BLM GREEN; YELLOW comes ONLY from source_key=calfire_ca" },
+
+    { "name": "UT confirm-open: Monte Cristo margin (SGID)", "state": "UT", "lat": 41.423546, "lng": -111.071327, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "ugrc_ut unconfirmed-open row over PAD-US GREEN (16 km2, largest UT piece); YELLOW comes ONLY from source_key=ugrc_ut" },
+    { "name": "UT confirm-open: W of Mona (SGID)", "state": "UT", "lat": 39.775116, "lng": -111.904646, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "ugrc_ut unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=ugrc_ut" }
   ]
 }

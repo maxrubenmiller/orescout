@@ -64,10 +64,14 @@ docker compose up -d postgres
 # Manual prereq (~yearly): download the 8 state zips from ScienceBase item 6759abcf… into
 # data/padus_gdb/ (ScienceBase Next is browser-gated — no scriptable URL). Then:
 ./scripts/etl/load_padus_gdb.sh                                     # unzip + ogr2ogr -> staging.padus_staging
-docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/unify.sql          # bake verdicts -> tiles
-docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/confirm_open_ca.sql # CA confirm-open
-./scripts/run-fixtures.sh && ./scripts/run-tier-b.sh               # Tier-A + Tier-B gate
+./scripts/etl/rebuild_legality.sh                                   # unify + ALL confirm-open steps + Tier-A/B gates
 ```
+
+> **Do not run `unify.sql` by hand.** It drops and rebuilds `tiles.legality_polygons` with PAD-US
+> rows only — the confirm-open YELLOW rows (CA CAL FIRE, …) come from the separate
+> `confirm_open_*.sql` scripts, so a bare unify silently reverts them to GREEN.
+> `rebuild_legality.sh` runs the full sequence, asserts each confirm-open step inserted rows, and
+> gates on the Tier-A + Tier-B fixtures (which include confirm-open golden points).
 
 ## Quick start
 
@@ -103,9 +107,10 @@ These are designed but **not built in the POC**, captured here so the intent isn
 
 ### Future: schedule the nightly claims refresh (production)
 
-`scripts/etl/refresh_claims.sh` currently runs **manually**: it pulls ~488k claims and
-DROP+reloads `tiles.claims_polygons` (~7–8 min). To make it a true unattended *nightly* job it
-needs hardening, containerizing, and a trigger. Scheduling is a **production concern** — there is
+`scripts/etl/refresh_claims.sh` runs **manually** for now: it pulls ~488k claims into a new table
+and atomically swaps it into `tiles.claims_polygons` (~7–8 min). **Step 1 (script hardening) below
+is now implemented (2026-07-02, IMP-13);** making it a true unattended *nightly* job still needs
+containerizing + a trigger (Steps 2–3). Scheduling is a **production concern** — there is
 nothing to schedule against until a network-reachable Postgres exists (Azure Database for
 PostgreSQL). The local dev DB (`localhost:5432`, Docker) is not reachable by a cloud runner, so
 **don't wire a scheduler against local dev** — just run the script by hand there.
@@ -113,7 +118,8 @@ PostgreSQL). The local dev DB (`localhost:5432`, Docker) is not reachable by a c
 **Prerequisite:** the app deployed with a managed Postgres endpoint + the `tiles` schema and
 `tileserv_ro` role provisioned (see §6.8/§6.11).
 
-**Step 1 — harden the script (reusable across *any* scheduler — this is the real work).**
+**Step 1 — harden the script — ✅ DONE (2026-07-02, IMP-13).** (Reusable across *any* scheduler;
+this was the real work.) The bullets below are now implemented in `refresh_claims.sh`:
 - **Decouple from Docker:** replace `docker compose exec -T postgres psql …` with a direct
   connection from an env var — `psql "$DATABASE_URL"` and ogr2ogr `PG:"$PGCONN"`. No `docker
   compose` in the job.

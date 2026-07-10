@@ -45,15 +45,6 @@
     "source": "nominatim"
   },
   {
-    "id": 6,
-    "place": "Alta",
-    "state": "UT",
-    "note": "Uinta-Wasatch-Cache NF private townsite",
-    "lat": 40.5904037,
-    "lng": -111.635216,
-    "source": "nominatim"
-  },
-  {
     "id": 7,
     "place": "Brian Head",
     "state": "UT",
@@ -133,5 +124,23 @@
     "lat": 33.961887,
     "lng": -111.86512,
     "source": "provided"
+  },
+  {
+    "id": 6,
+    "place": "Alta townsite (SGID private parcel)",
+    "state": "UT",
+    "note": "Wasatch NF private townsite; SGID/SITLA owner=Private, parcel interior",
+    "lat": 40.588993,
+    "lng": -111.643138,
+    "source": "ugrc-sgid"
+  },
+  {
+    "id": 16,
+    "place": "Grizzly Gulch nr Alta (SGID private parcel)",
+    "state": "UT",
+    "note": "2.5 ha SGID owner=Private parcel (patented-claim country) inside PAD-US USFS GREEN",
+    "lat": 40.567619,
+    "lng": -111.624833,
+    "source": "ugrc-sgid"
   }
 ]

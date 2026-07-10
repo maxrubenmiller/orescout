@@ -65,7 +65,7 @@ const features = await page.evaluate(() => {
   const qr = (layer) => { try { return m.queryRenderedFeatures({ layers: [layer] }).length; } catch (e) { return String(e); } };
   let src = -1; let sampleProps = null;
   try {
-    const f = m.querySourceFeatures('legality', { sourceLayer: 'legality_polygons' });
+    const f = m.querySourceFeatures('legality', { sourceLayer: 'tiles.legality_polygons' });
     src = f.length;
     if (f[0]) sampleProps = f[0].properties;
   } catch (e) { src = String(e); }

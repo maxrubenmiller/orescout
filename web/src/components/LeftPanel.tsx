@@ -1,5 +1,5 @@
 import { useUI, type Basemap } from '../store';
-import { usePins, useDeletePin } from '../hooks';
+import { usePins, useDeletePin, useMeta } from '../hooks';
 import { api } from '../api';
 import type { Pin } from '../types';
 
@@ -54,7 +54,40 @@ function Layers() {
           </label>
         ))}
       </section>
+      <DataVintage />
     </div>
+  );
+}
+
+// Data vintage (IMP-10): surface how old the overlays are next to their toggles. Claims are
+// refreshed nightly, so >48h means the pipeline is behind — flag it in the warning style.
+// Staleness is judged against page-load time (module scope keeps render pure); a 48h
+// threshold doesn't need a ticking clock.
+const LOADED_AT = Date.now();
+
+function DataVintage() {
+  const { data: meta } = useMeta();
+  if (!meta) return null;
+
+  // claimsAsOf arrives as Postgres timestamptz text ("2026-06-18 23:18:10.139105+00") — make it
+  // ISO-parseable ("T" separator, full "+00:00" offset) before Date() sees it.
+  const claims = meta.claimsAsOf
+    ? new Date(meta.claimsAsOf.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'))
+    : null;
+  const claimsValid = claims != null && !Number.isNaN(claims.getTime());
+  const claimsStale = claimsValid && LOADED_AT - claims.getTime() > 48 * 60 * 60 * 1000;
+  const claimsLabel = claimsValid
+    ? claims.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : meta.claimsAsOf ?? 'unknown';
+
+  return (
+    <section className="vintage">
+      <p className="hint">Land data: {meta.padUsVersion ?? 'unknown'} ({meta.padUsDate ?? 'date unknown'})</p>
+      <p className={claimsStale ? 'hint warn' : 'hint'}>
+        Claims data as of {claimsLabel}
+        {claimsStale && ' — ⚠ claims overlay may be stale'}
+      </p>
+    </section>
   );
 }
 
