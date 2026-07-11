@@ -20,6 +20,9 @@ CREATE TABLE tiles.mrds (
     site_name     text,
     dev_stat      text,      -- Occurrence / Prospect / Producer / Past Producer
     commodities   text,      -- raw CODE_LIST (space-delimited commodity codes; always incl. AU)
+    grade         text,      -- MRDS deposit grade/size class code (raw)
+    url           text,      -- deep link to the full USGS MRDS record (show-mrds.php?dep_id=…)
+    dep_id        bigint,    -- MRDS deposit id (stable key; also the id in `url`)
     is_producer   boolean,   -- DEV_STAT is a (past) producer → stronger signal (§5.3 Signal 3)
     state_nm      text,
     data_vintage  text,
@@ -27,12 +30,15 @@ CREATE TABLE tiles.mrds (
 );
 
 INSERT INTO tiles.mrds
-    (geom, site_name, dev_stat, commodities, is_producer, state_nm, data_vintage, source_key)
+    (geom, site_name, dev_stat, commodities, grade, url, dep_id, is_producer, state_nm, data_vintage, source_key)
 SELECT
     s.geom,
     NULLIF(s.site_name, ''),
     NULLIF(s.dev_stat, ''),
     NULLIF(trim(s.code_list), ''),
+    NULLIF(s.grade, ''),
+    NULLIF(s.url, ''),
+    NULLIF(s.dep_id::text, '')::bigint,
     s.dev_stat ILIKE '%producer%',
     st.name,
     'USGS MRDS (static — USGS stopped updates 2011)',

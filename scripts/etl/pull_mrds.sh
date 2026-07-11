@@ -15,7 +15,7 @@ cd "$(dirname "$0")/../.."
 OUT="${1:-data/mrds}"
 BASE="https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/Mineral_Resources_Data_System_MRDS_Compact_Version/FeatureServer/0"
 Q="$BASE/query"
-FIELDS="SITE_NAME,DEV_STAT,CODE_LIST"
+FIELDS="SITE_NAME,DEV_STAT,CODE_LIST,URL,Grade,DEP_ID"
 BBOX="-124.85,31.3,-102.0,49.05"   # 8-state envelope; build_mrds.sql clips to the state polygons
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
 UA="OreScout-ETL/0.1"

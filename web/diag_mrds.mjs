@@ -46,6 +46,7 @@ try {
   const pt = await page.evaluate(() => {
     const fs = window.__map.queryRenderedFeatures({ layers: ['mrds'] });
     for (const f of fs) {
+      if (!f.properties.url) continue; // pick one that has a full-record link (deterministic)
       const c = window.__map.project(f.geometry.coordinates);
       if (!(c.x > 360 && c.x < 1000 && c.y > 70 && c.y < 850)) continue;
       const cx = Math.round(c.x), cy = Math.round(c.y);
@@ -68,6 +69,8 @@ try {
     check('clicking a gold point opens the MRDS popup', (await page.locator('.mrds-pop').count()) > 0);
     check('popup shows development status', (await page.locator('.mrds-pop .mrds-stat').count()) > 0,
       await page.locator('.mrds-pop strong').textContent().catch(() => ''));
+    const href = await page.locator('.mrds-pop .mrds-link').getAttribute('href').catch(() => null);
+    check('popup links to the full USGS record', /mrdata\.usgs\.gov|show-mrds/.test(href || ''), href || 'no link');
   }
 } finally {
   await browser.close();

@@ -161,6 +161,8 @@ a { color: #2563eb; }
 .mrds-pop strong { display: block; font-size: 13px; margin-bottom: 2px; }
 .mrds-pop .mrds-stat { color: #92400e; font-weight: 600; }
 .mrds-pop .mrds-comm { color: #4b5563; margin-top: 2px; }
+.mrds-pop .mrds-link { display: inline-block; margin-top: 6px; color: #2563eb; font-size: 12px; text-decoration: none; }
+.mrds-pop .mrds-link:hover { text-decoration: underline; }
 .mrds-pop .mrds-note { color: #9ca3af; font-size: 10px; margin-top: 5px; font-style: italic; }
 
 /* ---- Pins ---- */

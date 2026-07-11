@@ -68,10 +68,13 @@ export default function MapView() {
     // Clicking a gold dot shows its historic record (assess still fires above, additively).
     map.on('click', 'mrds', (e) => {
       const p = e.features?.[0]?.properties ?? {};
+      const grade = esc(p.grade);
+      const url = esc(p.url); // escaped for the href="" attribute (& → &amp;, decoded on navigate)
       mrdsPopup.setLngLat(e.lngLat).setHTML(
         `<div class="mrds-pop"><strong>${esc(p.site_name) || 'Unnamed site'}</strong>` +
-        `<div class="mrds-stat">${esc(p.dev_stat) || '—'}</div>` +
+        `<div class="mrds-stat">${esc(p.dev_stat) || '—'}${grade ? ` · grade ${grade}` : ''}</div>` +
         `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>` +
+        (url ? `<a class="mrds-link" href="${url}" target="_blank" rel="noopener noreferrer">Full USGS record →</a>` : '') +
         `<div class="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div></div>`,
       ).addTo(map);
     });
