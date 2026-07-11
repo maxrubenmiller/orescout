@@ -221,3 +221,9 @@ a { color: #2563eb; }
 .map-tile-error button {
   margin-left: 10px; background: none; border: none; color: #fff; cursor: pointer; font-size: 13px;
 }
+
+/* Frontend polish: the which-kind-of-YELLOW explainer line under the reason (§4.1.1). */
+.yellow-kind {
+  margin: 4px 0 8px; padding: 6px 8px; font-size: 12.5px; line-height: 1.4;
+  background: #fef3c7; border-left: 3px solid #d97706; color: #78350f; border-radius: 0 4px 4px 0;
+}

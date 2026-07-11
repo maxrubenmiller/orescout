@@ -101,6 +101,16 @@ function Result({ a, lat, lng, showSaveForm }: { a: Assessment; lat: number; lng
         <span className="verdict-label">{v.label}</span>
       </div>
       <p className="reason">{a.collectingStatusReason || v.blurb}</p>
+      {/* The two kinds of YELLOW read very differently (§4.1.1) — say WHICH one this is and what
+          to do about it, in plain words. KNOWN reasons arrive as raw agency/designation codes
+          ("Managing agency SDOL — permit / varies"), so this line carries the actual guidance. */}
+      {a.collectingStatus === 'YELLOW' && (
+        <p className="yellow-kind">
+          {a.ambiguityType === 'UNKNOWN'
+            ? 'No public-land record covers this spot — most often that means unmapped private land. Verify ownership before entering, and lean toward staying out.'
+            : 'This is a recognized designation with its own rules (permits are common). Contact the managing agency for this unit\u2019s collecting policy before you go.'}
+        </p>
+      )}
 
       {(a.landManager || a.unitName) && (
         <dl className="facts">
@@ -119,7 +129,10 @@ function Result({ a, lat, lng, showSaveForm }: { a: Assessment; lat: number; lng
         <ul className="datagaps">{a.dataGaps.map((g, i) => <li key={i}>ℹ {g}</li>)}</ul>
       )}
 
-      {showSaveForm && <SaveForm lat={lat} lng={lng} />}
+      {/* Keyed by location: the mutation state (isSuccess "✓ Saved") lives in the form instance,
+          and react-query's 5-min assessment cache means Result does NOT unmount when revisiting a
+          cached point — without the key, a save at point B leaks "✓ Saved" onto point A. */}
+      {showSaveForm && <SaveForm key={`${lat},${lng}`} lat={lat} lng={lng} />}
 
       <details className="cannot">
         <summary>What this doesn’t model</summary>

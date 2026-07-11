@@ -52,8 +52,14 @@ export default function SearchBar() {
     return [...pinItems, ...geoItems];
   }, [coord, q, pins, geo.data]);
 
-  // Keep the keyboard highlight in range as the list changes.
-  useEffect(() => { setActive(0); }, [items.length, open]);
+  // Reset the keyboard highlight when the list changes or the dropdown (re)opens — done during
+  // render (the documented adjust-state-on-prop-change pattern) rather than in an effect, which
+  // avoids a flash of stale highlight and satisfies react-hooks/set-state-in-effect.
+  const [prevList, setPrevList] = useState<{ len: number; open: boolean }>({ len: items.length, open });
+  if (prevList.len !== items.length || prevList.open !== open) {
+    setPrevList({ len: items.length, open });
+    setActive(0);
+  }
 
   // Dismiss the dropdown on any click outside the search box.
   useEffect(() => {

@@ -70,13 +70,25 @@ try {
   check('catch-all renders nothing on clean data', layerState?.afterRemoveImage.unknownRendered === 0, `count=${layerState?.afterRemoveImage.unknownRendered}`);
   await page.screenshot({ path: '/tmp/orescout-failsafe-yellow.png' });
 
-  // ---- (c) freshness block + stale-claims warning (claimsAsOf in dev DB is >48h old) ----
+  // ---- (c) freshness block + stale-claims warning ----
+  // FORCED-STALE via route interception (2026-07-11): this check originally leaned on the dev
+  // DB's claims being old — then the refresh system started keeping them fresh (#43), which
+  // correctly broke that assumption. Rewrite /meta so staleness is deterministic.
+  await page.route('**/api/v1/meta', async (r) => {
+    const resp = await r.fetch();
+    const body = await resp.json();
+    body.claimsAsOf = '2026-01-01 00:00:00+00';
+    await r.fulfill({ response: resp, body: JSON.stringify(body) });
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1500);
   const vintage = await page.evaluate(() => document.querySelector('.panel.left .vintage')?.textContent ?? null);
   console.log('--- LEFT-PANEL VINTAGE TEXT ---');
   console.log(JSON.stringify(vintage));
   check('land-data vintage line shown', !!vintage && vintage.includes('Land data:'), vintage ?? 'missing');
   check('claims-as-of line shown', !!vintage && vintage.includes('Claims data as of'));
   check('stale-claims warning shown (>48h)', !!vintage && vintage.includes('claims overlay may be stale'));
+  await page.unroute('**/api/v1/meta');
   await page.screenshot({ path: '/tmp/orescout-stale-claims.png' });
 
   // ---- (d) IMP-09: snapshot view + failed live re-check -> warning banner ----

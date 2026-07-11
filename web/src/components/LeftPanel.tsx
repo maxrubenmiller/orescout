@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useUI, type Basemap } from '../store';
 import { usePins, useDeletePin, useMeta } from '../hooks';
 import { api } from '../api';
@@ -131,6 +132,9 @@ function Pins() {
   const flyTo = useUI((s) => s.flyTo);
   const viewPin = useUI((s) => s.viewPin);
   const del = useDeletePin();
+  // Per-pin action feedback (export/delete failures were previously silent — an unhandled
+  // rejection and a no-op button respectively).
+  const [actionErr, setActionErr] = useState<{ id: string; msg: string } | null>(null);
 
   if (isLoading) return <p className="muted">Loading…</p>;
   if (!pins || pins.length === 0) return <p className="muted">No saved pins yet. Click the map and “Save this location”.</p>;
@@ -139,11 +143,23 @@ function Pins() {
   const goTo = (p: Pin) => { flyTo(p.lat, p.lng, 13); viewPin(p.id, { lat: p.lat, lng: p.lng }); };
 
   const exportGpx = async (p: Pin) => {
-    const blob = await api.exportPin(p.id);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `${p.title.replace(/[^a-z0-9]+/gi, '_')}.gpx`; a.click();
-    URL.revokeObjectURL(url);
+    setActionErr(null);
+    try {
+      const blob = await api.exportPin(p.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${p.title.replace(/[^a-z0-9]+/gi, '_')}.gpx`; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setActionErr({ id: p.id, msg: `Export failed: ${(e as Error).message}` });
+    }
+  };
+
+  const deletePin = (p: Pin) => {
+    setActionErr(null);
+    del.mutate(p.id, {
+      onError: (e) => setActionErr({ id: p.id, msg: `Delete failed: ${(e as Error).message}` }),
+    });
   };
 
   return (
@@ -157,8 +173,11 @@ function Pins() {
           </button>
           <div className="pin-actions">
             <button className="btn small" onClick={() => exportGpx(p)}>GPX</button>
-            <button className="btn small danger" onClick={() => del.mutate(p.id)}>Delete</button>
+            <button className="btn small danger" disabled={del.isPending} onClick={() => deletePin(p)}>
+              {del.isPending && del.variables === p.id ? 'Deleting…' : 'Delete'}
+            </button>
           </div>
+          {actionErr?.id === p.id && <p className="error small">{actionErr.msg}</p>}
         </li>
       ))}
     </ul>
