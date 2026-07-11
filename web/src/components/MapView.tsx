@@ -50,8 +50,59 @@ export default function MapView() {
       if (src && src !== 'basemap' && src !== 'states') setTileError(true);
     });
 
+    // MRDS gold-occurrence reference popup + hover. Dots are small (2–5px), and maplibre's
+    // exact-point hit-test needs a near-dead-center click — so hit-test a TOLERANCE BOX around the
+    // cursor instead (that's the fix for "dots don't respond to clicks"). site_name/url are
+    // external data → escape before injecting as HTML.
+    const esc = (s: unknown) => String(s ?? '')
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+    const HIT = 8; // px click/hover tolerance around a dot
+    const coordsOf = (f: maplibregl.MapGeoJSONFeature): [number, number] | null =>
+      f.geometry.type === 'Point' ? (f.geometry.coordinates as [number, number]) : null;
+    const mrdsVisible = () => !!map.getLayer('mrds') && map.getLayoutProperty('mrds', 'visibility') !== 'none';
+    const nearestMrds = (pt: maplibregl.Point): maplibregl.MapGeoJSONFeature | null => {
+      if (!mrdsVisible()) return null;
+      const fs = map.queryRenderedFeatures([[pt.x - HIT, pt.y - HIT], [pt.x + HIT, pt.y + HIT]], { layers: ['mrds'] });
+      let best: maplibregl.MapGeoJSONFeature | null = null, bd = Infinity;
+      for (const f of fs) {
+        const c = coordsOf(f); if (!c) continue;
+        const p = map.project(c); const d = (p.x - pt.x) ** 2 + (p.y - pt.y) ** 2;
+        if (d < bd) { bd = d; best = f; }
+      }
+      return best;
+    };
+    // closeOnClick:false — opening a popup with closeOnClick inside a click handler self-closes on
+    // the same event in maplibre; we manage dismissal ourselves.
+    const mrdsPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '260px' });
+
     map.on('click', (e) => {
+      const gold = nearestMrds(e.point);
+      const c = gold && coordsOf(gold);
+      if (gold && c) {
+        const p = gold.properties ?? {};
+        const grade = esc(p.grade);
+        const url = esc(p.url); // escaped for the href="" attribute (& → &amp;, decoded on navigate)
+        mrdsPopup.setLngLat(c).setHTML(
+          `<div class="mrds-pop"><strong>${esc(p.site_name) || 'Unnamed site'}</strong>` +
+          `<div class="mrds-stat">${esc(p.dev_stat) || '—'}${grade ? ` · grade ${grade}` : ''}</div>` +
+          `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>` +
+          (url ? `<a class="mrds-link" href="${url}" target="_blank" rel="noopener noreferrer">Full USGS record →</a>` : '') +
+          `<div class="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div></div>`,
+        ).addTo(map);
+      } else {
+        mrdsPopup.remove();
+      }
+      // Core interaction is preserved: every click still assesses the spot (the gold popup is additive).
       assess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+    });
+
+    // Hover affordance: pointer cursor + a highlight ring when the cursor is near a gold dot.
+    map.on('mousemove', (e) => {
+      const gold = nearestMrds(e.point);
+      const c = gold ? coordsOf(gold) : null;
+      map.getCanvas().style.cursor = c ? 'pointer' : '';
+      (map.getSource('mrds-hover') as maplibregl.GeoJSONSource | undefined)
+        ?.setData(c ? pointFC([{ lng: c[0], lat: c[1] }]) : emptyFC());
     });
 
     return () => { map.remove(); mapRef.current = null; loadedRef.current = false; };
@@ -80,6 +131,7 @@ export default function MapView() {
       }
       v('mining-claims', layers.claims);
       v('waterways', layers.waterways);
+      v('mrds', layers.mrds);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [layers]);
