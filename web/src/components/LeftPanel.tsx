@@ -49,6 +49,15 @@ function Layers() {
           <input type="checkbox" checked={layers.mrds} onChange={() => toggle('mrds')} /> <span className="sw sw-gold" /> Gold occurrences (MRDS)
         </label>
         <p className="hint">Gold dots = historic gold sites (USGS MRDS; brighter = past producers). Zoom to ~8+ and click a dot for details. A pre-2011 record — historical, not current — and reference only: it does not affect the legality verdict.</p>
+        <label className="chk">
+          <input type="checkbox" checked={layers.prospectivity} onChange={() => toggle('prospectivity')} /> <span className="sw sw-prospect" /> Prospecting potential (gold)
+        </label>
+        <p className="hint prospect-legend">
+          ★ High potential — producer-anchored<br />
+          ☆ High potential — chemistry-earned<br />
+          ◆ Moderate potential
+        </p>
+        <p className="hint">Computed from USGS stream-sediment geochemistry + historic producers — where it&apos;s worth checking, not &quot;gold here&quot;. Zoom to ~7+ (High) / ~10+ (Moderate) and click a marker for details. Reference only — it does not affect the legality verdict.</p>
       </section>
       <section>
         <h4>Base map</h4>

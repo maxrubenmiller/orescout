@@ -1,0 +1,57 @@
+{
+  "_comment": "Prospecting-potential composite — per-commodity config (TIER_B_FABLE_BRIEF.md; PROJECT_PLAN §5.3, decisions #41/#42). THE generic core: adding a commodity = a new entry here + its MRDS producer pull (see second_commodity_stub). Read by scripts/etl/build_prospectivity.sql (loaded into PG as jsonb) and by the frontend (strings + labels). Thresholds are percentile fractions [0..1]; distances in meters. method_filters values are case-insensitive SQL LIKE patterns against tbl_chem.analytic_method — an element listed there only counts when its method matches (Au: INAA / fire-assay only, because standard ICP detection limits sit far above stream-sediment gold levels — the 'Au is censored' spike finding).",
+  "commodities": [
+    {
+      "key": "gold",
+      "label": "Gold",
+      "indicator_elements": ["As", "Sb", "Ag", "Au"],
+      "method_filters": { "Au": ["FA_%", "NA_%", "AA_%HBr", "MS_%"] },
+      "_method_filters_note": "Verified against the release 2026-07-10: the actual analytic_method codes are abbreviated (FA_*=fire assay, NA_*=neutron activation/INAA, AA_*_HBr=HBr-extraction atomic absorption, MS_*=ICP-MS — all dedicated low-detection-limit Au methods). This widens the brief's literal 'INAA/fire-assay' wording to match its SUBSTANCE (exclude high-DL emission-spec packages: AES_*/ES_* and non-extraction AA are NOT matched). AA_F_HBr alone carries 48,560 of the ~176k detected Au values nationally.",
+      "required_pathfinder": "As",
+      "producer_source": { "table": "tiles.mrds", "predicate": "is_producer", "note": "gold-filtered pull (pull_mrds.sh); a later commodity needs its own commodity-filtered MRDS pull" },
+      "proximity_m": 2000,
+      "media": ["sediment"],
+      "thresholds": {
+        "moderate_anomaly_pctl": 0.75,
+        "high_producer_anomaly_pctl": 0.90,
+        "high_chemistry_anomaly_pctl": 0.97,
+        "high_chemistry_min_pathfinders": 2,
+        "pathfinder_pctl": 0.75,
+        "min_detected_fraction": 0.25,
+        "min_samples_per_pool": 10
+      },
+      "strings": {
+        "pathfinder_blurb": "Why As/Sb/Ag? These elements travel with gold in the same ore-forming fluids and are measurable at trace levels where gold itself hides below lab detection limits — elevated together, they mark gold-style chemistry.",
+        "chemistry_earned": "Earned by chemistry alone — no recorded historic producer nearby (historic records are incomplete).",
+        "upstream_note": "Signal detected in this drainage — the source may be anywhere upstream of this point. Explore the drainage above; this is a lead, not a dig-here.",
+        "vintage_note": "USGS NGDB geochemistry (samples 1962–2023, 2026 release) + historic MRDS records."
+      }
+    }
+  ],
+  "second_commodity_stub": {
+    "_comment": "PROOF OF THE GENERIC DESIGN (brief acceptance) — NOT populated in this build. Populating it requires (a) this entry moved into `commodities`, and (b) a silver-filtered MRDS producer pull (pull_mrds.sh parameterized by CODE_LIST filter) to anchor Signal 3 — a data step, not new engine code.",
+    "key": "silver",
+    "label": "Silver",
+    "indicator_elements": ["Ag", "As", "Sb", "Pb", "Zn"],
+    "method_filters": {},
+    "required_pathfinder": "Ag",
+    "producer_source": { "table": "tiles.mrds_silver", "predicate": "is_producer", "note": "REQUIRES a silver MRDS pull — does not exist yet" },
+    "proximity_m": 2000,
+    "media": ["sediment"],
+    "thresholds": {
+      "moderate_anomaly_pctl": 0.75,
+      "high_producer_anomaly_pctl": 0.90,
+      "high_chemistry_anomaly_pctl": 0.97,
+      "high_chemistry_min_pathfinders": 2,
+      "pathfinder_pctl": 0.75,
+      "min_detected_fraction": 0.25,
+      "min_samples_per_pool": 10
+    },
+    "strings": {
+      "pathfinder_blurb": "Why these elements? Silver mineralization carries As/Sb/Pb/Zn in the same hydrothermal systems — elevated together they mark silver-style chemistry.",
+      "chemistry_earned": "Earned by chemistry alone — no recorded historic producer nearby (historic records are incomplete).",
+      "upstream_note": "Signal detected in this drainage — the source may be anywhere upstream of this point. Explore the drainage above; this is a lead, not a dig-here.",
+      "vintage_note": "USGS NGDB geochemistry (samples 1962–2023, 2026 release) + historic MRDS records."
+    }
+  }
+}

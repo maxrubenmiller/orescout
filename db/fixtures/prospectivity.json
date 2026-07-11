@@ -1,0 +1,23 @@
+{
+  "_description": "Golden-watershed fixtures for the Tier-B prospecting composite (TIER_B_FABLE_BRIEF.md acceptance; §6.4.2 fixtures idiom). Run by scripts/test/check_prospectivity_fixtures.sh after every prospectivity ETL rebuild. Expectations are DATA-LEVEL (tiles.prospectivity rows), keyed by HUC12 — NOTE: WBD HUC codes are NOT stable across WBD snapshots; a WBD version bump requires re-pinning these by spatial overlap (docs/DATA_REFRESH_PLAN.md, Class-3 procedure). Pinned against WBD snapshot 2026-07-10 + NGDB DOI 10.5066/P1FXE9GK.",
+  "fixtures": [
+    {
+      "name": "Grass Valley / Rattlesnake-Wolf Creek (CA Mother Lode)",
+      "huc12": "180201260202",
+      "expect": { "min_high": 1 },
+      "why": "Heart of the Sierra Mother Lode placer country — the composite must rank it High (had 7 High markers at build; >=1 guards boundary shifts)"
+    },
+    {
+      "name": "Gold Hill Wash (UT, Gold Hill district)",
+      "huc12": "160203061301",
+      "expect": { "min_high": 1 },
+      "why": "Historic Gold Hill mining district; top-2 High-density watershed at build (17 High)"
+    },
+    {
+      "name": "Lone Tree Creek (CA Central Valley farmland — control)",
+      "huc12": "180400030201",
+      "expect": { "max_markers": 0 },
+      "why": "Quiet control: no geochemical case for gold — ZERO markers proves 'hide everything below Moderate' is a data property, not styling"
+    }
+  ]
+}
