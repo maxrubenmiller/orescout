@@ -30,6 +30,12 @@ appears that the locked decisions don't cover, **ask the owner** — a short que
 >    HUC fixtures, state×tier distribution table, tile-size budget, catalog diff) and added a
 >    Risks section with verified facts (GDAL 3.13.1 on this machine reads Parquet natively —
 >    checked, not assumed) plus the dev-container OOM lesson for big PostGIS jobs.
+> 6. **Second owner pass (same day):** decision #1 amended by the owner with the **Option-A
+>    exceptional-chemistry escape hatch** (High reachable without a recorded producer at ≥p97 +
+>    ≥2 pathfinders incl. As; hollow-star + honest popup line — resolves the flagged MRDS
+>    blind-spot bias), and a **pathfinder "why" blurb** added to the popup spec (owner calls
+>    #5/#6; `tier_basis` added to tile properties; escape-hatch minority sanity-bound added to
+>    the reality check).
 
 ## Mission
 Build OreScout's **prospecting-potential overlay** (`PROJECT_PLAN.md` §5.3): a map layer that answers
@@ -59,6 +65,12 @@ everywhere). It is a display-only overlay that **never touches the legality verd
    its watershed — *and* ≥1 co-elevated pathfinder *and* near a historic producer) and **Moderate**
    (above regional background + at least one other signal). **Hide everything below** — no "trace"
    tier. "Worth checking" must be *earned* (mirror "GREEN must be earned").
+   **Owner amendment (2026-07-10, "Option A" — exceptional-chemistry escape hatch):** High is
+   *also* reachable **without** a recorded producer when the chemistry alone is exceptional and
+   redundant: anomaly ≥ **~p97** *and* **≥2 co-elevated pathfinders** (for gold, As must be one of
+   them). Such markers must be visually and textually distinguished as **chemistry-earned** (see
+   *Owner-resolved product calls* #6) — the "earned" bar is not lowered, it is met by stronger,
+   multiply-confirmed evidence in place of the historic anchor.
 2. **Upstream caveat = standard note.** Every marker's popup includes a line that the gold source is
    *upstream* of the sample point (explore the drainage above), as a normal popup line — **not** a
    prominent banner. (Prominence is a Pass-B / legal call; don't escalate it yourself, but don't
@@ -70,12 +82,12 @@ everywhere). It is a display-only overlay that **never touches the legality verd
 4. **Reference-role, zero engine impact.** The overlay serves its own `tiles.<key>` table and is
    **absent from the assessment pipeline** — it can never change a RED/YELLOW/GREEN verdict.
 
-> **Fable notes on the locks (flags, not changes):**
-> - *Decision #1 makes High structurally unreachable in watersheds with no recorded MRDS producer* —
->   even a screaming multi-pathfinder anomaly caps at Moderate where USGS never recorded a producer
->   (MRDS is pre-2011 and incomplete in under-documented districts). That is the conservative intent
->   ("earned"), so the build honors it — but it's worth knowing the High tier inherits MRDS's blind
->   spots. If that ever feels wrong on the map, the fix is a product decision, not a build tweak.
+> **Fable notes on the locks:**
+> - *Resolved 2026-07-10:* the flag that decision #1 made High structurally unreachable wherever
+>   MRDS recorded no producer (High would have inherited MRDS's pre-2011 blind spots — biased
+>   toward *re*discovery) was raised with the owner, who chose the **Option A escape hatch** now
+>   written into the decision above. Chemistry-earned Highs exist; they carry their own marker
+>   style + popup line so the two bases are never conflated.
 > - *Interpretation pinned to avoid double-counting:* "≥1 **co-elevated** pathfinder" is read as a
 >   **second, different element** than the one carrying the anomaly percentile (an As anomaly can't
 >   count itself as its own pathfinder). Veto if you meant otherwise — the scoring spec below builds
@@ -99,6 +111,19 @@ everywhere). It is a display-only overlay that **never touches the legality verd
    *"Signal detected in this drainage — the source may be anywhere upstream of this point. Explore
    the drainage above; this is a lead, not a dig-here."*
    (Commodity-neutral by design; one string serves gold and any later commodity.)
+5. **Pathfinder explanation in the popup (owner directive 2026-07-10):** when a marker's signal
+   rests on pathfinder elements, the popup includes a **one-line why** so users understand what
+   they're looking at. Default gold wording (adjust for fit, keep the substance):
+   *"Why As/Sb/Ag? These elements travel with gold in the same ore-forming fluids and are
+   measurable at trace levels where gold itself hides below lab detection limits — elevated
+   together, they mark gold-style chemistry."*
+   The blurb is **per-commodity config** (like the pathfinder set itself), rendered by the
+   frontend from the commodity key — it is *static per commodity*, so do **not** duplicate it
+   into every tile feature.
+6. **Chemistry-earned High styling (pairs with the Option-A amendment):** producer-anchored High =
+   **filled** star; chemistry-earned High = **hollow/outlined** star (same hue/size family), and
+   its popup carries the line *"Earned by chemistry alone — no recorded historic producer nearby
+   (historic records are incomplete)."* Legend shows both variants.
 
 ## The data (validated in the spike — detail in `DATA_SOURCE_INVESTIGATION.md`)
 - **NGDB** — the 2026 consolidated release (CC0, DOI `10.5066/P1FXE9GK`, **Parquet ≈283 MB**).
@@ -144,7 +169,9 @@ everywhere). It is a display-only overlay that **never touches the legality verd
 - **Per-commodity config** (the generic core; gold ships as entry #1): `indicator_elements`
   (gold: `As, Sb, Ag, Au`), per-element method filters (`Au` → INAA/fire-assay only),
   `producer_filter` (which MRDS sites anchor Signal 3; gold: `tiles.mrds.is_producer`),
-  `proximity_m` (default 2,000), tier thresholds. Config lives in data/config, not code.
+  `proximity_m` (default 2,000), tier thresholds (incl. the escape-hatch pair below),
+  `required_pathfinder` for the escape hatch (gold: `As`), and the `pathfinder_blurb` string
+  (owner call #5). Config lives in data/config, not code.
 - **Anomaly percentile (Signal 1):** for each scored sample, compute its within-watershed
   percentile **per indicator element**, against that element's background in the containing HUC12
   (sediment samples only, per the owner call). The sample's **anomaly score = its max percentile
@@ -163,10 +190,15 @@ everywhere). It is a display-only overlay that **never touches the legality verd
   element, above its own watershed **p75** (detected values only).
 - **Producer proximity (Signal 3):** any commodity-matching MRDS producer within `proximity_m`
   of the sample point.
-- **Tiers (locked shape, default cutoffs):** **High** = anomaly ≥ **p90** + ≥1 co-elevated
-  pathfinder + producer within 2 km. **Moderate** = anomaly ≥ **p75** ("above regional background",
-  §5.3's *Anomalous*) + at least one other signal (co-elevated pathfinder **or** producer
-  proximity). Everything else: no row in the served table (hidden ≠ styled-invisible).
+- **Tiers (locked shape + Option-A amendment, default cutoffs):**
+  - **High (producer-anchored)** = anomaly ≥ **p90** + ≥1 co-elevated pathfinder + producer
+    within 2 km → `tier_basis = 'producer'`.
+  - **High (chemistry-earned, the Option-A hatch)** = anomaly ≥ **p97** + **≥2** co-elevated
+    pathfinders, of which the commodity's `required_pathfinder` (gold: **As**) must be one —
+    no producer required → `tier_basis = 'chemistry'`.
+  - **Moderate** = anomaly ≥ **p75** ("above regional background", §5.3's *Anomalous*) + at
+    least one other signal (co-elevated pathfinder **or** producer proximity).
+  - Everything else: no row in the served table (hidden ≠ styled-invisible).
 - **Thin watersheds:** HUC12 with < **10** scored samples for the element → use its HUC10
   background; HUC10 also < 10 → that element is unscored there (conservative: hide, don't
   fabricate). Report how many samples/watersheds each rule affected.
@@ -198,9 +230,11 @@ everywhere). It is a display-only overlay that **never touches the legality verd
   popup reads feature properties from the vector tile, exactly like MRDS. (One less surface, no
   engine adjacency, CDN-cacheable.) Update §5.3 accordingly.
 - **Tile feature properties (keep lean — tiles carry every property to every client):** `tier`,
-  `commodity`, `anomaly_element`, `anomaly_pctl`, `pathfinders` (compact, e.g. "Sb,Ag"),
-  `producer_name`, `producer_dist_m`, `huc12`, `n_samples`, `data_vintage`. Nothing else without
-  a reason.
+  `tier_basis` (`producer` | `chemistry`, High only), `commodity`, `anomaly_element`,
+  `anomaly_pctl`, `pathfinders` (compact, e.g. "Sb,Ag"), `producer_name`, `producer_dist_m`,
+  `huc12`, `n_samples`, `data_vintage`. Nothing else without a reason — in particular the
+  static per-commodity strings (upstream note, pathfinder blurb, chemistry-earned line) render
+  from frontend config keyed by `commodity`/`tier_basis`, never per-feature.
 - **Signal-3 generality is data-limited — be honest about it:** `tiles.mrds` is **gold-filtered
   today** (`CODE_LIST LIKE '%AU%'`). Adding commodity #2 is a config entry **plus** that
   commodity's producer pull (a `pull_mrds.sh` parameterization, out of scope now). The config
@@ -242,8 +276,10 @@ it, don't route around it.
 - Data ingested + composite computed; a **headless diag** (model it on `web/diag_mrds.mjs`) proving:
   - the toggle renders **High** glyphs over known gold country (Sierra Mother Lode viewport) at
     its minzoom, and Moderate appears by z≈10;
-  - the popup shows tier + anomaly element/percentile + pathfinders + nearest producer + the exact
-    upstream-note string + vintage;
+  - the popup shows tier + anomaly element/percentile + pathfinders **+ the pathfinder "why"
+    blurb (owner call #5)** + nearest producer + the exact upstream-note string + vintage; a
+    chemistry-earned High additionally shows the "earned by chemistry alone" line and renders
+    the hollow-star variant (owner call #6);
   - **hide-below-Moderate is real:** a known-quiet control viewport renders **zero** Tier-B
     markers (the locked "hide everything below" is a testable property, not styling);
   - **the legality engine is untouched:** Tier-A (`run-fixtures.sh` 36/36) and Tier-B
@@ -254,10 +290,13 @@ it, don't route around it.
   survive an ETL re-run — e.g. a named Mother-Lode HUC12 contains ≥1 High marker; a named quiet
   control HUC12 contains none. Store them with the other fixtures + wire into the diag or a small
   check script.
-- **Reality check on real data:** show a **state × tier count table** and the **top-10 HUC12s by
-  High-marker count with names** — known districts (Mother Lode; the Carlin trend, where As is
-  *the* classic pathfinder) should appear, and the distribution must be visibly clustered, not a
-  uniform smear. If it smears, the design isn't working — investigate before shipping.
+- **Reality check on real data:** show a **state × tier count table (High split by
+  `tier_basis`)** and the **top-10 HUC12s by High-marker count with names** — known districts
+  (Mother Lode; the Carlin trend, where As is *the* classic pathfinder) should appear, and the
+  distribution must be visibly clustered, not a uniform smear. If it smears, the design isn't
+  working — investigate before shipping. Sanity-bound the escape hatch: chemistry-earned Highs
+  should be a **minority** of all Highs; if they dominate, the p97/2-pathfinder bar is too loose —
+  flag it to the owner rather than shipping a diluted High tier.
 - **Prove the generic design honestly:** show a second-commodity **config stub** demonstrating
   that pathfinder set / methods / thresholds / producer-filter are all data — *and* state plainly
   that populating it additionally needs that commodity's MRDS producer pull (documented, not
