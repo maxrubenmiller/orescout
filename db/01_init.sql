@@ -63,3 +63,19 @@ CREATE TABLE IF NOT EXISTS public.supported_region (
 );
 CREATE INDEX IF NOT EXISTS supported_region_geom_idx
     ON public.supported_region USING GIST (geom);
+
+-- ---- data_sources: per-source freshness registry (docs/DATA_REFRESH_PLAN.md) --
+-- One row per data source: vintage, when we last refreshed it, how old is too old
+-- (NULL = static source), and the last refresh-gate outcome. Written by the ETL
+-- jobs (scripts/etl/refresh_lib.sh stamp_source); read by GET /api/v1/meta and
+-- the UI freshness badges. Backfill for pre-registry DBs: scripts/etl/backfill_data_sources.sql.
+CREATE TABLE IF NOT EXISTS public.data_sources (
+    source_key       text PRIMARY KEY,
+    role             text,          -- base | confirm_open | claims | reference (§6.13 vocabulary)
+    vintage          text,
+    refreshed_at     timestamptz,
+    max_age_days     int,           -- NULL = static, never stale
+    last_gate_status text,
+    upstream_ref     text,
+    updated_at       timestamptz NOT NULL DEFAULT now()
+);

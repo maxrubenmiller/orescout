@@ -62,7 +62,17 @@ public record GeocodeResponse(List<GeocodeResult> Results);
 
 public record MetaResponse(
     string? PadUsVersion, string? PadUsDate, string? SmaDate, string? ClaimsAsOf,
-    string[] SupportedStates);
+    string[] SupportedStates, List<DataSourceInfo> DataSources);
+
+/// <summary>
+/// One row of the freshness registry (public.data_sources; docs/DATA_REFRESH_PLAN.md). Additive:
+/// the legacy top-level meta fields stay for compatibility; new consumers read this list.
+/// MaxAgeDays null = static source (never stale). Stale is computed server-side so every client
+/// shows the same verdict.
+/// </summary>
+public record DataSourceInfo(
+    string SourceKey, string? Role, string? Vintage, DateTimeOffset? RefreshedAt,
+    int? MaxAgeDays, string? LastGateStatus, bool Stale);
 
 public record HealthResponse(string Status, HealthChecks Checks);
 public record HealthChecks(string Postgis, string Tileserv);

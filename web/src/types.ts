@@ -64,6 +64,19 @@ export interface Meta {
   smaDate: string | null;
   claimsAsOf: string | null;
   supportedStates: string[];
+  dataSources: DataSourceInfo[];
+}
+
+/** One freshness-registry row (public.data_sources; docs/DATA_REFRESH_PLAN.md).
+ *  `stale` is computed server-side; maxAgeDays null = static source, never stale. */
+export interface DataSourceInfo {
+  sourceKey: string;
+  role: string | null;
+  vintage: string | null;
+  refreshedAt: string | null;
+  maxAgeDays: number | null;
+  lastGateStatus: string | null;
+  stale: boolean;
 }
 
 export interface LatLng {

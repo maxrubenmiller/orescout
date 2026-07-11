@@ -55,16 +55,45 @@ public static class ApiEndpoints
         async (NpgsqlDataSource db, IConfiguration cfg, CancellationToken ct) =>
         {
             var m = new Dictionary<string, string?>();
+            var sources = new List<DataSourceInfo>();
             await using (var c = await db.OpenConnectionAsync(ct))
-            await using (var cmd = new NpgsqlCommand("SELECT key, value FROM public.meta", c))
-            await using (var r = await cmd.ExecuteReaderAsync(ct))
-                while (await r.ReadAsync(ct))
-                    m[r.GetString(0)] = r.IsDBNull(1) ? null : r.GetString(1);
+            {
+                await using (var cmd = new NpgsqlCommand("SELECT key, value FROM public.meta", c))
+                await using (var r = await cmd.ExecuteReaderAsync(ct))
+                    while (await r.ReadAsync(ct))
+                        m[r.GetString(0)] = r.IsDBNull(1) ? null : r.GetString(1);
+
+                // Freshness registry (docs/DATA_REFRESH_PLAN.md). to_regclass guard: a DB that
+                // predates the registry gets an empty list, NOT a 500 — while connection-level
+                // failures still propagate to the global handler's 503 (§6.3 unchanged).
+                await using (var probe = new NpgsqlCommand(
+                    "SELECT to_regclass('public.data_sources') IS NOT NULL", c))
+                if (await probe.ExecuteScalarAsync(ct) is true)
+                {
+                    const string sql = """
+                        SELECT source_key, role, vintage, refreshed_at, max_age_days, last_gate_status,
+                               (max_age_days IS NOT NULL AND refreshed_at IS NOT NULL
+                                AND refreshed_at < now() - make_interval(days => max_age_days)) AS stale
+                        FROM public.data_sources ORDER BY source_key
+                        """;
+                    await using var cmd = new NpgsqlCommand(sql, c);
+                    await using var r = await cmd.ExecuteReaderAsync(ct);
+                    while (await r.ReadAsync(ct))
+                        sources.Add(new DataSourceInfo(
+                            r.GetString(0),
+                            r.IsDBNull(1) ? null : r.GetString(1),
+                            r.IsDBNull(2) ? null : r.GetString(2),
+                            r.IsDBNull(3) ? null : r.GetFieldValue<DateTimeOffset>(3),
+                            r.IsDBNull(4) ? null : r.GetInt32(4),
+                            r.IsDBNull(5) ? null : r.GetString(5),
+                            r.GetBoolean(6)));
+                }
+            }
 
             var states = cfg.GetSection("SupportedStates").Get<string[]>() ?? [];
             return Results.Ok(new MetaResponse(
                 m.GetValueOrDefault("padus_version"), m.GetValueOrDefault("padus_date"),
-                m.GetValueOrDefault("sma_date"), m.GetValueOrDefault("claims_as_of"), states));
+                m.GetValueOrDefault("sma_date"), m.GetValueOrDefault("claims_as_of"), states, sources));
         });
 
     // ---- Geocode -----------------------------------------------------------
