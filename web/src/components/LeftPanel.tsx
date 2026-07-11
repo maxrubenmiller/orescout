@@ -93,6 +93,14 @@ function DataVintage() {
     ? claims.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
     : meta.claimsAsOf ?? 'unknown';
 
+  // Generic freshness badges from the registry (docs/DATA_REFRESH_PLAN.md). The two lines above
+  // stay as-is (padus + claims have bespoke wording the diags pin); the registry renders every
+  // OTHER refreshable source, so new sources get a badge with zero UI changes. Static sources
+  // (maxAgeDays null) are skipped — nothing actionable to say.
+  const registryBadges = (meta.dataSources ?? []).filter(
+    (d) => !['padus', 'mlrs_claims'].includes(d.sourceKey) && d.maxAgeDays != null,
+  );
+
   return (
     <section className="vintage">
       <p className="hint">Land data: {meta.padUsVersion ?? 'unknown'} ({meta.padUsDate ?? 'date unknown'})</p>
@@ -100,9 +108,23 @@ function DataVintage() {
         Claims data as of {claimsLabel}
         {claimsStale && ' — ⚠ claims overlay may be stale'}
       </p>
+      {registryBadges.map((d) => (
+        <p key={d.sourceKey} className={d.stale ? 'hint warn' : 'hint'}>
+          {SOURCE_LABELS[d.sourceKey] ?? d.sourceKey}: {d.refreshedAt ? new Date(d.refreshedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'unknown'}
+          {d.stale && ' — ⚠ may be outdated'}
+        </p>
+      ))}
     </section>
   );
 }
+
+// Friendly names for registry keys (fallback: the key itself, so unknown sources still render).
+const SOURCE_LABELS: Record<string, string> = {
+  calfire_ca: 'CA ownership (CAL FIRE)',
+  ugrc_ut: 'UT ownership (SGID)',
+  ngdb_prospectivity: 'Prospecting geochemistry',
+  wbd: 'Watersheds (WBD)',
+};
 
 function Pins() {
   const { data: pins, isLoading } = usePins();

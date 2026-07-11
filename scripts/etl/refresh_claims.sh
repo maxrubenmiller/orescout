@@ -144,5 +144,11 @@ COMMIT;
 DROP TABLE IF EXISTS tiles.${TABLE}_old;
 INSERT INTO public.meta (key, value) VALUES ('${META_KEY}', now()::text)
   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
+-- freshness registry (docs/DATA_REFRESH_PLAN.md); test runs (non-default table) get their own key
+INSERT INTO public.data_sources (source_key, role, vintage, refreshed_at, max_age_days, last_gate_status, upstream_ref, updated_at)
+  VALUES ('mlrs_${META_KEY%_as_of}', 'claims', 'BLM MLRS not-closed claims (as of ' || now()::date || ')', now(), 2, 'ok',
+          '${LAYER}', now())
+  ON CONFLICT (source_key) DO UPDATE SET vintage = EXCLUDED.vintage, refreshed_at = EXCLUDED.refreshed_at,
+    last_gate_status = EXCLUDED.last_gate_status, upstream_ref = EXCLUDED.upstream_ref, updated_at = now();
 SQL
 echo "[$(date +%H:%M:%S)] done: $(PSQL -tAq -c "SELECT count(*) FROM ${CANON};") rows live in ${CANON}"

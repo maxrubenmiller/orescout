@@ -37,4 +37,13 @@ echo "[prospectivity] tiles.prospectivity built: $rows markers"
 
 echo "[prospectivity] golden-watershed fixtures gate…"
 ./scripts/test/check_prospectivity_fixtures.sh || fail "golden-watershed fixtures FAILED — do not ship this build"
-echo "[prospectivity] ✓ built and gated ($rows markers)"
+
+# freshness registry stamps (docs/DATA_REFRESH_PLAN.md; stamp only after the gate passes)
+source scripts/etl/refresh_lib.sh
+stamp_source ngdb_prospectivity reference \
+  "$(q "SELECT (cfg->'commodities'->0->'strings'->>'vintage_note') FROM staging.prospectivity_config")" \
+  540 "https://doi.org/10.5066/P1FXE9GK" ok
+stamp_source wbd reference \
+  "$(q "SELECT coalesce(value,'WBD national snapshot') FROM public.meta WHERE key='wbd_snapshot'")" \
+  540 "https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/WBD/National/GDB/WBD_National_GDB.zip" ok
+echo "[prospectivity] ✓ built, gated, stamped ($rows markers)"
