@@ -77,5 +77,6 @@ CREATE TABLE IF NOT EXISTS public.data_sources (
     max_age_days     int,           -- NULL = static, never stale
     last_gate_status text,
     upstream_ref     text,
+    upstream_watermark text,     -- last observed upstream version marker (check_upstream.sh)
     updated_at       timestamptz NOT NULL DEFAULT now()
 );

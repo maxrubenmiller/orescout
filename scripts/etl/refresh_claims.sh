@@ -7,22 +7,27 @@
 # code, so we filter per-state via CSE_NR LIKE 'XX%'. Native SR is 4269; we request
 # outSR=4326. Only the lightweight fields are pulled (QLTY/CSE_META are verbose, skipped).
 #
-# Hardened per README "Future: schedule the nightly claims refresh" (IMP-13):
-#   - any fetch/parse/load failure aborts the whole run with a non-zero exit;
-#     an ArcGIS {"error":...} body (returned with HTTP 200) is treated as a failure,
-#     and a short page only ends a state's paging when exceededTransferLimit is not set
-#     (the offset advances by the actual feature count, so nothing is skipped).
-#   - the load goes into tiles.claims_polygons_new; the live table is only replaced by
-#     an atomic rename swap after a row-count sanity gate (new within ±25% of old), so
-#     the overlay never goes empty mid-refresh and a bad pull can't destroy good data.
-#   - meta.claims_as_of is updated only after a successful swap.
-#   - a mkdir-based lock (flock is not available on macOS) prevents overlapping runs.
+# This script is the pull + load + gates orchestration. The hardening contract (lock,
+# row-count sanity gate, atomic swap, freshness registry stamp — originally inlined here
+# per IMP-13) lives in refresh_lib.sh; this script keeps only the claims-specific parts:
+#   - fail-fast paginated pull: any fetch/parse failure aborts the run non-zero with the
+#     live table untouched; an ArcGIS {"error":...} body (returned with HTTP 200) is a
+#     failure, and a short page only ends a state's paging when exceededTransferLimit is
+#     not set (the offset advances by the actual feature count, so nothing is skipped).
+#   - the load goes into tiles.claims_polygons_new; count_gate (±25%) + atomic_swap
+#     replace the live table, so the overlay never goes empty mid-refresh and a bad
+#     pull can't destroy good data.
+#   - meta.claims_as_of and the public.data_sources registry are stamped only after a
+#     successful swap.
 #
 # Usage:  ./scripts/etl/refresh_claims.sh [outdir] [STATE ...]
 # Env overrides (testing): LAYER (ArcGIS query URL), CLAIMS_TABLE (table under tiles.,
-# default claims_polygons; a non-default name also redirects the meta key so test runs
-# never touch claims_as_of).
+# default claims_polygons; a non-default name also redirects the meta key and the
+# data_sources key so test runs never touch claims_as_of / mlrs_claims).
 set -euo pipefail
+
+# shellcheck source=scripts/etl/refresh_lib.sh
+source "$(cd "$(dirname "$0")" && pwd)/refresh_lib.sh"
 
 OUT="${1:-data/claims}"; shift || true
 STATES=("$@"); [ ${#STATES[@]} -eq 0 ] && STATES=(NV CA AZ CO UT NM OR ID)
@@ -35,12 +40,8 @@ CANON="tiles.${TABLE}"; NEW="tiles.${TABLE}_new"
 if [ "$TABLE" = "claims_polygons" ]; then META_KEY="claims_as_of"; else META_KEY="${TABLE}_as_of"; fi
 
 die() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; exit 1; }
-PSQL() { docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d miningapp "$@"; }
 
-# Concurrency guard: mkdir is atomic and portable (no flock on macOS).
-LOCK="${TMPDIR:-/tmp}/refresh_claims.lock"
-mkdir "$LOCK" 2>/dev/null || die "another refresh appears to be running (lock: $LOCK); remove it if stale"
-trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
+refresh_lock claims          # mkdir-based; auto-released on exit (see refresh_lib.sh)
 trap 'exit 1' INT TERM
 
 mkdir -p "$OUT"; rm -f "$OUT"/claims_*.geojson
@@ -105,50 +106,25 @@ for f in "${files[@]}"; do
   fi
 done
 
-# Indexes + grant on the staging table (renamed to their final names in the swap).
-PSQL -q <<SQL || die "index/grant on ${NEW} failed"
-CREATE INDEX ${TABLE}_new_geom_idx ON ${NEW} USING GIST (geom);
-CREATE INDEX ${TABLE}_new_disp_idx ON ${NEW} (cse_disp);
-GRANT SELECT ON ${NEW} TO tileserv_ro;
-SQL
+# Indexes + grant on the staging table (atomic_swap strips the '_new' infix, so these
+# end up as <table>_geom_idx / <table>_disp_idx on the live table).
+_rx "CREATE INDEX ${TABLE}_new_geom_idx ON ${NEW} USING GIST (geom);
+     CREATE INDEX ${TABLE}_new_disp_idx ON ${NEW} (cse_disp);
+     GRANT SELECT ON ${NEW} TO tileserv_ro;" || die "index/grant on ${NEW} failed"
 
-# Sanity gate: refuse to swap if the new count is outside ±25% of the live one —
-# guards against an upstream outage returning a near-empty set and blanking the overlay.
-new_cnt=$(PSQL -tAq -c "SELECT count(*) FROM ${NEW};") || die "count of ${NEW} failed"
-[ "$new_cnt" -gt 0 ] || die "0 rows loaded into ${NEW}; keeping ${CANON}"
-old_exists=$(PSQL -tAq -c "SELECT to_regclass('${CANON}') IS NOT NULL;") || die "existence check of ${CANON} failed"
-old_cnt=0
-[ "$old_exists" = "t" ] && { old_cnt=$(PSQL -tAq -c "SELECT count(*) FROM ${CANON};") || die "count of ${CANON} failed"; }
-if [ "$old_cnt" -eq 0 ]; then
-  echo "[$(date +%H:%M:%S)] sanity gate skipped: ${CANON} missing or empty (new=${new_cnt})"
-else
-  lo=$((old_cnt * 75 / 100)); hi=$((old_cnt * 125 / 100))
-  if [ "$new_cnt" -lt "$lo" ] || [ "$new_cnt" -gt "$hi" ]; then
-    die "sanity gate: new count ${new_cnt} outside ±25% of live ${old_cnt} (allowed ${lo}..${hi}); keeping ${CANON}, leaving ${NEW} for inspection"
-  fi
-  echo "[$(date +%H:%M:%S)] sanity gate OK: new=${new_cnt} vs live=${old_cnt}"
-fi
+# Gates + swap (refresh_lib.sh): refuse to swap if the new count is outside ±25% of the
+# live one (guards an upstream outage blanking the overlay; skipped when no live table),
+# then replace the live table in one transaction. Any failure exits non-zero with the
+# live table untouched and ${NEW} left for inspection.
+count_gate "${CANON}" 25
+atomic_swap "${CANON}"
 
-# Atomic swap (README pattern): the overlay never sees an empty/partial table, and the
-# as-of stamp is only written after the swap has committed.
-PSQL -q <<SQL || die "swap failed; ${CANON} needs inspection (staging: ${NEW})"
-BEGIN;
-DROP TABLE IF EXISTS tiles.${TABLE}_old;
-ALTER TABLE IF EXISTS ${CANON} RENAME TO ${TABLE}_old;
-ALTER INDEX IF EXISTS tiles.${TABLE}_geom_idx RENAME TO ${TABLE}_old_geom_idx;
-ALTER INDEX IF EXISTS tiles.${TABLE}_disp_idx RENAME TO ${TABLE}_old_disp_idx;
-ALTER TABLE ${NEW} RENAME TO ${TABLE};
-ALTER INDEX tiles.${TABLE}_new_geom_idx RENAME TO ${TABLE}_geom_idx;
-ALTER INDEX tiles.${TABLE}_new_disp_idx RENAME TO ${TABLE}_disp_idx;
-COMMIT;
-DROP TABLE IF EXISTS tiles.${TABLE}_old;
-INSERT INTO public.meta (key, value) VALUES ('${META_KEY}', now()::text)
-  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();
--- freshness registry (docs/DATA_REFRESH_PLAN.md); test runs (non-default table) get their own key
-INSERT INTO public.data_sources (source_key, role, vintage, refreshed_at, max_age_days, last_gate_status, upstream_ref, updated_at)
-  VALUES ('mlrs_${META_KEY%_as_of}', 'claims', 'BLM MLRS not-closed claims (as of ' || now()::date || ')', now(), 2, 'ok',
-          '${LAYER}', now())
-  ON CONFLICT (source_key) DO UPDATE SET vintage = EXCLUDED.vintage, refreshed_at = EXCLUDED.refreshed_at,
-    last_gate_status = EXCLUDED.last_gate_status, upstream_ref = EXCLUDED.upstream_ref, updated_at = now();
-SQL
-echo "[$(date +%H:%M:%S)] done: $(PSQL -tAq -c "SELECT count(*) FROM ${CANON};") rows live in ${CANON}"
+# Stamps: only reached after a successful swap. Test runs (non-default table) get their
+# own meta + registry keys.
+_rx "INSERT INTO public.meta (key, value) VALUES ('${META_KEY}', now()::text)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();" \
+  || die "meta stamp (${META_KEY}) failed"
+stamp_source "mlrs_${META_KEY%_as_of}" claims \
+  "BLM MLRS not-closed claims (as of $(date +%Y-%m-%d))" 2 "$LAYER" ok
+
+echo "[$(date +%H:%M:%S)] done: $(_rq "SELECT count(*) FROM ${CANON}") rows live in ${CANON}"

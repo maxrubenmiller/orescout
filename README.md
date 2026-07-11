@@ -61,10 +61,10 @@ SMA cross-check was evaluated and dropped (decision #28 — LimitedScale too coa
 ### Rebuild the legality layer (PAD-US 4.1)
 ```bash
 docker compose up -d postgres
-# Manual prereq (~yearly): download the 8 state zips from ScienceBase item 6759abcf… into
-# data/padus_gdb/ (ScienceBase Next is browser-gated — no scriptable URL). Then:
-./scripts/etl/load_padus_gdb.sh                                     # unzip + ogr2ogr -> staging.padus_staging
-./scripts/etl/rebuild_legality.sh                                   # unify + ALL confirm-open steps + Tier-A/B gates
+./scripts/etl/load_padus_gdb.sh          # downloads missing state zips automatically (decision #43,
+                                         # supersedes #35's manual step) + ogr2ogr -> staging
+./scripts/etl/padus_reconcile_gate.sh    # release-bump gate: fails loud on unmapped codes (#35 lesson)
+./scripts/etl/rebuild_legality.sh        # unify + ALL confirm-open steps + Tier-A/B gates
 ```
 
 > **Do not run `unify.sql` by hand.** It drops and rebuilds `tiles.legality_polygons` with PAD-US
