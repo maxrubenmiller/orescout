@@ -50,9 +50,33 @@ export default function MapView() {
       if (src && src !== 'basemap' && src !== 'states') setTileError(true);
     });
 
+    // Gold-occurrence reference popup (MRDS). Defined before the click handler so a plain map
+    // click can dismiss it. site_name is external data → escape before injecting as HTML.
+    const esc = (s: unknown) => String(s ?? '')
+      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+    // closeOnClick:false — opening a popup with closeOnClick inside a click handler self-closes on
+    // the same event in maplibre; we dismiss it explicitly on a non-gold click instead.
+    const mrdsPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '260px' });
+
     map.on('click', (e) => {
       assess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      // A plain map click (not on a gold dot) dismisses any open MRDS popup.
+      const onGold = !!map.getLayer('mrds') && map.queryRenderedFeatures(e.point, { layers: ['mrds'] }).length > 0;
+      if (!onGold) mrdsPopup.remove();
     });
+
+    // Clicking a gold dot shows its historic record (assess still fires above, additively).
+    map.on('click', 'mrds', (e) => {
+      const p = e.features?.[0]?.properties ?? {};
+      mrdsPopup.setLngLat(e.lngLat).setHTML(
+        `<div class="mrds-pop"><strong>${esc(p.site_name) || 'Unnamed site'}</strong>` +
+        `<div class="mrds-stat">${esc(p.dev_stat) || '—'}</div>` +
+        `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>` +
+        `<div class="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div></div>`,
+      ).addTo(map);
+    });
+    map.on('mouseenter', 'mrds', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'mrds', () => { map.getCanvas().style.cursor = ''; });
 
     return () => { map.remove(); mapRef.current = null; loadedRef.current = false; };
   }, [assess]);
@@ -80,6 +104,7 @@ export default function MapView() {
       }
       v('mining-claims', layers.claims);
       v('waterways', layers.waterways);
+      v('mrds', layers.mrds);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [layers]);

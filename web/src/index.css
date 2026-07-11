@@ -154,6 +154,14 @@ a { color: #2563eb; }
 .sw-claims { background: #FF8C00; }
 .sw-open { background: #3FAE5A; }
 .sw-water { background: #2f6fb0; }
+.sw-gold { background: #FFC64B; border-color: #4a3600; }
+
+/* MRDS gold-occurrence popup (reference overlay). */
+.mrds-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
+.mrds-pop strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.mrds-pop .mrds-stat { color: #92400e; font-weight: 600; }
+.mrds-pop .mrds-comm { color: #4b5563; margin-top: 2px; }
+.mrds-pop .mrds-note { color: #9ca3af; font-size: 10px; margin-top: 5px; font-style: italic; }
 
 /* ---- Pins ---- */
 .pin-list { list-style: none; margin: 0; padding: 0; }

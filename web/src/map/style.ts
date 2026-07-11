@@ -17,6 +17,7 @@ export const LEGALITY_SRC_LAYER = 'tiles.legality_polygons';
 export const LEGALITY_LOWZOOM_SRC_LAYER = 'tiles.legality_lowzoom';
 export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
+export const MRDS_SRC_LAYER = 'tiles.mrds';
 
 // Below this zoom the legality overlay renders from the generalized `tiles.legality_lowzoom`
 // layer (simplified + sub-pixel polygons dropped at ETL, scripts/etl/build_lowzoom.sql). The
@@ -80,6 +81,11 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         tiles: [`${tileBaseUrl}/tiles.waterways/{z}/{x}/{y}.pbf`],
         minzoom: 0, maxzoom: 14,
       },
+      mrds: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.mrds/{z}/{x}/{y}.pbf`],
+        minzoom: 0, maxzoom: 14,
+      },
       selected: { type: 'geojson', data: emptyFC() },
       pins: { type: 'geojson', data: emptyFC() },
     },
@@ -108,6 +114,23 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
           'line-opacity': 0.85,
           // taper width with zoom so dense networks stay legible
           'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 14, 1.6, 17, 3],
+        },
+      },
+
+      // Gold occurrences (reference-only — USGS MRDS, gold-filtered; never feeds the verdict
+      // engine, §6.13). Points are dense in mining districts: minzoom 8 + small radius keeps it
+      // legible. Past/producers rendered brighter + larger (the stronger prospecting signal).
+      {
+        id: 'mrds', type: 'circle', source: 'mrds', 'source-layer': MRDS_SRC_LAYER,
+        minzoom: 8, layout: { visibility: 'none' },
+        paint: {
+          'circle-color': ['case', ['get', 'is_producer'], '#FFC64B', '#C79A3A'],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'],
+            8, ['case', ['get', 'is_producer'], 3, 1.8],
+            14, ['case', ['get', 'is_producer'], 7, 4.5]],
+          'circle-stroke-color': '#4a3600',
+          'circle-stroke-width': ['case', ['get', 'is_producer'], 1, 0.4],
+          'circle-opacity': 0.9,
         },
       },
 

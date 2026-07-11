@@ -45,6 +45,10 @@ function Layers() {
           <input type="checkbox" checked={layers.waterways} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways (CA)
         </label>
         <p className="hint">Blue = streams &amp; rivers (zoom to ~10+). Reference only — does not affect the legality verdict.</p>
+        <label className="chk">
+          <input type="checkbox" checked={layers.mrds} onChange={() => toggle('mrds')} /> <span className="sw sw-gold" /> Gold occurrences (MRDS)
+        </label>
+        <p className="hint">Gold dots = historic gold sites (USGS MRDS; brighter = past producers). Zoom to ~8+ and click a dot for details. A pre-2011 record — historical, not current — and reference only: it does not affect the legality verdict.</p>
       </section>
       <section>
         <h4>Base map</h4>
