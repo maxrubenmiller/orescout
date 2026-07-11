@@ -40,33 +40,31 @@ try {
     await page.evaluate(() => !!window.__map.getSource('legality')));
   check('no tile-error banner from adding MRDS', (await page.locator('.map-tile-error').count()) === 0);
 
-  // Click a rendered gold point → reference popup. Pick a pixel in the CLEAR map area (avoid the
-  // left panel ~320px + right panel) where a SINGLE-POINT query actually hits a dot — that's the
-  // same hit-test maplibre's click delegation uses, so it guarantees the popup handler fires.
+  // Pick a gold dot with a full-record link in the CLEAR map area; use its projected CENTER (no
+  // pixel-hunting) — the tolerance-box hit-test must make a center click land, like a real user.
   const pt = await page.evaluate(() => {
     const fs = window.__map.queryRenderedFeatures({ layers: ['mrds'] });
     for (const f of fs) {
-      if (!f.properties.url) continue; // pick one that has a full-record link (deterministic)
+      if (!f.properties.url) continue;
       const c = window.__map.project(f.geometry.coordinates);
-      if (!(c.x > 360 && c.x < 1000 && c.y > 70 && c.y < 850)) continue;
-      const cx = Math.round(c.x), cy = Math.round(c.y);
-      // scan INTEGER pixels (playwright clicks integers) for one maplibre registers as on-feature
-      for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
-        const x = cx + dx, y = cy + dy;
-        if (window.__map.queryRenderedFeatures([x, y], { layers: ['mrds'] }).length) {
-          return { x, y, name: f.properties.site_name, stat: f.properties.dev_stat };
-        }
+      if (c.x > 380 && c.x < 1000 && c.y > 90 && c.y < 840) {
+        return { x: Math.round(c.x), y: Math.round(c.y), name: f.properties.site_name };
       }
     }
     return null;
   });
-  check('found a gold point to click', !!pt, JSON.stringify(pt));
+  check('found a gold dot to interact with', !!pt, JSON.stringify(pt));
   if (pt) {
-    // project() coords are CANVAS-relative; click via the canvas element so the topbar offset
-    // (page.mouse uses viewport coords) doesn't shift the click off the dot.
-    await page.locator('.maplibregl-canvas').click({ position: { x: pt.x, y: pt.y } });
-    await page.waitForTimeout(900);
-    check('clicking a gold point opens the MRDS popup', (await page.locator('.mrds-pop').count()) > 0);
+    const canvas = page.locator('.maplibregl-canvas'); // canvas-relative coords (dodges topbar offset)
+    // hover → highlight ring + pointer cursor
+    await canvas.hover({ position: { x: pt.x, y: pt.y } });
+    await page.waitForTimeout(350);
+    check('hovering a dot shows the highlight ring',
+      (await page.evaluate(() => window.__map.queryRenderedFeatures({ layers: ['mrds-hover'] }).length)) > 0);
+    // click the CENTER (no pixel-hunt) → popup must open thanks to the tolerance box
+    await canvas.click({ position: { x: pt.x, y: pt.y } });
+    await page.waitForTimeout(800);
+    check('clicking a dot CENTER opens the MRDS popup', (await page.locator('.mrds-pop').count()) > 0);
     check('popup shows development status', (await page.locator('.mrds-pop .mrds-stat').count()) > 0,
       await page.locator('.mrds-pop strong').textContent().catch(() => ''));
     const href = await page.locator('.mrds-pop .mrds-link').getAttribute('href').catch(() => null);

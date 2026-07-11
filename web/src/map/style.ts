@@ -86,6 +86,7 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         tiles: [`${tileBaseUrl}/tiles.mrds/{z}/{x}/{y}.pbf`],
         minzoom: 0, maxzoom: 14,
       },
+      'mrds-hover': { type: 'geojson', data: emptyFC() },
       selected: { type: 'geojson', data: emptyFC() },
       pins: { type: 'geojson', data: emptyFC() },
     },
@@ -131,6 +132,17 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
           'circle-stroke-color': '#4a3600',
           'circle-stroke-width': ['case', ['get', 'is_producer'], 1, 0.4],
           'circle-opacity': 0.9,
+        },
+      },
+
+      // Hover highlight ring for gold dots (driven by a geojson source updated on mousemove).
+      {
+        id: 'mrds-hover', type: 'circle', source: 'mrds-hover',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6, 14, 11],
+          'circle-color': 'rgba(255,214,90,0.22)',
+          'circle-stroke-color': '#FFD37A',
+          'circle-stroke-width': 2,
         },
       },
 
