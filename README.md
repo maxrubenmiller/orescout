@@ -101,6 +101,80 @@ order and the production path are in [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §6.8 
 
 ---
 
+## Prospecting intelligence: how the "Prospecting potential" overlay works
+
+The map's **"Prospecting potential (gold)"** layer answers *"where is it genuinely worth
+checking?"* — not "where do gold atoms exist" (trace gold is everywhere). It is a **display-only
+reference overlay**: it never feeds the RED/YELLOW/GREEN legality verdict, and a marker says
+nothing about whether collecting is *legal* there — click the spot to get the legality assessment
+separately.
+
+### The reasoning
+
+Raw gold assays can't drive this map, for a reason worth understanding: in the USGS geochemistry
+database, most stream-sediment samples were analyzed by methods whose **detection floor for gold
+sits far above natural background** (0.1–8 ppm floors vs ~0.001–0.005 ppm background). ~89% of
+gold determinations are "below detection" — the instrument couldn't see that low. So the score is
+**pathfinder-led**: arsenic, antimony, and silver travel with gold in the same ore-forming fluids,
+are measurable at trace levels, and are the classic gold-exploration signals (the Carlin-trend
+deposits — the biggest US gold source — were *found* by following arsenic). Gold itself only
+counts when it was measured by a dedicated low-detection method (fire assay, neutron activation,
+HBr-extraction AA, ICP-MS).
+
+### The math behind the tiers
+
+Every scored sample is a **stream-sediment** sample; its chemistry is compared against the other
+samples in its **own watershed** (USGS HUC12, ~110 km²; rolled up to the parent HUC10 when a
+HUC12 has under 10 samples) — *relative* anomaly, because 5 ppm arsenic means something different
+in a quiet basin than in a mineralized belt:
+
+1. **Anomaly (Signal 1):** each indicator element gets a within-watershed percentile.
+   Below-detection results stay in the ranking (at the bottom) so percentiles are honest, and an
+   element only counts where ≥25% of its watershed pool was actually detected. The sample's
+   anomaly is its **best element percentile**.
+2. **Pathfinder co-elevation (Signal 2):** a *different* indicator element in the same sample
+   above the 75th percentile of detected values in its watershed — independent chemical
+   confirmation, guarding against a single spurious assay.
+3. **Historic producer (Signal 3):** a recorded USGS MRDS **producer** (an actual historic mine,
+   not a mere occurrence) within 2 km — independent economic confirmation.
+
+**Tiers (conservative by design — "worth checking" must be earned, like GREEN):**
+
+| Tier | Requires | Marker |
+|---|---|---|
+| **High** (producer-anchored) | ≥ p90 anomaly + ≥1 co-elevated pathfinder + producer ≤ 2 km | filled star |
+| **High** (chemistry-earned) | ≥ p97 anomaly + ≥2 co-elevated pathfinders (As required) — no producer needed; exists because historic records are incomplete | hollow star |
+| **Moderate** | ≥ p75 anomaly + at least one other signal (pathfinder or producer) | small diamond |
+| below | **hidden** — no marker at all, deliberately | — |
+
+Co-located samples collapse to one marker showing the location's best tier. Every popup carries
+the **upstream caveat**: a stream-sediment signal washed *down* from somewhere above the sample
+point — it's a lead for exploring the drainage upstream, not a dig-here.
+
+### Data sources
+
+| Source | What it provides | Vintage / license |
+|---|---|---|
+| **USGS NGDB** (2026 consolidated release, DOI [10.5066/P1FXE9GK](https://doi.org/10.5066/P1FXE9GK)) | 1.5M geochemical samples (we score the ~320k 8-state stream sediments), As/Sb/Ag/Au determinations | samples 1962–2023 · CC0 |
+| **USGS WBD** (national snapshot) | HUC12/HUC10 watershed polygons — the "regional background" unit | pinned snapshot date in `/meta` · public domain |
+| **USGS MRDS** (already ingested for the gold-occurrence overlay) | historic producer locations for Signal 3 | static, pre-2011 · public domain |
+
+The engine is **commodity-generic**: pathfinder sets, method filters, thresholds, and popup
+wording live in [`config/prospectivity.json`](config/prospectivity.json) — gold is simply the
+first populated entry. Ingest runbook below; scoring details in `PROJECT_PLAN.md` §5.3 and
+`TIER_B_FABLE_BRIEF.md`.
+
+### Runbook: (re)build the prospecting layer
+
+```bash
+./scripts/etl/pull_ngdb.sh          # NGDB parquet release (DOI-pinned, ~297 MB) -> staging
+./scripts/etl/pull_wbd.sh           # national WBD GDB (~2.6 GB) -> staging (8-state HUC12/HUC10)
+./scripts/etl/build_prospectivity.sh # config -> composite -> tiles.prospectivity (+ assertions)
+./scripts/test/check_prospectivity_fixtures.sh   # golden-watershed regression gate
+```
+
+---
+
 ## Deferred / future enhancements
 
 These are designed but **not built in the POC**, captured here so the intent isn't lost.

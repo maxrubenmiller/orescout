@@ -18,6 +18,22 @@ export const LEGALITY_LOWZOOM_SRC_LAYER = 'tiles.legality_lowzoom';
 export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
 export const MRDS_SRC_LAYER = 'tiles.mrds';
+export const PROSPECTIVITY_SRC_LAYER = 'tiles.prospectivity';
+
+// Prospecting-potential zoom gates (owner call #1): High from z7, Moderate from z10
+// (mirrors how claims z9 / waterways z10 gate density).
+export const PROSPECTIVITY_HIGH_MINZOOM = 7;
+export const PROSPECTIVITY_MODERATE_MINZOOM = 10;
+
+// All prospectivity layer ids — MapView toggles/hit-tests the whole set (symbols + the
+// F-5 fallback circles beneath them).
+export const PROSPECTIVITY_LAYER_IDS = [
+  'prospectivity-high-fallback',
+  'prospectivity-moderate-fallback',
+  'prospectivity-high-producer',
+  'prospectivity-high-chemistry',
+  'prospectivity-moderate',
+];
 
 // Below this zoom the legality overlay renders from the generalized `tiles.legality_lowzoom`
 // layer (simplified + sub-pixel polygons dropped at ETL, scripts/etl/build_lowzoom.sql). The
@@ -87,6 +103,14 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
         minzoom: 0, maxzoom: 14,
       },
       'mrds-hover': { type: 'geojson', data: emptyFC() },
+      prospectivity: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.prospectivity/{z}/{x}/{y}.pbf`],
+        // Never rendered below the High gate (all its layers carry minzoom) — belt & braces,
+        // and skips fetching tiles that could never draw.
+        minzoom: PROSPECTIVITY_HIGH_MINZOOM, maxzoom: 14,
+      },
+      'prospectivity-hover': { type: 'geojson', data: emptyFC() },
       selected: { type: 'geojson', data: emptyFC() },
       pins: { type: 'geojson', data: emptyFC() },
     },
@@ -142,6 +166,74 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 8, 6, 14, 11],
           'circle-color': 'rgba(255,214,90,0.22)',
           'circle-stroke-color': '#FFD37A',
+          'circle-stroke-width': 2,
+        },
+      },
+
+      // Prospecting potential (reference-only computed composite, §5.3 / #41-#42 — never feeds
+      // the verdict engine). Own glyph family, distinct from the MRDS gold dots, in a hotter
+      // orange-red hue: filled star = High/producer-anchored, hollow star = High/chemistry-earned,
+      // small diamond = Moderate. Zoom-gated per owner call #1 (High z7+, Moderate z10+).
+      //
+      // Fail-safe under-layers first (review finding F-5): a symbol layer renders NOTHING if its
+      // image is missing — these subtle same-filter circles sit beneath the symbols so a sprite
+      // failure degrades to visible dots instead of an invisible layer.
+      {
+        id: 'prospectivity-high-fallback', type: 'circle', source: 'prospectivity',
+        'source-layer': PROSPECTIVITY_SRC_LAYER, minzoom: PROSPECTIVITY_HIGH_MINZOOM,
+        filter: ['==', ['get', 'tier'], 'High'],
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-color': '#E8590C', 'circle-radius': 3, 'circle-opacity': 0.85,
+          'circle-stroke-color': '#7A2E06', 'circle-stroke-width': 0.6,
+        },
+      },
+      {
+        id: 'prospectivity-moderate-fallback', type: 'circle', source: 'prospectivity',
+        'source-layer': PROSPECTIVITY_SRC_LAYER, minzoom: PROSPECTIVITY_MODERATE_MINZOOM,
+        filter: ['==', ['get', 'tier'], 'Moderate'],
+        layout: { visibility: 'none' },
+        paint: {
+          'circle-color': '#F76707', 'circle-radius': 2.2, 'circle-opacity': 0.8,
+          'circle-stroke-color': '#8A3D05', 'circle-stroke-width': 0.5,
+        },
+      },
+      // The glyph symbols (images injected at runtime by MapView — makeProspectivityImages).
+      {
+        id: 'prospectivity-high-producer', type: 'symbol', source: 'prospectivity',
+        'source-layer': PROSPECTIVITY_SRC_LAYER, minzoom: PROSPECTIVITY_HIGH_MINZOOM,
+        filter: ['all', ['==', ['get', 'tier'], 'High'], ['==', ['get', 'tier_basis'], 'producer']],
+        layout: {
+          visibility: 'none', 'icon-image': 'prospect-star-filled',
+          'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        },
+      },
+      {
+        id: 'prospectivity-high-chemistry', type: 'symbol', source: 'prospectivity',
+        'source-layer': PROSPECTIVITY_SRC_LAYER, minzoom: PROSPECTIVITY_HIGH_MINZOOM,
+        filter: ['all', ['==', ['get', 'tier'], 'High'], ['==', ['get', 'tier_basis'], 'chemistry']],
+        layout: {
+          visibility: 'none', 'icon-image': 'prospect-star-hollow',
+          'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        },
+      },
+      {
+        id: 'prospectivity-moderate', type: 'symbol', source: 'prospectivity',
+        'source-layer': PROSPECTIVITY_SRC_LAYER, minzoom: PROSPECTIVITY_MODERATE_MINZOOM,
+        filter: ['==', ['get', 'tier'], 'Moderate'],
+        layout: {
+          visibility: 'none', 'icon-image': 'prospect-diamond',
+          'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        },
+      },
+
+      // Hover highlight ring for prospectivity markers (same idiom as mrds-hover).
+      {
+        id: 'prospectivity-hover', type: 'circle', source: 'prospectivity-hover',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 8, 14, 13],
+          'circle-color': 'rgba(232,89,12,0.18)',
+          'circle-stroke-color': '#FF8A50',
           'circle-stroke-width': 2,
         },
       },
@@ -247,6 +339,59 @@ export function pointFC(points: { lat: number; lng: number; props?: Record<strin
       properties: p.props ?? {},
     })),
   };
+}
+
+// Prospectivity glyphs (owner call #2/#6): canvas-drawn at 2x, registered with pixelRatio 2 by
+// MapView on 'load' + 'styleimagemissing' (the makeHatch/ensureHatch idiom). Rendered sizes:
+// ~18px stars (filled = producer-anchored High, hollow = chemistry-earned High), ~12px diamond
+// (Moderate). Hue family around #E8590C — hotter than the MRDS gold dots by design.
+export const PROSPECTIVITY_IMAGES: Record<string, () => { width: number; height: number; data: Uint8Array }> = {
+  'prospect-star-filled': () => makeStar(true),
+  'prospect-star-hollow': () => makeStar(false),
+  'prospect-diamond': makeDiamond,
+};
+
+function makeStar(filled: boolean): { width: number; height: number; data: Uint8Array } {
+  const size = 36; // 2x → renders ~18px
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const cx = size / 2, cy = size / 2, outer = size / 2 - 4, inner = outer * 0.45;
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.lineJoin = 'round';
+  if (filled) {
+    ctx.fillStyle = '#E8590C';
+    ctx.fill();
+    ctx.strokeStyle = '#7A2E06'; ctx.lineWidth = 2; ctx.stroke();
+  } else {
+    // Hollow/outlined variant — same size + hue family as the filled star.
+    ctx.strokeStyle = '#E8590C'; ctx.lineWidth = 3.5; ctx.stroke();
+  }
+  const img = ctx.getImageData(0, 0, size, size);
+  return { width: size, height: size, data: new Uint8Array(img.data) };
+}
+
+function makeDiamond(): { width: number; height: number; data: Uint8Array } {
+  const size = 24; // 2x → renders ~12px
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const cx = size / 2, cy = size / 2, m = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, m); ctx.lineTo(size - m, cy); ctx.lineTo(cx, size - m); ctx.lineTo(m, cy);
+  ctx.closePath();
+  ctx.fillStyle = '#F76707';
+  ctx.fill();
+  ctx.strokeStyle = '#8A3D05'; ctx.lineWidth = 1.5; ctx.stroke();
+  const img = ctx.getImageData(0, 0, size, size);
+  return { width: size, height: size, data: new Uint8Array(img.data) };
 }
 
 // 12px diagonal cross-hatch sprite for the "ambiguous" fill (MapLibre has no native hatch).

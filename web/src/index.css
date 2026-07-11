@@ -155,6 +155,8 @@ a { color: #2563eb; }
 .sw-open { background: #3FAE5A; }
 .sw-water { background: #2f6fb0; }
 .sw-gold { background: #FFC64B; border-color: #4a3600; }
+.sw-prospect { background: #E8590C; border-color: #7a2e06; }
+.prospect-legend { line-height: 1.6; }
 
 /* MRDS gold-occurrence popup (reference overlay). */
 .mrds-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
@@ -164,6 +166,17 @@ a { color: #2563eb; }
 .mrds-pop .mrds-link { display: inline-block; margin-top: 6px; color: #2563eb; font-size: 12px; text-decoration: none; }
 .mrds-pop .mrds-link:hover { text-decoration: underline; }
 .mrds-pop .mrds-note { color: #9ca3af; font-size: 10px; margin-top: 5px; font-style: italic; }
+
+/* Prospecting-potential popup (reference overlay — computed composite, §5.3 / #41-#42). */
+.prospect-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
+.prospect-pop strong { display: block; font-size: 13px; margin-bottom: 2px; color: #c2410c; }
+.prospect-pop .prospect-anom { color: #92400e; font-weight: 600; }
+.prospect-pop .prospect-path { color: #4b5563; margin-top: 2px; }
+.prospect-pop .prospect-why { color: #6b7280; font-size: 11px; margin-top: 4px; }
+.prospect-pop .prospect-prod { color: #4b5563; margin-top: 4px; }
+.prospect-pop .prospect-chem { color: #9a3412; font-size: 11px; margin-top: 4px; font-style: italic; }
+.prospect-pop .prospect-note { color: #6b7280; font-size: 11px; margin-top: 5px; font-style: italic; }
+.prospect-pop .prospect-vintage { color: #9ca3af; font-size: 10px; margin-top: 5px; }
 
 /* ---- Pins ---- */
 .pin-list { list-style: none; margin: 0; padding: 0; }
