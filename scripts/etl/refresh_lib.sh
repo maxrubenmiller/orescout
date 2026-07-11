@@ -99,10 +99,12 @@ atomic_swap() {
 }
 
 # ---- freshness registry stamp ---------------------------------------------------
-# stamp_source <key> <role> <vintage> <max_age_days|-> <upstream_ref> <status>
-# Upserts public.data_sources (creates it if this DB predates the registry).
+# stamp_source <key> <role> <vintage> <max_age_days|-> <upstream_ref> <status> [watermark]
+# Upserts public.data_sources (creates it if this DB predates the registry). The optional
+# watermark records the upstream version marker this refresh consumed (check_upstream.sh
+# compares live upstream state against it).
 stamp_source() {
-  local key="${1:?key}" role="${2:?role}" vintage="${3:?vintage}" maxage="${4:--}" ref="${5:-}" status="${6:-ok}"
+  local key="${1:?key}" role="${2:?role}" vintage="${3:?vintage}" maxage="${4:--}" ref="${5:-}" status="${6:-ok}" wm="${7:-}"
   local maxage_sql="NULL"; [ "$maxage" != "-" ] && maxage_sql="$maxage"
   _rx "CREATE TABLE IF NOT EXISTS public.data_sources (
          source_key       text PRIMARY KEY,
@@ -112,14 +114,18 @@ stamp_source() {
          max_age_days     int,
          last_gate_status text,
          upstream_ref     text,
+         upstream_watermark text,
          updated_at       timestamptz NOT NULL DEFAULT now());"
+  _rx "ALTER TABLE public.data_sources ADD COLUMN IF NOT EXISTS upstream_watermark text;"
+  local wm_sql="NULL"; [ -n "$wm" ] && wm_sql="\$q\$${wm}\$q\$"
   _rx "INSERT INTO public.data_sources
-         (source_key, role, vintage, refreshed_at, max_age_days, last_gate_status, upstream_ref, updated_at)
-       VALUES ('$key', '$role', \$q\$${vintage}\$q\$, now(), $maxage_sql, '$status', \$q\$${ref}\$q\$, now())
+         (source_key, role, vintage, refreshed_at, max_age_days, last_gate_status, upstream_ref, upstream_watermark, updated_at)
+       VALUES ('$key', '$role', \$q\$${vintage}\$q\$, now(), $maxage_sql, '$status', \$q\$${ref}\$q\$, $wm_sql, now())
        ON CONFLICT (source_key) DO UPDATE SET
          role = EXCLUDED.role, vintage = EXCLUDED.vintage, refreshed_at = EXCLUDED.refreshed_at,
          max_age_days = EXCLUDED.max_age_days, last_gate_status = EXCLUDED.last_gate_status,
-         upstream_ref = EXCLUDED.upstream_ref, updated_at = now();" \
+         upstream_ref = EXCLUDED.upstream_ref, updated_at = now(),
+         upstream_watermark = COALESCE(EXCLUDED.upstream_watermark, public.data_sources.upstream_watermark);" \
     || rfail "stamp_source: registry upsert failed for $key"
   echo "[refresh] stamped: $key ($vintage)"
 }
