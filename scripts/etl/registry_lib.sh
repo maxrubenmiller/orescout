@@ -56,6 +56,18 @@ reg_page()        { _reg_one "$1" '$e.access.page'; }
 reg_confirm()     { _reg_one "$1" "\$e.confirm.$2"; }         # reg_confirm blmsma_nv public_predicate
 reg_schema_cols() { _reg_one "$1" '$e.confirm.schema_cols | join(" ")'; }  # -> "owner geom"
 
+# reg_key_for_state_role <STATE> <ROLE> — the source_key of the (single) source with that role
+# covering that state, e.g. reg_key_for_state_role NV confirm_open -> "blmsma_nv". Errors if none.
+reg_key_for_state_role() {
+  _reg_require || return 1
+  local out
+  out=$(jq -er --arg s "$1" --arg r "$2" '
+    [.sources[] | select(.role==$r and (.states|index($s)))][0].key
+    | if . == null then error("none") else . end' "$REG_JSON" 2>/dev/null) || {
+    echo "registry_lib: no $2 source for state=$1 in $REG_JSON" >&2; return 1; }
+  printf '%s' "$out"
+}
+
 # --- state lists (canonical order = first appearance in the registry, i.e. padus's order) ---
 # reg_states_all            -> newline list of every distinct state, canonical order
 # reg_states_for_role ROLE  -> same, filtered to one role

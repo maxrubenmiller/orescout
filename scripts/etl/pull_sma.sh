@@ -12,6 +12,7 @@
 # the registry stamp). SR normalized to 4326 by ogr2ogr.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+source scripts/etl/registry_lib.sh   # per-state access params come from etl/sources.json (§6.13)
 ST="${1:-}"
 OUT="data/sma/${ST}"
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
@@ -20,23 +21,18 @@ UA="OreScout-ETL/0.1"
 die() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; exit 1; }
 PSQL() { docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d miningapp "$@"; }
 
-case "$ST" in
-  # BLM NV hosted detailed snapshot (14,637 rows; Apr-2023 vintage — ownership churn is slow and
-  # the live dissolved twin is impractical to page; re-check cadence via check_upstream).
-  nv) URL="https://services1.arcgis.com/KbxwQRRfWyEYLgp4/arcgis/rest/services/Surface_Management_Agency_SMA/FeatureServer/0/query"
-      FIELDS="ABBR,NAME"; PAGE=2000 ;;
-  az) URL="https://gis.blm.gov/azarcgis/rest/services/lands/BLM_AZ_SMA/FeatureServer/0/query"
-      FIELDS="CATEGORY"; PAGE=2000 ;;
-  co) URL="https://gis.blm.gov/coarcgis/rest/services/lands/BLM_Colorado_Surface_Management_Agency/FeatureServer/1/query"
-      FIELDS="adm_code,adm_manage"; PAGE=2000 ;;
-  nm) URL="https://gis.blm.gov/nmarcgis/rest/services/Lands/BLM_NM_Lands_Surface_Management_Agency/FeatureServer/0/query"
-      FIELDS="own"; PAGE=2000 ;;
-  or) URL="https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Ownership_Land_Management/FeatureServer/0/query"
-      FIELDS="LandManager"; PAGE=2000 ;;
-  id) URL="https://gis1.idl.idaho.gov/arcgis/rest/services/Portal/Idaho_Surface_Management_Agency/FeatureServer/0/query"
-      FIELDS="MGMT_AGNCY,AGNCY_NAME"; PAGE=2000 ;;
-  *) echo "usage: $0 <nv|az|co|nm|or|id>" >&2; exit 2 ;;
-esac
+# Resolve this state's confirm_open source from the registry (was a per-state case block; §6.13).
+# NV is BLM's hosted detailed snapshot (14,637 rows; Apr-2023 — ownership churn is slow, the live
+# dissolved twin is impractical to page; re-check cadence via check_upstream). Adding a state =
+# a registry entry, not an edit here.
+STU=$(echo "$ST" | tr '[:lower:]' '[:upper:]')
+KEY=$(reg_key_for_state_role "$STU" confirm_open) \
+  || { echo "usage: $0 <state with a pull_sma-loaded confirm_open source, e.g. nv az co nm or id>" >&2; exit 2; }
+[ "$(reg_loader "$KEY")" = "scripts/etl/pull_sma.sh" ] \
+  || { echo "ERROR: registry source '$KEY' for $STU uses loader '$(reg_loader "$KEY")', not pull_sma.sh" >&2; exit 2; }
+URL=$(reg_access "$KEY" url)
+FIELDS=$(reg_fields_csv "$KEY")
+PAGE=$(reg_page "$KEY")
 
 OID=$(curl -sq -A "$UA" --max-time 30 "${URL%/query}?f=json" \
   | python3 -c 'import sys,json; print(json.load(sys.stdin).get("objectIdField") or "OBJECTID")')
