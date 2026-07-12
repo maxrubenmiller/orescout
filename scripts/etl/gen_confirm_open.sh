@@ -20,30 +20,26 @@
 #     check shows noise.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+source scripts/etl/registry_lib.sh   # per-state params come from etl/sources.json (§6.13)
 ST="${1:-}"
 
-case "$ST" in
-  nv) SRC="blmsma_nv"; STAGING="staging.sma_nv"
-      PUB="upper(abbr) IN ('BLM','FS','NPS','FWS','BR','NVST','CNTY','PK','DOD','DOE')"
-      ATTR="BLM Nevada Surface Management Agency"; VINTAGE="BLM NV SMA (hosted snapshot 2023-04)" ;;
-  az) SRC="blmsma_az"; STAGING="staging.sma_az"
-      PUB="category IN ('BLM','USFS','NPS','USFWS','BR','Bankhead-Jones Act','State','State Wildlife Area','Local or State Parks','County','Military')"
-      ATTR="BLM AZ SMA (ALRIS lineage)"; VINTAGE="BLM AZ SMA (hub 2024-01)" ;;
-  co) SRC="blmsma_co"; STAGING="staging.sma_co"
-      PUB="upper(adm_code) IN ('BLM','BLM_LU','USFS','USFS_LU','USFS_NG','NPS','USFW','BOR','STA','LOCAL','DOD')"
-      ATTR="BLM Colorado SMA"; VINTAGE="BLM CO SMA (updated daily; pulled 2026-07)" ;;
-  nm) SRC="blmsma_nm"; STAGING="staging.sma_nm"
-      PUB="upper(own) IN ('BLM','FS','NPS','FWS','BOR','S','SGF','SP','OFA','DOD','DOE','DOA')"
-      ATTR="BLM New Mexico SMA"; VINTAGE="BLM NM SMA (edited 2026-06)" ;;
-  or) SRC="odf_or"; STAGING="staging.sma_or"
-      PUB="landmanager IN ('BLM','USFS','FWS','NPS','USBR','USACE','ODF','ODFW','OPRD','ODSL','ODFODSL','ODOT','OR','OSU','OUS','LG','BPA','DOE','DOD','GSA','USDA','FAA')"
-      ATTR="Oregon Land Ownership © ODF"; VINTAGE="ODF ownership framework (modified 2026-06)" ;;
-  id) SRC="idl_id"; STAGING="staging.sma_id"
-      PUB="upper(mgmt_agncy) IN ('BLM','USFS','NPS','NWR','BOR','COE','LU_DOI','LU_USDA','STATE','STATEFG','STATEPR','STATEOTH','MIL')"
-      ATTR="Idaho SMA © Idaho Dept of Lands"; VINTAGE="IDL SMA (republished 2026-07-07)" ;;
-  *) echo "usage: $0 <nv|az|co|nm|or|id>" >&2; exit 2 ;;
-esac
+# Per-state parameters now live in the registry (was a case block here). SRC is the source_key;
+# CRS / buffer_m / sliver_min_m2 are registry fields (a coastal state can pick a different CRS
+# without editing this template). Only sql:"generated" sources use this template — CA/UT keep
+# their committed bespoke confirm_open_<st>.sql.
 STU=$(echo "$ST" | tr '[:lower:]' '[:upper:]')
+KEY=$(reg_key_for_state_role "$STU" confirm_open) \
+  || { echo "usage: $0 <state with a template-generated confirm_open source, e.g. nv az co nm or id>" >&2; exit 2; }
+[ "$(reg_sql "$KEY")" = "generated" ] \
+  || { echo "ERROR: registry source '$KEY' for $STU has sql='$(reg_sql "$KEY")' (bespoke, committed) — not template-generated" >&2; exit 2; }
+SRC="$KEY"
+STAGING=$(reg_confirm "$KEY" staging)
+PUB=$(reg_confirm "$KEY" public_predicate)
+ATTR=$(reg_attribution "$KEY")
+VINTAGE=$(reg_vintage "$KEY")
+CRS=$(reg_confirm "$KEY" crs)
+BUFFER=$(reg_confirm "$KEY" buffer_m)
+SLIVER=$(reg_confirm "$KEY" sliver_min_m2)
 
 cat > "scripts/etl/confirm_open_${ST}.sql" <<EOF
 -- Confirm-Open step for ${STU} (PROJECT_PLAN §6.4.1/§6.13, decisions #30/#31; TODO Track 2).
@@ -81,7 +77,7 @@ DROP TABLE IF EXISTS staging.conf_buf_${ST};
 CREATE TABLE staging.conf_buf_${ST} AS
   SELECT ST_CollectionExtract(ST_MakeValid(ST_Difference(b.geom,
            COALESCE(np.geom, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3) AS geom
-  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(ST_SubDivide(ST_MakeValid(geom), 512), 5070), 100), 4326) AS geom
+  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(ST_SubDivide(ST_MakeValid(geom), 512), ${CRS}), ${BUFFER}), 4326) AS geom
         FROM ${STAGING}
         WHERE ${PUB}) b
   LEFT JOIN LATERAL (
@@ -105,7 +101,7 @@ FROM (
     SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_${ST} cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
   ) b ON true
 ) d
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 1000;
+WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > ${SLIVER};
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM tiles.legality_polygons WHERE source_key = '${SRC}';
