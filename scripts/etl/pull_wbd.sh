@@ -17,12 +17,13 @@
 # Usage:  ./scripts/etl/pull_wbd.sh [datadir]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+source scripts/etl/registry_lib.sh   # state list from etl/sources.json (§6.13)
 OUT="${1:-data/wbd}"
 ZIP="WBD_National_GDB.zip"
 URL="https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/WBD/National/GDB/${ZIP}"
 GDB="$OUT/WBD_National_GDB.gdb"
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
-LIKE="states LIKE '%NV%' OR states LIKE '%CA%' OR states LIKE '%AZ%' OR states LIKE '%CO%' OR states LIKE '%UT%' OR states LIKE '%NM%' OR states LIKE '%OR%' OR states LIKE '%ID%'"
+LIKE="$(reg_states_like states)"
 
 mkdir -p "$OUT"
 if [ ! -d "$GDB" ]; then

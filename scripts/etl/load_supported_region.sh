@@ -8,11 +8,12 @@
 #
 # Usage:  ./scripts/etl/load_supported_region.sh
 set -euo pipefail
+source "$(cd "$(dirname "$0")" && pwd)/registry_lib.sh"   # state list from etl/sources.json (§6.13)
 
 TIG="https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/0/query"
 UA="Mozilla/5.0 OreScout-ETL"
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
-W8="STUSAB IN ('NV','CA','AZ','CO','UT','NM','OR','ID')"
+W8="STUSAB IN ($(reg_states_sqlcsv))"
 mkdir -p data web/public/assets
 
 # All states (generalized) -> committed frontend asset for the out-of-scope mask.
