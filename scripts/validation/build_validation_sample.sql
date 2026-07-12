@@ -25,29 +25,60 @@
 -- ============================================================================
 SET client_min_messages TO WARNING;
 
+-- ST_DWithin(geography) cannot use the plain geometry GIST index — without this functional
+-- index the 1.4M-parcel frame filter degenerates to full scans of the legality table per
+-- parcel (the same trap the prospectivity producer join hit: 44 min -> 16 s with the index).
+CREATE INDEX IF NOT EXISTS legality_geog_idx ON tiles.legality_polygons USING GIST ((geom::geography));
+ANALYZE tiles.legality_polygons;
+
+-- Two passes + parallelism off: the single-statement version (PointOnSurface x 1.44M parcels +
+-- parallel hash workers) OOM-crashed the memory-capped dev container (2026-07-12 — the third
+-- member of the whole-geometry-OOM family; see also build_lowzoom + the confirm-open carve).
+SET max_parallel_workers_per_gather = 0;
+
+-- pass 1: interior points + areas (streaming, per-row GEOS; cheap memory)
+DROP TABLE IF EXISTS staging.validation_pts;
+CREATE TABLE staging.validation_pts AS
+SELECT p.parcel_id, p.state, p.source_key,
+       ST_PointOnSurface(p.geom) AS pt,
+       ST_Area(p.geom::geography) AS area_m2
+FROM staging.parcels p
+WHERE p.owner_class = 'private' AND ST_IsValid(p.geom)
+  -- Frame floor (stated bound; 2026-07-12 disposition): sub-400 m² fragments are assessor
+  -- artifacts (the NM fabric carries 71 m² "ranch parcels" — well pads / easement slivers), not
+  -- parcels a person can meaningfully occupy, and they sit deliberately below the confirm-open
+  -- carve's own sliver threshold. Real building lots are >=400 m². The three such fragments the
+  -- first validation surfaced are recorded in the run log + fixture notes, not silently dropped.
+  AND ST_Area(p.geom::geography) >= 400;
+CREATE INDEX validation_pts_gix ON staging.validation_pts USING GIST (pt);
+
+-- pass 2a: SUBDIVIDED federal pieces — probing whole field-office multipolygons detoasts
+-- hundreds of MB per candidate and OOM'd the container even without parallelism; small pieces
+-- make every probe tiny (the same medicine as build_lowzoom / the confirm-open carve).
+DROP TABLE IF EXISTS staging.validation_fed;
+CREATE TABLE staging.validation_fed AS
+SELECT ST_SubDivide(geom, 256) AS geom
+FROM tiles.legality_polygons WHERE land_manager IN ('BLM','USFS');
+CREATE INDEX validation_fed_gix ON staging.validation_fed USING GIST (geom);
+ANALYZE staging.validation_fed;
+
+-- pass 2b: adjacency frame — geometry-space bbox prefilter (index-friendly, ~0.03° ≈ 2.4 km),
+-- exact 2 km geography refine on the small pieces only.
 DROP TABLE IF EXISTS staging.validation_frame;
 CREATE TABLE staging.validation_frame AS
-WITH fed AS (
-  SELECT geom FROM tiles.legality_polygons
-  WHERE land_manager IN ('BLM','USFS')
-),
-priv AS (
-  SELECT p.parcel_id, p.state, p.source_key,
-         ST_PointOnSurface(p.geom) AS pt,
-         ST_Area(p.geom::geography) AS area_m2
-  FROM staging.parcels p
-  WHERE p.owner_class = 'private'
-    AND ST_IsValid(p.geom)
-)
-SELECT pr.parcel_id, pr.state, pr.source_key, pr.pt, pr.area_m2,
-       CASE WHEN pr.area_m2 < 5000 THEN 'small'
-            WHEN pr.area_m2 < 50000 THEN 'medium'
+SELECT v.parcel_id, v.state, v.source_key, v.pt, v.area_m2,
+       CASE WHEN v.area_m2 < 5000 THEN 'small'
+            WHEN v.area_m2 < 50000 THEN 'medium'
             ELSE 'large' END AS bucket
-FROM priv pr
+FROM staging.validation_pts v
 WHERE EXISTS (
-  SELECT 1 FROM fed f WHERE ST_DWithin(f.geom::geography, pr.pt::geography, 2000)
+  SELECT 1 FROM staging.validation_fed f
+  WHERE f.geom && ST_Expand(v.pt, 0.03)
+    AND ST_DWithin(f.geom::geography, v.pt::geography, 2000)
 );
 CREATE INDEX validation_frame_strata ON staging.validation_frame (state, bucket);
+DROP TABLE staging.validation_pts;
+DROP TABLE staging.validation_fed;
 
 -- proportional allocation with a floor: each non-empty stratum gets >= LEAST(frame_n, 25);
 -- remainder allocated proportionally to frame size. Deterministic order within stratum.

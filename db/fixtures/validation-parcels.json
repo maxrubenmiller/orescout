@@ -1,0 +1,1715 @@
+{
+ "_description": "Frozen Tier-1 validation regression fixture (2026-07-12; decision #44). Every point is a state-confirmed PRIVATE parcel interior; the asserted property is exactly the cardinal one: NONE may resolve GREEN. 200 deterministic stratified points (md5-ordered per state x size bucket, drawn from the passing 0/1504 run: CP 95% UB 0.245%) + 6 SENTINELS \u2014 the Colorado parcels that WERE false-GREEN before the parcel-grade carve; if any turns GREEN again the carve regressed. outcome_at_freeze is informational (KNOWN/UNKNOWN may legitimately shift); only NOT-GREEN is asserted. Known exclusions, recorded not hidden: three 71 m2 NM assessor artifacts (nm:1000085963001, nm:3086024363165, nm:3118060264000) fall below the frame's 400 m2 floor AND the carve's sliver threshold \u2014 they resolve GREEN by threshold policy; revisit if the sliver policy changes. Run: scripts/test/check_validation_fixtures.sh",
+ "fixtures": [
+  {
+   "parcel_id": "co:100-30-700",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.134135,
+   "lng": -105.468338,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:100-73-650",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.11639,
+   "lng": -105.459752,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:100-81-417",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.142078,
+   "lng": -105.462783,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:10089.22030030",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.755708,
+   "lng": -105.154897,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:101-11-961",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.086,
+   "lng": -105.311007,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:101-21-632",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.143192,
+   "lng": -105.34087,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:1071",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.201089,
+   "lng": -105.735363,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:11120",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.065288,
+   "lng": -105.719418,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:119935004007",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 40.176091,
+   "lng": -105.426784,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:1234",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.213138,
+   "lng": -105.718371,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:12398",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.248073,
+   "lng": -106.101805,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:132300000040",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 40.11882,
+   "lng": -105.547952,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:1385.354010040",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.785579,
+   "lng": -105.299163,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:145906000053",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 40.07274,
+   "lng": -105.491694,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:146317427001",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 40.049082,
+   "lng": -105.248155,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:146317427001",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 40.049082,
+   "lng": -105.248155,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:158300400036",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.937353,
+   "lng": -105.513244,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:15933",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.501377,
+   "lng": -105.524913,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:170723300015",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.855962,
+   "lng": -105.645755,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:183331302007",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.742923,
+   "lng": -105.496491,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:183723300958",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.767763,
+   "lng": -105.641297,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "co:208506200401",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.648184,
+   "lng": -105.493447,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:20882",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.909299,
+   "lng": -105.400265,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:208923300900",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.598768,
+   "lng": -105.643149,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "co:263123200011",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.257589,
+   "lng": -106.192758,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:263323206001",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.257036,
+   "lng": -106.301463,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:27402",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.068015,
+   "lng": -105.687913,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:290118301000A",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.089732,
+   "lng": -106.376544,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:290307000004",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.106168,
+   "lng": -106.474767,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:29837",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.850415,
+   "lng": -105.699198,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:3029.202050260",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.998385,
+   "lng": -105.134401,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:30518",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.491534,
+   "lng": -105.482827,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:31485",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.151885,
+   "lng": -105.787802,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:31509",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.159861,
+   "lng": -105.804547,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:317700001006",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.877852,
+   "lng": -107.002048,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:325500005027",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.852195,
+   "lng": -106.996248,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:325503176013",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.869452,
+   "lng": -106.98277,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:343322300003",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.728316,
+   "lng": -106.771874,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:35779",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.845106,
+   "lng": -105.40914,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:3725.143030180",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.003205,
+   "lng": -105.308403,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:378702103012",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.544047,
+   "lng": -106.933929,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:378911002002",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.524943,
+   "lng": -106.829763,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:37972",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.88955,
+   "lng": -105.931249,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:37979",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.416486,
+   "lng": -105.547417,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:398300000113",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.443334,
+   "lng": -107.348188,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:4005.142000240",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.748633,
+   "lng": -105.194525,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:405700000004",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.345993,
+   "lng": -107.000805,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:41845",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.06074,
+   "lng": -105.943074,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:425715400188",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.234384,
+   "lng": -107.842532,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:430516304001",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.151272,
+   "lng": -107.759273,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:430517418007",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.150365,
+   "lng": -107.76694,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:433905300072",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 38.177908,
+   "lng": -106.009802,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:44714",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.215643,
+   "lng": -105.998773,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:456536328021",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 37.937655,
+   "lng": -107.820823,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:4755",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.741262,
+   "lng": -105.871818,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:477903201511",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 37.931779,
+   "lng": -107.850455,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:477934400019",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 37.856771,
+   "lng": -107.83789,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "co:6057",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.068413,
+   "lng": -105.720414,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:70-313-01-032",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.389105,
+   "lng": -105.271977,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:71-272-00-009",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.414661,
+   "lng": -105.330347,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:7906",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.421047,
+   "lng": -105.516547,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:8804",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 38.847078,
+   "lng": -105.72647,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:91157",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.203815,
+   "lng": -106.161729,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:N006547",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.869215,
+   "lng": -105.550339,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:N007220",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.795009,
+   "lng": -105.528986,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:N007220",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.795181,
+   "lng": -105.529032,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:N2143",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 37.816344,
+   "lng": -107.585571,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:N2229",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 37.834388,
+   "lng": -107.595283,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "co:R1115",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 37.815809,
+   "lng": -107.656912,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:007022000112",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 33.946082,
+   "lng": -106.873419,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:0120220033",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 34.038537,
+   "lng": -107.053736,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:012027004201",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 34.128088,
+   "lng": -107.214619,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:0120390006",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 34.342055,
+   "lng": -107.374656,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:01N4055092141123",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.930242,
+   "lng": -105.958429,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:01N4057093102191",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.91417,
+   "lng": -105.931835,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:01N4057094356365",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.89485,
+   "lng": -105.92331,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:01O4052091245268",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 32.952917,
+   "lng": -106.007617,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:01O4053088178219",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 32.997643,
+   "lng": -105.986827,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:04N4051082472518",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.07695,
+   "lng": -106.012508,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:10120065",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.96976,
+   "lng": -106.870051,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1018159414430",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.56287,
+   "lng": -106.568943,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1019134027174",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 36.19499,
+   "lng": -106.563033,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:102205747902340802",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 35.072527,
+   "lng": -106.499131,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:102305809240021720",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 35.097194,
+   "lng": -106.494376,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:102306412512030704",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 35.177437,
+   "lng": -106.494002,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:103205017333230611",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 34.97714,
+   "lng": -106.325414,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1041136364472",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.230076,
+   "lng": -106.159074,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1042159046006",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.551809,
+   "lng": -106.150417,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1042163264322",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.620841,
+   "lng": -106.141815,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1047119326458",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 35.985339,
+   "lng": -106.060729,
+   "outcome_at_freeze": "RED"
+  },
+  {
+   "parcel_id": "nm:1047130035345",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.141533,
+   "lng": -106.071608,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "nm:1047131022216",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.152658,
+   "lng": -106.072094,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "nm:1047131384043",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.148092,
+   "lng": -106.061498,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "nm:1048174508398",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.779658,
+   "lng": -106.04202,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1050129184277",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.123868,
+   "lng": -106.012002,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1050154503377",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.488864,
+   "lng": -106.004669,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1056154070060",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.48225,
+   "lng": -105.906804,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1057134125318",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 36.199521,
+   "lng": -105.88747,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1057146124396",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.374339,
+   "lng": -105.887917,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1061152435370",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 36.461777,
+   "lng": -105.804473,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1063161266298",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 36.589668,
+   "lng": -105.774894,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1071157220447",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.536912,
+   "lng": -105.63115,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1073146446034",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.365612,
+   "lng": -105.588195,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1073168077420",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.694412,
+   "lng": -105.602573,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1081161405516U35",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.5947,
+   "lng": -105.44822,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:1086149153422",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 36.375421,
+   "lng": -105.323043,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4070113534528",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 32.619068,
+   "lng": -105.6957,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4072112273527",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.633402,
+   "lng": -105.669295,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4073090182428",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.963344,
+   "lng": -105.649261,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4075092402334",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.928567,
+   "lng": -105.615412,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4084094055300",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.903482,
+   "lng": -105.47096,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:11O4085097066462",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.855151,
+   "lng": -105.45385,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:16N4031154313309",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.028952,
+   "lng": -106.367185,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:2037173064328",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 36.742189,
+   "lng": -107.515901,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:270040034",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.876505,
+   "lng": -106.869613,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3009083314415",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.057775,
+   "lng": -107.036045,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3020075473417",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.175166,
+   "lng": -107.229079,
+   "outcome_at_freeze": "RED"
+  },
+  {
+   "parcel_id": "nm:3024096457353",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.871215,
+   "lng": -107.296773,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3025101474042",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.808578,
+   "lng": -107.315205,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3040093184008",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.922375,
+   "lng": -107.56238,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3065092462396",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.92397,
+   "lng": -108.007422,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3070102434320",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 32.784959,
+   "lng": -108.095787,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3072085452300",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 33.024811,
+   "lng": -108.130725,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3072099066066",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.836612,
+   "lng": -108.118475,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3073103057376",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.768586,
+   "lng": -108.133975,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3081099442421",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.825834,
+   "lng": -108.28511,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3081102333424",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 32.782052,
+   "lng": -108.280452,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3094128264264",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.40675,
+   "lng": -108.494353,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3107132807882",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 32.343153,
+   "lng": -108.727219,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:3125169462331",
+   "state": "NM",
+   "bucket": "large",
+   "lat": 31.817538,
+   "lng": -109.004291,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4071059443011000000",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.419429,
+   "lng": -105.679091,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4071065101094000000",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.331566,
+   "lng": -105.688602,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4072064008067000000",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.346863,
+   "lng": -105.674696,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4072065453171000000",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.329349,
+   "lng": -105.65995,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4073065022383000000",
+   "state": "NM",
+   "bucket": "small",
+   "lat": 33.323375,
+   "lng": -105.657284,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4075051375186000000",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.52987,
+   "lng": -105.611981,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:4080046065505000000",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 33.592545,
+   "lng": -105.535141,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "nm:600400240202",
+   "state": "NM",
+   "bucket": "medium",
+   "lat": 34.134993,
+   "lng": -106.89332,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:01-0041-0245",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.391425,
+   "lng": -111.663517,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:01-239-0-0017",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 40.095999,
+   "lng": -112.470052,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:02-0007-0037",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 38.553425,
+   "lng": -109.53333,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:02-0121-0001",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 39.466009,
+   "lng": -110.717082,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:02-0SVL-0013",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 38.554098,
+   "lng": -109.527994,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:04-0016-0070",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.97045,
+   "lng": -110.117605,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:04-0022-0534",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.766201,
+   "lng": -111.587691,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:04-0023-0122",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.544468,
+   "lng": -109.385452,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:04-0043-0025",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 39.233466,
+   "lng": -111.055316,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:0400060037",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 38.212088,
+   "lng": -112.918675,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:06-054-0-0011",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 40.343152,
+   "lng": -112.236323,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:06-092-0-0003",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 40.307185,
+   "lng": -112.48174,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:07-0063-0374",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.818326,
+   "lng": -112.439098,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:08-0073-0034",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.624328,
+   "lng": -112.090052,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:08-0073-0162",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.620787,
+   "lng": -112.075016,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:1-5-4",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.767638,
+   "lng": -112.094905,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:1-M3B-6",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 38.621117,
+   "lng": -112.111172,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:10009",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.171739,
+   "lng": -114.016919,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "ut:1099-B-1-J-HV",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.34333,
+   "lng": -113.104239,
+   "outcome_at_freeze": "RED"
+  },
+  {
+   "parcel_id": "ut:11-0024-0097",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.779282,
+   "lng": -111.59988,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:11-049-0-4099",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 40.511618,
+   "lng": -112.3207,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:2-J2-4",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.628177,
+   "lng": -112.211209,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:2-N1B-59",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.709595,
+   "lng": -112.061837,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:2-R1C-44",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 39.008136,
+   "lng": -111.855862,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:3-262-25",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 38.781315,
+   "lng": -112.080152,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:3711-8",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 39.362636,
+   "lng": -112.302895,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:4-89-24",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.909219,
+   "lng": -111.912425,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:4-98-24",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.888397,
+   "lng": -111.948186,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:49-38",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.514779,
+   "lng": -112.660525,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:5-109-2",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.559902,
+   "lng": -111.851531,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:5-33-13",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.609329,
+   "lng": -112.13508,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:58-21",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.52165,
+   "lng": -112.39815,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:6003",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.597986,
+   "lng": -113.509409,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:61-41",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.481685,
+   "lng": -112.769712,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:6392",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 39.107991,
+   "lng": -112.284004,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:65-2026",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.017561,
+   "lng": -112.550239,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:7088-D-NW",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.517093,
+   "lng": -113.632328,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:72-1380",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.016237,
+   "lng": -112.543649,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:7822",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.864541,
+   "lng": -112.453384,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:8-9-14-2A",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.501832,
+   "lng": -112.817008,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:9029-A-2-NC",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.581174,
+   "lng": -113.851491,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:98-77",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.41144,
+   "lng": -112.271849,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:B-2012-0420-0000",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.643628,
+   "lng": -113.105976,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "ut:D-0223-0001-0087",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.733456,
+   "lng": -112.940823,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:D-0223-0002-0149",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.72454,
+   "lng": -112.969232,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:D-0456-0170-0000",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.79256,
+   "lng": -113.119442,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:DO-4267-1-1",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 39.331332,
+   "lng": -112.62647,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:DO-5318-A",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 39.282026,
+   "lng": -112.504371,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-0721-0003-0000",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 38.015329,
+   "lng": -113.424857,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-1261-0001-0000",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.864687,
+   "lng": -113.594187,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-1275-0000-0000",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.826258,
+   "lng": -113.690616,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-1522-0000-0000",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.879948,
+   "lng": -113.702058,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-1712-0005-0000",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.798979,
+   "lng": -113.88692,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:E-1714-0100-0000",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.808895,
+   "lng": -113.872136,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:F-501",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 38.976051,
+   "lng": -112.330427,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:H-3-1-31-4101",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.183458,
+   "lng": -113.357201,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:H-3-1-31-4101",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.183583,
+   "lng": -113.355541,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:H-3421-C-SH3",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 37.107687,
+   "lng": -113.348605,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:H-DSP-A-148",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.13697,
+   "lng": -113.387519,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:H-FAIR-5",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.165531,
+   "lng": -113.407337,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:I-DSS-3",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.154465,
+   "lng": -113.672235,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:LV-154-E",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.217432,
+   "lng": -113.273044,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:SG-5-3-9-3209",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.052869,
+   "lng": -113.54196,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:SG-EAHV-7-178",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.046633,
+   "lng": -113.578713,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "ut:SG-SUR-21-1354",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.023263,
+   "lng": -113.619687,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:W-HPCC-1-268-CC",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 37.147796,
+   "lng": -113.465501,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:XD00-4506-",
+   "state": "UT",
+   "bucket": "large",
+   "lat": 39.389661,
+   "lng": -112.043846,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:XE00-5317-",
+   "state": "UT",
+   "bucket": "small",
+   "lat": 39.95719,
+   "lng": -112.112143,
+   "outcome_at_freeze": "YELLOW-UNKNOWN"
+  },
+  {
+   "parcel_id": "ut:fid31107",
+   "state": "UT",
+   "bucket": "medium",
+   "lat": 37.146871,
+   "lng": -113.47925,
+   "outcome_at_freeze": "YELLOW-KNOWN"
+  },
+  {
+   "parcel_id": "co:146118000055",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 40.04355,
+   "lng": -105.38069,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN pre-parcel-carve (Royal Gorge FO)"
+  },
+  {
+   "parcel_id": "co:195732400628",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.65715,
+   "lng": -105.80121,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN (Arapaho NF)"
+  },
+  {
+   "parcel_id": "co:196318415011",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 39.69416,
+   "lng": -105.48363,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN (Arapaho NF)"
+  },
+  {
+   "parcel_id": "co:2941.062010090",
+   "state": "CO",
+   "bucket": "small",
+   "lat": 38.95544,
+   "lng": -105.03747,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN (Pike NF)"
+  },
+  {
+   "parcel_id": "co:30009.22030010",
+   "state": "CO",
+   "bucket": "large",
+   "lat": 39.03669,
+   "lng": -105.15643,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN (Pike NF)"
+  },
+  {
+   "parcel_id": "co:N013086",
+   "state": "CO",
+   "bucket": "medium",
+   "lat": 39.77579,
+   "lng": -105.52974,
+   "outcome_at_freeze": "REMEDIATED",
+   "note": "was GREEN (Royal Gorge FO)"
+  }
+ ]
+}

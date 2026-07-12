@@ -31,7 +31,20 @@ case "$ST" in
       VINTAGE="CAL FIRE land ownership (CC-BY)"
       REF="CAL FIRE Public_Land_Ownership_view FeatureServer"
       MAXAGE=420 ;;
-  *) echo "usage: $0 <ut|ca> [api_base_url]" >&2; exit 2 ;;
+  nv|az|co|nm|or|id)
+      # Six SMA-based states (TODO Track 2): shared pull adapter + generated confirm-open SQL.
+      case "$ST" in
+        nv) SRC_KEY="blmsma_nv"; VINTAGE="BLM NV SMA";  REF="BLM-EGIS hosted Surface_Management_Agency_SMA"; MAXAGE=540 ;;
+        az) SRC_KEY="blmsma_az"; VINTAGE="BLM AZ SMA (ALRIS lineage)"; REF="gis.blm.gov/azarcgis BLM_AZ_SMA"; MAXAGE=540 ;;
+        co) SRC_KEY="blmsma_co"; VINTAGE="BLM CO SMA (daily upstream)"; REF="gis.blm.gov/coarcgis SMA layer 1"; MAXAGE=365 ;;
+        nm) SRC_KEY="blmsma_nm"; VINTAGE="BLM NM SMA"; REF="gis.blm.gov/nmarcgis Lands SMA"; MAXAGE=365 ;;
+        or) SRC_KEY="odf_or";    VINTAGE="Oregon Land Ownership (ODF)"; REF="ODF Ownership_Land_Management"; MAXAGE=365 ;;
+        id) SRC_KEY="idl_id";    VINTAGE="Idaho SMA (IDL)"; REF="gis1.idl.idaho.gov Idaho_Surface_Management_Agency"; MAXAGE=365 ;;
+      esac
+      STAGING="staging.sma_${ST}"; SCHEMA_COLS="geom"
+      PULL="./scripts/etl/pull_sma.sh ${ST}"; SQL="scripts/etl/confirm_open_${ST}.sql"
+      [ -f "$SQL" ] || { echo "✗ $SQL missing — run ./scripts/etl/gen_confirm_open.sh ${ST} first" >&2; exit 2; } ;;
+  *) echo "usage: $0 <ut|ca|nv|az|co|nm|or|id> [api_base_url]" >&2; exit 2 ;;
 esac
 
 refresh_lock "confirm_open_${ST}"
