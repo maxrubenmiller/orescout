@@ -57,6 +57,15 @@
     { "name": "CA confirm-open: Carrizo Plain margin", "state": "CA", "lat": 35.080480, "lng": -119.463609, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "calfire_ca unconfirmed-open row over PAD-US BLM GREEN; YELLOW comes ONLY from source_key=calfire_ca" },
 
     { "name": "UT confirm-open: Monte Cristo margin (SGID)", "state": "UT", "lat": 41.423546, "lng": -111.071327, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "ugrc_ut unconfirmed-open row over PAD-US GREEN (16 km2, largest UT piece); YELLOW comes ONLY from source_key=ugrc_ut" },
-    { "name": "UT confirm-open: W of Mona (SGID)", "state": "UT", "lat": 39.775116, "lng": -111.904646, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "ugrc_ut unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=ugrc_ut" }
+    { "name": "UT confirm-open: W of Mona (SGID)", "state": "UT", "lat": 39.775116, "lng": -111.904646, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "ugrc_ut unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=ugrc_ut" },
+
+    { "name": "NV confirm-open: Moapa Valley margin (BLM SMA)", "state": "NV", "lat": 36.897310, "lng": -114.921334, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "blmsma_nv unconfirmed-open row over PAD-US GREEN (19.8 km2, largest NV piece); YELLOW comes ONLY from source_key=blmsma_nv" },
+    { "name": "NV confirm-open: NW corner high desert (BLM SMA)", "state": "NV", "lat": 41.302000, "lng": -119.892418, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "blmsma_nv unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=blmsma_nv" },
+
+    { "name": "AZ confirm-open: Sonoran Desert NM margin", "state": "AZ", "lat": 33.275720, "lng": -112.323415, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "blmsma_az unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=blmsma_az" },
+    { "name": "CO confirm-open: Cochetopa margin (BLM SMA)", "state": "CO", "lat": 38.369154, "lng": -106.359506, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "blmsma_co unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=blmsma_co" },
+    { "name": "NM confirm-open: Zuni margin (BLM SMA)", "state": "NM", "lat": 35.281111, "lng": -108.486381, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "blmsma_nm unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=blmsma_nm" },
+    { "name": "OR confirm-open: John Day margin (ODF)", "state": "OR", "lat": 45.146885, "lng": -120.399028, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "odf_or unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=odf_or" },
+    { "name": "ID confirm-open: Teton foothills (IDL)", "state": "ID", "lat": 43.724703, "lng": -111.327922, "expect": "YELLOW", "ambiguity": "KNOWN", "tileBase": "YELLOW", "why": "idl_id unconfirmed-open row over PAD-US GREEN; YELLOW comes ONLY from source_key=idl_id" }
   ]
 }
