@@ -17,35 +17,36 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source scripts/etl/refresh_lib.sh
+source scripts/etl/registry_lib.sh   # per-state params come from etl/sources.json (§6.13)
 
 ST="${1:-}"
 API="${2:-http://localhost:5167/api/v1}"
-case "$ST" in
-  ut) SRC_KEY="ugrc_ut";    STAGING="staging.ugrc_ownership";    SCHEMA_COLS="owner geom";
-      PULL="./scripts/etl/pull_ugrc.sh";    SQL="scripts/etl/confirm_open_ut.sql"
-      VINTAGE="Utah SGID/SITLA land ownership (weekly upstream revisions; CC-BY 4.0)"
-      REF="https://gis.trustlands.utah.gov/server/rest/services/Ownership/UT_SITLA_Ownership_LandOwnership_WM/FeatureServer/0"
-      MAXAGE=180 ;;
-  ca) SRC_KEY="calfire_ca"; STAGING="staging.calfire_ownership"; SCHEMA_COLS="own_level geom";
-      PULL="./scripts/etl/pull_calfire.sh"; SQL="scripts/etl/confirm_open_ca.sql"
-      VINTAGE="CAL FIRE land ownership (CC-BY)"
-      REF="CAL FIRE Public_Land_Ownership_view FeatureServer"
-      MAXAGE=420 ;;
-  nv|az|co|nm|or|id)
-      # Six SMA-based states (TODO Track 2): shared pull adapter + generated confirm-open SQL.
-      case "$ST" in
-        nv) SRC_KEY="blmsma_nv"; VINTAGE="BLM NV SMA";  REF="BLM-EGIS hosted Surface_Management_Agency_SMA"; MAXAGE=540 ;;
-        az) SRC_KEY="blmsma_az"; VINTAGE="BLM AZ SMA (ALRIS lineage)"; REF="gis.blm.gov/azarcgis BLM_AZ_SMA"; MAXAGE=540 ;;
-        co) SRC_KEY="blmsma_co"; VINTAGE="BLM CO SMA (daily upstream)"; REF="gis.blm.gov/coarcgis SMA layer 1"; MAXAGE=365 ;;
-        nm) SRC_KEY="blmsma_nm"; VINTAGE="BLM NM SMA"; REF="gis.blm.gov/nmarcgis Lands SMA"; MAXAGE=365 ;;
-        or) SRC_KEY="odf_or";    VINTAGE="Oregon Land Ownership (ODF)"; REF="ODF Ownership_Land_Management"; MAXAGE=365 ;;
-        id) SRC_KEY="idl_id";    VINTAGE="Idaho SMA (IDL)"; REF="gis1.idl.idaho.gov Idaho_Surface_Management_Agency"; MAXAGE=365 ;;
-      esac
-      STAGING="staging.sma_${ST}"; SCHEMA_COLS="geom"
-      PULL="./scripts/etl/pull_sma.sh ${ST}"; SQL="scripts/etl/confirm_open_${ST}.sql"
-      [ -f "$SQL" ] || { echo "✗ $SQL missing — run ./scripts/etl/gen_confirm_open.sh ${ST} first" >&2; exit 2; } ;;
-  *) echo "usage: $0 <ut|ca|nv|az|co|nm|or|id> [api_base_url]" >&2; exit 2 ;;
+
+# All per-state params (staging, schema_cols, loader, sql, vintage, upstream_ref, max_age_days)
+# come from the registry (was two nested case blocks here; §6.13). The stamp vintage is now the
+# single canonical registry vintage — same string the generator bakes into the polygons — so
+# provenance is consistent across data_sources and legality_polygons. Handles all 8 confirm_open
+# states (CA/UT bespoke SQL + the 6 SMA template states) uniformly.
+STU=$(echo "$ST" | tr '[:lower:]' '[:upper:]')
+KEY=$(reg_key_for_state_role "$STU" confirm_open) \
+  || { echo "usage: $0 <ut|ca|nv|az|co|nm|or|id> [api_base_url]" >&2; exit 2; }
+SRC_KEY="$KEY"
+STAGING=$(reg_confirm "$KEY" staging)
+SCHEMA_COLS=$(reg_schema_cols "$KEY")
+VINTAGE=$(reg_vintage "$KEY")
+REF=$(reg_upstream "$KEY")
+MAXAGE=$(reg_maxage "$KEY")
+LOADER=$(reg_loader "$KEY")
+case "$LOADER" in
+  *pull_sma.sh) PULL="./$LOADER $ST" ;;   # the shared SMA adapter takes the state arg
+  *)            PULL="./$LOADER" ;;        # CA/UT have dedicated single-source loaders
 esac
+if [ "$(reg_sql "$KEY")" = "generated" ]; then
+  SQL="scripts/etl/confirm_open_${ST}.sql"
+  [ -f "$SQL" ] || { echo "✗ $SQL missing — run ./scripts/etl/gen_confirm_open.sh ${ST} first" >&2; exit 2; }
+else
+  SQL="$(reg_sql "$KEY")"
+fi
 
 refresh_lock "confirm_open_${ST}"
 
