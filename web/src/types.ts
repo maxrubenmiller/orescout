@@ -83,3 +83,17 @@ export interface LatLng {
   lat: number;
   lng: number;
 }
+
+/** One gateable capability + whether the caller may use it (PROJECT_PLAN §6.14 / decision #45).
+ *  `entitled` is the paywall answer (all true today); `tier` labels paid features. Mirror the
+ *  C# FeatureEntitlement DTO. */
+export interface FeatureEntitlement {
+  id: string;
+  label: string;
+  tier: 'free' | 'paid';
+  entitled: boolean;
+}
+
+export interface Entitlements {
+  features: FeatureEntitlement[];
+}

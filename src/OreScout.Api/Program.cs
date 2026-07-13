@@ -21,6 +21,11 @@ builder.Services.AddSingleton(NpgsqlDataSource.Create(connString));
 
 builder.Services.AddScoped<IAssessmentService, AssessmentService>();
 
+// Paywall seam (§6.14 / decision #45): the single entitlement chokepoint. Stub grants everything
+// today — swap this registration for a plan-reading implementation to turn the paywall on.
+builder.Services.AddSingleton<OreScout.Api.Entitlements.IEntitlementService,
+    OreScout.Api.Entitlements.GrantAllEntitlementService>();
+
 // Shared in-memory cache shielding the external upstreams (§6.10): geocode 24h, MLRS claims 1h.
 builder.Services.AddMemoryCache();
 

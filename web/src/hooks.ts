@@ -68,6 +68,23 @@ export function useMeta() {
   return useQuery({ queryKey: ['meta'], queryFn: api.meta, staleTime: Infinity });
 }
 
+/** Paywall seam (§6.14 / decision #45): the caller's gateable-capability set. */
+export function useEntitlements() {
+  return useQuery({ queryKey: ['entitlements'], queryFn: api.entitlements, staleTime: Infinity });
+}
+
+/**
+ * Returns `(featureId) => entitled?`. FAIL-OPEN in the POC: while loading, or if the call fails,
+ * or for an unknown id, treat as entitled so the map is never wrongly locked — the seam grants
+ * everything today anyway. This gate is UX only; server-side checks (API endpoints + the future
+ * tile proxy, §6.14) are the real enforcement.
+ */
+export function useIsEntitled(): (featureId: string) => boolean {
+  const { data } = useEntitlements();
+  const entitled = new Map((data?.features ?? []).map((f) => [f.id, f.entitled]));
+  return (featureId: string) => entitled.get(featureId) ?? true;
+}
+
 /**
  * Type-ahead geocode suggestions for the search box. Mirrors the backend's 24h geocode
  * cache (§6.10); the ≤1 req/s upstream gate is enforced server-side, so the caller must

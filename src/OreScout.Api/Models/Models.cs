@@ -77,5 +77,12 @@ public record DataSourceInfo(
 public record HealthResponse(string Status, HealthChecks Checks);
 public record HealthChecks(string Postgis, string Tileserv);
 
+// ---- Entitlements (§6.14 / decision #45) -----------------------------------
+// One catalogued capability + whether the caller may use it. `Entitled` is the paywall answer
+// (all true today); `Tier` ("free"|"paid") lets the UI label paid features. The frontend renders
+// its layer list + lock affordance from this list — see web/src/hooks.ts (useEntitlements).
+public record FeatureEntitlement(string Id, string Label, string Tier, bool Entitled);
+public record EntitlementsResponse(List<FeatureEntitlement> Features);
+
 public record ApiError(ApiErrorBody Error);
 public record ApiErrorBody(string Code, string Message);

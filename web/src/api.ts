@@ -1,7 +1,7 @@
 // Single typed API client (PROJECT_PLAN.md §6.12). All requests go through here:
 // injects base URL + X-Api-Key, centralizes error handling against { error: { code, message } }.
 import type {
-  Assessment, CreatePinRequest, GeocodeResult, Meta, Pin, PinStatus,
+  Assessment, CreatePinRequest, Entitlements, GeocodeResult, Meta, Pin, PinStatus,
 } from './types';
 
 // API runs on 5167 (not 5000 — macOS AirPlay Receiver squats 5000). See PROJECT_PLAN.md §6.8 / #34.
@@ -64,6 +64,9 @@ export const api = {
     request<{ results: GeocodeResult[] }>(`/geocode?q=${encodeURIComponent(q)}`),
 
   meta: () => request<Meta>('/meta'),
+
+  // Paywall seam (§6.14): the caller's gateable-capability set. Grants everything today.
+  entitlements: () => request<Entitlements>('/entitlements'),
 };
 
 export const tileBaseUrl = import.meta.env.VITE_TILE_BASE_URL ?? 'http://localhost:7800';

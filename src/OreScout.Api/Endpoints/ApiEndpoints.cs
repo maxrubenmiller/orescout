@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using OreScout.Api.Data;
+using OreScout.Api.Entitlements;
 using OreScout.Api.Models;
 using OreScout.Api.Services;
 
@@ -21,7 +22,24 @@ public static class ApiEndpoints
         MapGeocode(v1);
         MapAssessment(v1);
         MapPins(v1);
+        MapEntitlements(v1);
     }
+
+    // ---- Entitlements (§6.14 / decision #45) -------------------------------
+    // The caller's gateable-capability set. Grants everything today (GrantAllEntitlementService);
+    // the frontend renders its layer list + lock affordance from this, so pay-gating a feature
+    // later is a server change, not a UI refactor.
+    private static void MapEntitlements(RouteGroupBuilder g) => g.MapGet("/entitlements",
+        (HttpContext ctx, IEntitlementService ent) =>
+        {
+            var principal = EntitlementPrincipal.FromHttpContext(ctx);
+            var entitled = ent.EntitledFeatures(principal).ToHashSet();
+            var features = FeatureCatalog.All
+                .Select(f => new FeatureEntitlement(
+                    f.Id, f.Label, f.Tier.ToString().ToLowerInvariant(), entitled.Contains(f.Id)))
+                .ToList();
+            return Results.Ok(new EntitlementsResponse(features));
+        });
 
     // ---- Health (exempt from API key — §6.2) -------------------------------
     private static void MapHealth(RouteGroupBuilder g) => g.MapGet("/health",
@@ -195,9 +213,15 @@ public static class ApiEndpoints
             return Results.NoContent();
         });
 
-        g.MapGet("/pins/{id:guid}/export", async (Guid id, string? format,
-            OreScoutDbContext db, CancellationToken ct) =>
+        g.MapGet("/pins/{id:guid}/export", async (Guid id, string? format, HttpContext ctx,
+            IEntitlementService ent, OreScoutDbContext db, CancellationToken ct) =>
         {
+            // Paywall seam (§6.14): GPX export is a catalogued capability. No-op today
+            // (GrantAllEntitlementService grants it) — present so gating export later is a
+            // plan change, not an endpoint change. 402 is the wire signal to the upsell UI.
+            if (!ent.IsEntitled(EntitlementPrincipal.FromHttpContext(ctx), FeatureCatalog.ExportGpx))
+                return Err(402, "payment_required", "GPX export requires an upgraded plan.");
+
             var pin = await db.Pins.FindAsync([id], ct);
             if (pin is null) return Err(404, "not_found", "Pin not found.");
             format ??= "gpx";

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useUI, type Basemap } from '../store';
-import { usePins, useDeletePin, useMeta } from '../hooks';
+import { usePins, useDeletePin, useMeta, useIsEntitled } from '../hooks';
+import { FEATURES } from '../features';
 import { api } from '../api';
 import type { Pin } from '../types';
 
@@ -26,6 +27,9 @@ function Layers() {
   const toggle = useUI((s) => s.toggleLayer);
   const basemap = useUI((s) => s.basemap);
   const setBasemap = useUI((s) => s.setBasemap);
+  // Paywall seam (§6.14): data overlays are gateable capabilities. Fail-open today (everything
+  // granted) — a locked layer disables its toggle and shows an upgrade chip, no behavior change now.
+  const isEntitled = useIsEntitled();
 
   return (
     <div className="layers">
@@ -38,20 +42,24 @@ function Layers() {
       </section>
       <section>
         <h4>Data layers</h4>
-        <label className="chk">
-          <input type="checkbox" checked={layers.claims} onChange={() => toggle('claims')} /> <span className="sw sw-claims" /> Active mining claims
+        <label className={isEntitled(FEATURES.layerClaims) ? 'chk' : 'chk locked'}>
+          <input type="checkbox" checked={layers.claims} disabled={!isEntitled(FEATURES.layerClaims)} onChange={() => toggle('claims')} /> <span className="sw sw-claims" /> Active mining claims
+          {!isEntitled(FEATURES.layerClaims) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint">Orange = recorded BLM claims (zoom to ~9+ to see them). Also listed per-location when you click the map.</p>
-        <label className="chk">
-          <input type="checkbox" checked={layers.waterways} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways (CA)
+        <label className={isEntitled(FEATURES.layerWaterways) ? 'chk' : 'chk locked'}>
+          <input type="checkbox" checked={layers.waterways} disabled={!isEntitled(FEATURES.layerWaterways)} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways (CA)
+          {!isEntitled(FEATURES.layerWaterways) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint">Blue = streams &amp; rivers (zoom to ~10+). Reference only — does not affect the legality verdict.</p>
-        <label className="chk">
-          <input type="checkbox" checked={layers.mrds} onChange={() => toggle('mrds')} /> <span className="sw sw-gold" /> Gold occurrences (MRDS)
+        <label className={isEntitled(FEATURES.layerMrds) ? 'chk' : 'chk locked'}>
+          <input type="checkbox" checked={layers.mrds} disabled={!isEntitled(FEATURES.layerMrds)} onChange={() => toggle('mrds')} /> <span className="sw sw-gold" /> Gold occurrences (MRDS)
+          {!isEntitled(FEATURES.layerMrds) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint">Gold dots = historic gold sites (USGS MRDS; brighter = past producers). Zoom to ~8+ and click a dot for details. A pre-2011 record — historical, not current — and reference only: it does not affect the legality verdict.</p>
-        <label className="chk">
-          <input type="checkbox" checked={layers.prospectivity} onChange={() => toggle('prospectivity')} /> <span className="sw sw-prospect" /> Prospecting potential (gold)
+        <label className={isEntitled(FEATURES.layerProspectivity) ? 'chk' : 'chk locked'}>
+          <input type="checkbox" checked={layers.prospectivity} disabled={!isEntitled(FEATURES.layerProspectivity)} onChange={() => toggle('prospectivity')} /> <span className="sw sw-prospect" /> Prospecting potential (gold)
+          {!isEntitled(FEATURES.layerProspectivity) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint prospect-legend">
           ★ High potential — producer-anchored<br />
