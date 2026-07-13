@@ -70,6 +70,34 @@ try {
     const href = await page.locator('.mrds-pop .mrds-link').getAttribute('href').catch(() => null);
     check('popup links to the full USGS record', /mrdata\.usgs\.gov|show-mrds/.test(href || ''), href || 'no link');
   }
+
+  // ── Related-table ENRICHMENT (build_mrds.sql) — pin a stable famous site and assert the popup
+  // shows a full commodity NAME (not the raw code) and an ore/gangue minerals line. Pinned:
+  // dep_id 10086589 "Empire" (Sierra Co., CA; past producer) — Gold · ore Galena/Gold/Pyrite,
+  // gangue Quartz, a.k.a. Gold Valley. Fly straight to it and click it by dep_id (no pixel-hunt).
+  const PINNED = { dep_id: '10086589', lng: -120.70492, lat: 39.64905 };
+  await page.evaluate((s) => window.__map.jumpTo({ center: [s.lng, s.lat], zoom: 13 }), PINNED);
+  await page.waitForTimeout(3500);
+  const pin = await page.evaluate((s) => {
+    const fs = window.__map.queryRenderedFeatures({ layers: ['mrds'] });
+    const f = fs.find((x) => String(x.properties.dep_id) === s.dep_id);
+    if (!f) return null;
+    const c = window.__map.project(f.geometry.coordinates);
+    return { x: Math.round(c.x), y: Math.round(c.y), maj: f.properties.commodities_major,
+             ore: f.properties.ore_minerals, gangue: f.properties.gangue_minerals };
+  }, PINNED);
+  check('pinned enriched site (Empire, dep_id 10086589) present in tiles', !!pin, JSON.stringify(pin));
+  if (pin) {
+    check('pinned site carries a full commodity name in the tile', /Gold/.test(pin.maj || ''), `major=${pin.maj}`);
+    const canvas = page.locator('.maplibregl-canvas');
+    await canvas.click({ position: { x: pin.x, y: pin.y } });
+    await page.waitForTimeout(800);
+    check('enriched popup opens for the pinned site', (await page.locator('.mrds-pop').count()) > 0);
+    const majTxt = await page.locator('.mrds-pop .mrds-comm-major').textContent().catch(() => '');
+    check('popup shows the full commodity name (not the raw code)', /Gold/.test(majTxt || ''), majTxt || 'no major line');
+    check('popup shows an ore/gangue minerals line', (await page.locator('.mrds-pop .mrds-min').count()) > 0,
+      await page.locator('.mrds-pop .mrds-min').textContent().catch(() => ''));
+  }
 } finally {
   await browser.close();
 }

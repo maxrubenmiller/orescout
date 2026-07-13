@@ -165,7 +165,13 @@ a { color: #2563eb; }
 .mrds-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
 .mrds-pop strong { display: block; font-size: 13px; margin-bottom: 2px; }
 .mrds-pop .mrds-stat { color: #92400e; font-weight: 600; }
-.mrds-pop .mrds-comm { color: #4b5563; margin-top: 2px; }
+.mrds-pop .mrds-comm { color: #4b5563; margin-top: 3px; }
+.mrds-pop .mrds-comm-major { color: #92400e; font-weight: 600; }
+.mrds-pop .mrds-comm-minor { color: #6b7280; }
+.mrds-pop .mrds-min { color: #4b5563; margin-top: 2px; font-size: 11.5px; }
+.mrds-pop .mrds-min-ore { color: #374151; }
+.mrds-pop .mrds-min-gangue { color: #6b7280; }
+.mrds-pop .mrds-alt { color: #6b7280; margin-top: 2px; font-size: 11.5px; font-style: italic; }
 .mrds-pop .mrds-link { display: inline-block; margin-top: 6px; color: #2563eb; font-size: 12px; text-decoration: none; }
 .mrds-pop .mrds-link:hover { text-decoration: underline; }
 .mrds-pop .mrds-note { color: #9ca3af; font-size: 10px; margin-top: 5px; font-style: italic; }

@@ -110,7 +110,7 @@ export default function MapView() {
       layerVisible('prospectivity-high-producer') ? nearestIn(pt, PROSPECTIVITY_LAYER_IDS) : null;
     // closeOnClick:false — opening a popup with closeOnClick inside a click handler self-closes on
     // the same event in maplibre; we manage dismissal ourselves.
-    const mrdsPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '260px' });
+    const mrdsPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' });
     const prospectPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' });
 
     // Prospecting-potential popup (contract: tier headline, anomaly line, pathfinders, the
@@ -149,10 +149,28 @@ export default function MapView() {
         const p = gold.properties ?? {};
         const grade = esc(p.grade);
         const url = esc(p.url); // escaped for the href="" attribute (& → &amp;, decoded on navigate)
+        // Enrichment from the MRDS related tables (build_mrds.sql). Any may be null → fall back to
+        // the raw CODE_LIST for commodities; omit the minerals/alt-name lines when empty.
+        const majors = esc(p.commodities_major);
+        const minors = esc(p.commodities_minor);
+        const ore = esc(p.ore_minerals);
+        const gangue = esc(p.gangue_minerals);
+        const altNames = esc(p.alt_names);
+        const commLine = majors
+          ? `<div class="mrds-comm"><span class="mrds-comm-major">${majors}</span>` +
+            (minors ? ` <span class="mrds-comm-minor">· ${minors}</span>` : '') + `</div>`
+          : `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>`;
+        const minerLine = ore || gangue
+          ? `<div class="mrds-min">` +
+            (ore ? `<span class="mrds-min-ore">Ore: ${ore}</span>` : '') +
+            (ore && gangue ? ' · ' : '') +
+            (gangue ? `<span class="mrds-min-gangue">Gangue: ${gangue}</span>` : '') + `</div>`
+          : '';
+        const altLine = altNames ? `<div class="mrds-alt">Also known as: ${altNames}</div>` : '';
         mrdsPopup.setLngLat(c).setHTML(
           `<div class="mrds-pop"><strong>${esc(p.site_name) || 'Unnamed site'}</strong>` +
           `<div class="mrds-stat">${esc(p.dev_stat) || '—'}${grade ? ` · grade ${grade}` : ''}</div>` +
-          `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>` +
+          commLine + minerLine + altLine +
           (url ? `<a class="mrds-link" href="${url}" target="_blank" rel="noopener noreferrer">Full USGS record →</a>` : '') +
           `<div class="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div></div>`,
         ).addTo(map);
