@@ -134,10 +134,12 @@ function Result({ a, lat, lng, showSaveForm }: { a: Assessment; lat: number; lng
           cached point — without the key, a save at point B leaks "✓ Saved" onto point A. */}
       {showSaveForm && <SaveForm key={`${lat},${lng}`} lat={lat} lng={lng} />}
 
-      <details className="cannot">
-        <summary>What this doesn’t model</summary>
-        <ul>{a.cannotModel.map((c, i) => <li key={i}>{c}</li>)}</ul>
-      </details>
+      {a.cannotModel.length > 0 && (
+        <p className="cannot-model">
+          <span className="cannot-label">Not modeled — verify separately:</span>{' '}
+          {a.cannotModel.join(', ')}
+        </p>
+      )}
       {a.dataVintage && <p className="vintage">Data: {a.dataVintage}</p>}
       <p className="disclaimer">{a.disclaimer}</p>
     </>

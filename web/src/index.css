@@ -114,9 +114,12 @@ a { color: #2563eb; }
 .facts dd { margin: 0; }
 .claims { margin: 10px 0; }
 .claims-head { font-weight: 600; margin-bottom: 4px; }
-.claims ul, .warnings, .datagaps, .cannot ul { margin: 6px 0; padding-left: 18px; font-size: 13px; }
+.claims ul, .warnings, .datagaps { margin: 6px 0; padding-left: 18px; font-size: 13px; }
 .warnings { color: #92400e; }
 .datagaps { color: var(--muted); }
+/* IMP-16a: blind spots visible by default — compact, muted-but-legible (mirrors .datagaps). */
+.cannot-model { font-size: 12px; line-height: 1.45; color: var(--muted); margin: 10px 0 0; }
+.cannot-label { font-weight: 600; color: #475569; }
 .disclaimer { font-size: 11px; color: var(--muted); margin-top: 12px; }
 .vintage { font-size: 11px; color: var(--muted); }
 .muted { color: var(--muted); }
