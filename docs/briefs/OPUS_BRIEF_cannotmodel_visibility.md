@@ -27,6 +27,7 @@ model (RMP local rules, Monument proclamations, ESA closures, riparian setbacks)
 - Desktop + mobile screenshots of a verdict panel showing the visible not-modeled block.
 
 ## Coordination
-Fable is working ETL/data threads concurrently — you touch only `AssessmentPanel.tsx` +
-`index.css`. The dev stack (API :5167, key `dev-local-key-change-me`, vite :5173) is running and
-hot-reloads. If you create test pins, delete them.
+(Updated 2026-07-12: no concurrent work in flight.) You touch only `AssessmentPanel.tsx` +
+`index.css`. Note `MapView.tsx`/`style.ts` changed on 2026-07-12 (supported-states now come from
+`/meta`) — not your files, don't be surprised by the diff context. The dev stack (API :5167, key
+`dev-local-key-change-me`, vite :5173) hot-reloads. If you create test pins, delete them.

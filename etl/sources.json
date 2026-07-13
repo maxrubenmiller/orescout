@@ -1,0 +1,347 @@
+{
+  "$schema": "./sources.schema.md",
+  "_comment": [
+    "OreScout per-state source registry (PROJECT_PLAN.md §6.13). SINGLE SOURCE OF TRUTH for",
+    "which data sources exist per state and every per-state parameter. The 🔒 invariant:",
+    "adding a state = ONE entry here (+ a classifier mapping only for a genuinely new attribute",
+    "vocabulary). The engine, tiles, and UI never change. See etl/sources.schema.md for the field",
+    "spec and docs/ADD_A_STATE.md for the runbook. Read by scripts/etl/registry_lib.sh (jq).",
+    "Values transcribed verbatim from the scripts they replaced; scripts/test/registry_roundtrip.sh",
+    "proves the transcription is faithful."
+  ],
+  "sources": [
+    {
+      "key": "padus",
+      "role": "base",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "download",
+        "url": "https://www.sciencebase.gov/catalog/item/6759abcfd34edfeb8710a004",
+        "layer": "PADUS4_1Comb_State_XX (Combined)",
+        "loader": "scripts/etl/load_padus_gdb.sh",
+        "fields": ["Mang_Name", "Own_Type", "Des_Tp", "GAP_Sts", "Unit_Nm", "State_Nm"]
+      },
+      "classify": { "fn": "orescout_base_verdict", "args": ["des_tp", "own_type", "gap_sts", "mang_name"] },
+      "license": "public domain (USGS)",
+      "attribution": "PAD-US 4.1 (USGS)",
+      "vintage": "PAD-US 4.1 (2024, ScienceBase State GDBs)",
+      "upstream_ref": "https://www.sciencebase.gov/catalog/item/6759abcfd34edfeb8710a004",
+      "max_age_days": 900
+    },
+
+    {
+      "key": "calfire_ca",
+      "role": "confirm_open",
+      "states": ["CA"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://jUJYIo9tSA7EHvfZ.svcs1.arcgis.com/jUJYIo9tSA7EHvfZ/arcgis/rest/services/Public_Land_Ownership_view/FeatureServer/0/query",
+        "fields": ["Own_Level", "Own_Agency", "Own_Group"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_calfire.sh",
+      "sql": "scripts/etl/confirm_open_ca.sql",
+      "confirm": {
+        "staging": "staging.calfire_ownership",
+        "public_predicate": "own_level IS NOT NULL",
+        "buffer_m": 100,
+        "crs": 3310,
+        "sliver_min_m2": 2000,
+        "carve_private": null,
+        "schema_cols": ["own_level", "geom"]
+      },
+      "license": "CC-BY (CAL FIRE/FRAP)",
+      "attribution": "CA Land Ownership © CAL FIRE/FRAP",
+      "vintage": "CAL FIRE land ownership 2024 (CC-BY)",
+      "upstream_ref": "CAL FIRE Public_Land_Ownership_view FeatureServer",
+      "max_age_days": 420
+    },
+
+    {
+      "key": "ugrc_ut",
+      "role": "confirm_open",
+      "states": ["UT"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis.trustlands.utah.gov/server/rest/services/Ownership/UT_SITLA_Ownership_LandOwnership_WM/FeatureServer/0/query",
+        "fields": ["owner", "agency", "admin", "desig"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_ugrc.sh",
+      "sql": "scripts/etl/confirm_open_ut.sql",
+      "confirm": {
+        "staging": "staging.ugrc_ownership",
+        "public_predicate": "owner IN ('Federal','State')",
+        "buffer_m": 100,
+        "crs": 26912,
+        "sliver_min_m2": 500,
+        "carve_private": "owner NOT IN ('Federal','State')",
+        "schema_cols": ["owner", "geom"]
+      },
+      "license": "CC-BY 4.0 (UGRC/SITLA)",
+      "attribution": "Land ownership © UGRC/SITLA",
+      "vintage": "Utah SGID/SITLA land ownership (weekly upstream revisions; CC-BY 4.0)",
+      "upstream_ref": "https://gis.trustlands.utah.gov/server/rest/services/Ownership/UT_SITLA_Ownership_LandOwnership_WM/FeatureServer/0",
+      "max_age_days": 180
+    },
+
+    {
+      "key": "blmsma_nv",
+      "role": "confirm_open",
+      "states": ["NV"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://services1.arcgis.com/KbxwQRRfWyEYLgp4/arcgis/rest/services/Surface_Management_Agency_SMA/FeatureServer/0/query",
+        "fields": ["ABBR", "NAME"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_nv",
+        "public_predicate": "upper(abbr) IN ('BLM','FS','NPS','FWS','BR','NVST','CNTY','PK','DOD','DOE')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public domain (BLM)",
+      "attribution": "BLM Nevada Surface Management Agency",
+      "vintage": "BLM NV SMA (hosted snapshot 2023-04)",
+      "upstream_ref": "BLM-EGIS hosted Surface_Management_Agency_SMA",
+      "max_age_days": 540
+    },
+
+    {
+      "key": "blmsma_az",
+      "role": "confirm_open",
+      "states": ["AZ"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis.blm.gov/azarcgis/rest/services/lands/BLM_AZ_SMA/FeatureServer/0/query",
+        "fields": ["CATEGORY"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_az",
+        "public_predicate": "category IN ('BLM','USFS','NPS','USFWS','BR','Bankhead-Jones Act','State','State Wildlife Area','Local or State Parks','County','Military')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public domain (BLM)",
+      "attribution": "BLM AZ SMA (ALRIS lineage)",
+      "vintage": "BLM AZ SMA (hub 2024-01)",
+      "upstream_ref": "gis.blm.gov/azarcgis BLM_AZ_SMA",
+      "max_age_days": 540
+    },
+
+    {
+      "key": "blmsma_co",
+      "role": "confirm_open",
+      "states": ["CO"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis.blm.gov/coarcgis/rest/services/lands/BLM_Colorado_Surface_Management_Agency/FeatureServer/1/query",
+        "fields": ["adm_code", "adm_manage"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_co",
+        "public_predicate": "upper(adm_code) IN ('BLM','BLM_LU','USFS','USFS_LU','USFS_NG','NPS','USFW','BOR','STA','LOCAL','DOD')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public domain (BLM)",
+      "attribution": "BLM Colorado SMA",
+      "vintage": "BLM CO SMA (updated daily; pulled 2026-07)",
+      "upstream_ref": "gis.blm.gov/coarcgis SMA layer 1",
+      "max_age_days": 365
+    },
+
+    {
+      "key": "blmsma_nm",
+      "role": "confirm_open",
+      "states": ["NM"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis.blm.gov/nmarcgis/rest/services/Lands/BLM_NM_Lands_Surface_Management_Agency/FeatureServer/0/query",
+        "fields": ["own"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_nm",
+        "public_predicate": "upper(own) IN ('BLM','FS','NPS','FWS','BOR','S','SGF','SP','OFA','DOD','DOE','DOA')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public domain (BLM)",
+      "attribution": "BLM New Mexico SMA",
+      "vintage": "BLM NM SMA (edited 2026-06)",
+      "upstream_ref": "gis.blm.gov/nmarcgis Lands SMA",
+      "max_age_days": 365
+    },
+
+    {
+      "key": "odf_or",
+      "role": "confirm_open",
+      "states": ["OR"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://services.arcgis.com/uUvqNMGPm7axC2dD/arcgis/rest/services/Ownership_Land_Management/FeatureServer/0/query",
+        "fields": ["LandManager"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_or",
+        "public_predicate": "landmanager IN ('BLM','USFS','FWS','NPS','USBR','USACE','ODF','ODFW','OPRD','ODSL','ODFODSL','ODOT','OR','OSU','OUS','LG','BPA','DOE','DOD','GSA','USDA','FAA')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public data (State of Oregon / ODF)",
+      "attribution": "Oregon Land Ownership © ODF",
+      "vintage": "ODF ownership framework (modified 2026-06)",
+      "upstream_ref": "ODF Ownership_Land_Management",
+      "max_age_days": 365
+    },
+
+    {
+      "key": "idl_id",
+      "role": "confirm_open",
+      "states": ["ID"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis1.idl.idaho.gov/arcgis/rest/services/Portal/Idaho_Surface_Management_Agency/FeatureServer/0/query",
+        "fields": ["MGMT_AGNCY", "AGNCY_NAME"],
+        "page": 2000
+      },
+      "loader": "scripts/etl/pull_sma.sh",
+      "sql": "generated",
+      "confirm": {
+        "staging": "staging.sma_id",
+        "public_predicate": "upper(mgmt_agncy) IN ('BLM','USFS','NPS','NWR','BOR','COE','LU_DOI','LU_USDA','STATE','STATEFG','STATEPR','STATEOTH','MIL')",
+        "buffer_m": 100,
+        "crs": 5070,
+        "sliver_min_m2": 1000,
+        "carve_private": null,
+        "schema_cols": ["geom"]
+      },
+      "license": "public data (State of Idaho / IDL)",
+      "attribution": "Idaho SMA © Idaho Dept of Lands",
+      "vintage": "IDL SMA (republished 2026-07-07)",
+      "upstream_ref": "gis1.idl.idaho.gov Idaho_Surface_Management_Agency",
+      "max_age_days": 365
+    },
+
+    {
+      "key": "mlrs_claims",
+      "role": "claims",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://gis.blm.gov/nlsdb/rest/services/HUB/BLM_Natl_MLRS_Mining_Claims_Not_Closed/MapServer/0",
+        "loader": "scripts/etl/refresh_claims.sh",
+        "page": 2000
+      },
+      "refresh": "nightly",
+      "license": "public domain (BLM)",
+      "attribution": "Mining claims (BLM MLRS)",
+      "vintage": "BLM MLRS not-closed claims",
+      "upstream_ref": "https://gis.blm.gov/nlsdb/rest/services/HUB/BLM_Natl_MLRS_Mining_Claims_Not_Closed/MapServer/0",
+      "max_age_days": 2
+    },
+
+    {
+      "key": "mrds",
+      "role": "reference",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://services.arcgis.com/v01gqwM5QqNysAAi/ArcGIS/rest/services/Mineral_Resources_Data_System_MRDS_Compact_Version/FeatureServer/0",
+        "where": "CODE_LIST LIKE '%AU%'",
+        "fields": ["SITE_NAME", "DEV_STAT", "CODE_LIST", "URL", "Grade", "DEP_ID"],
+        "loader": "scripts/etl/pull_mrds.sh",
+        "page": 2000
+      },
+      "serve": { "table": "tiles.mrds", "geom": "Point" },
+      "license": "public domain (USGS)",
+      "attribution": "USGS MRDS",
+      "vintage": "USGS MRDS (static — USGS stopped updates 2011)",
+      "upstream_ref": "USGS MRDS Compact FeatureServer",
+      "max_age_days": null
+    },
+
+    {
+      "key": "ca_streams",
+      "role": "reference",
+      "states": ["CA"],
+      "access": {
+        "type": "arcgis_rest",
+        "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/CA_Streams_wm/FeatureServer/0/query",
+        "fields": ["Name", "Down_Name", "Down_ID", "GNIS_ID", "NHD_Permanent_Identifier", "Hydrologic_Subregion", "Hydrologic_Subbasin"],
+        "loader": "scripts/etl/pull_ca_streams.sh",
+        "page": 2000
+      },
+      "serve": { "table": "tiles.waterways", "geom": "MultiLineString" },
+      "license": "CC-BY (CDFW)",
+      "attribution": "California Streams © CDFW",
+      "vintage": "California Streams © CDFW (NHD-derived, static ~2020)",
+      "upstream_ref": "CDFW CA_Streams_wm FeatureServer",
+      "max_age_days": null
+    },
+
+    {
+      "key": "ngdb_prospectivity",
+      "role": "reference",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "download",
+        "url": "https://doi.org/10.5066/P1FXE9GK",
+        "loader": "scripts/etl/pull_ngdb.sh"
+      },
+      "serve": { "table": "tiles.prospectivity", "geom": "Point" },
+      "license": "public domain (USGS)",
+      "attribution": "USGS NGDB geochemistry + historic MRDS",
+      "vintage": "USGS NGDB geochemistry (samples 1962–2023, 2026 release) + historic MRDS records",
+      "upstream_ref": "https://doi.org/10.5066/P1FXE9GK",
+      "max_age_days": 540
+    },
+
+    {
+      "key": "wbd",
+      "role": "reference",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "download",
+        "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/WBD/National/GDB/WBD_National_GDB.zip",
+        "loader": "scripts/etl/pull_wbd.sh"
+      },
+      "serve": { "table": "tiles.waterways", "geom": "MultiLineString" },
+      "license": "public domain (USGS)",
+      "attribution": "USGS Watershed Boundary Dataset",
+      "vintage": "WBD national snapshot",
+      "upstream_ref": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/WBD/National/GDB/WBD_National_GDB.zip",
+      "max_age_days": 540
+    }
+  ]
+}

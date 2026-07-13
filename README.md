@@ -73,6 +73,23 @@ docker compose up -d postgres
 > `rebuild_legality.sh` runs the full sequence, asserts each confirm-open step inserted rows, and
 > gates on the Tier-A + Tier-B fixtures (which include confirm-open golden points).
 
+### Per-state source registry (§6.13) — adding a state
+
+Every per-state parameter lives in **[`etl/sources.json`](etl/sources.json)** (the single source of
+truth; field spec in [`etl/sources.schema.md`](etl/sources.schema.md), read via
+`scripts/etl/registry_lib.sh`). The 🔒 invariant: **adding a state = one registry entry** (+ a small
+classifier mapping only for a new attribute vocabulary) — the engine, tiles, and frontend never change.
+
+```bash
+./scripts/etl/run.sh --state NV          # dry-run: print a state's full role-ordered pipeline
+./scripts/etl/run.sh provenance          # emit the registry-derived data_sources UPSERT
+./scripts/test/registry_roundtrip.sh     # prove the registry matches what the scripts expect
+./scripts/test/supported_states_sync.sh  # assert etl/sources.json ⇄ appsettings.SupportedStates
+```
+
+**Full runbook (mechanical spine + judgment core + verification gates):
+[`docs/ADD_A_STATE.md`](docs/ADD_A_STATE.md).**
+
 ## Quick start
 
 Prereqs: Docker, .NET 10 SDK. (`dotnet-ef` via `dotnet tool install --global dotnet-ef`; on

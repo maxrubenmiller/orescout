@@ -30,6 +30,10 @@ no silent gaps (repo invariant: stated bounds, kept/dropped counts).
 1. `scripts/etl/pull_mrds_details.sh`: paginated pull of the three related tables (gold-relevant
    records only — filter by the Record_IDs present in `staging.mrds_gold` / `tiles.mrds`) →
    `staging.mrds_commodity` etc. Follow `pull_mrds.sh` conventions (OID paging, UA, fail-fast).
+   **Registry (post-2026-07-12 §6.13 refactor):** `etl/sources.json` is now the single source of
+   truth for ETL parameters. Add the new script to the existing `mrds` entry (e.g. a second loader
+   or a `details` note per `etl/sources.schema.md` — read the schema doc and follow it), and keep
+   `./scripts/test/registry_roundtrip.sh` green.
 2. Extend `scripts/etl/build_mrds.sql`: aggregate the details into **additive columns** on
    `tiles.mrds` (e.g. `commodities_major text`, `commodities_minor text`, `ore_minerals text`,
    `gangue_minerals text`, `alt_names text` — compact comma-joined strings; tiles carry every
@@ -57,9 +61,12 @@ no silent gaps (repo invariant: stated bounds, kept/dropped counts).
 - tsc/eslint clean.
 
 ## Coordination & gotchas
-Fable is concurrently building confirm-open expansion + parcel validation: do NOT touch
-`scripts/etl/pull_ugrc.sh`, `pull_calfire.sh`, `confirm_open_*.sql`, `build_prospectivity.*`,
-`db/fixtures/{verdicts,prospectivity}.json`, or anything under `staging.parcels*` /
-`staging.*_ownership`. Machine gotchas: `~/.curlrc` adds retries (`curl -q` for evidence);
+(Updated 2026-07-12: Fable's Track 2 is merged; no concurrent work. The don't-touch list stands
+as a scope guard.) Do NOT touch `scripts/etl/pull_ugrc.sh`, `pull_calfire.sh`,
+`confirm_open_*.sql`, `build_prospectivity.*`, `db/fixtures/{verdicts,prospectivity}.json`,
+`db/fixtures/validation-parcels.json`, or anything under `staging.parcels*` /
+`staging.sma_*`. Also green-required now: `./scripts/test/registry_roundtrip.sh` and
+`./scripts/test/check_validation_fixtures.sh` (if you rebuild legality — you shouldn't need to).
+Machine gotchas: `~/.curlrc` adds retries (`curl -q` for evidence);
 `COMPOSE_PROJECT_NAME=miningapp` needed only outside the main checkout; ScienceBase/ArcGIS
 services flake — retry, don't conclude.

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useUI } from '../store';
-import { usePins, useActiveAssessment } from '../hooks';
+import { usePins, useActiveAssessment, useMeta } from '../hooks';
 import {
-  basemapTiles, buildStyle, emptyFC, makeHatch, pointFC,
+  basemapTiles, buildStyle, emptyFC, makeHatch, outOfScopeMaskFilter, pointFC,
   PROSPECTIVITY_IMAGES, PROSPECTIVITY_LAYER_IDS,
 } from '../map/style';
 // Per-commodity strings (pathfinder "why" blurb, chemistry-earned line, upstream note, vintage
@@ -33,6 +33,11 @@ export default function MapView() {
   const selectedPoint = useUI((s) => s.selectedPoint);
   const viewedPinId = useUI((s) => s.viewedPinId);
   const { data: pins } = usePins();
+  // Authoritative supported-state list for the out-of-scope grey mask (§6.13: the list lives in
+  // the API's /meta, never hardcoded in the frontend). The map is created once, so we (re)apply the
+  // mask filter whenever /meta resolves or changes.
+  const { data: meta } = useMeta();
+  const supportedStates = meta?.supportedStates;
   // Same resolver the panel uses (React Query dedupes by key) — drives the pin's verdict
   // color. For a viewed saved pin this is the SNAPSHOT verdict, not a fresh live one.
   const active = useActiveAssessment(selectedPoint, viewedPinId);
@@ -213,6 +218,15 @@ export default function MapView() {
     const src = map.getSource('basemap') as maplibregl.RasterTileSource | undefined;
     if (src) src.setTiles(basemapTiles(basemap).tiles);
   }, [basemap]);
+
+  // Out-of-scope grey mask: the map is created before /meta resolves (mask greys nothing until
+  // then), so (re)apply the filter from the authoritative supported-state list once it arrives.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => map.setFilter('out-of-scope-mask', outOfScopeMaskFilter(supportedStates ?? []));
+    if (loadedRef.current) apply(); else map.once('load', apply);
+  }, [supportedStates]);
 
   // Saved pins -> geojson source.
   useEffect(() => {

@@ -33,5 +33,6 @@ reconciliations and drift from the shipped classifier:
 
 ## Machine gotchas
 `~/.curlrc` adds retries (use `curl -q` if you probe anything); docker compose from the main
-checkout works as-is. See also the coordination note in `TODO.md` — Fable is working ETL threads
-concurrently; you touch only PROJECT_PLAN.md, so no collision.
+checkout works as-is. (Updated 2026-07-12: no concurrent work in flight.) You touch only
+PROJECT_PLAN.md §6.4/§6.6.1/§6.4.2 — note §6.13's status block was rewritten on 2026-07-12 for
+the sources-registry refactor; it is current, leave it alone.

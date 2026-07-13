@@ -21,10 +21,11 @@
 # Usage:  ./scripts/etl/load_padus_gdb.sh
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+source scripts/etl/registry_lib.sh   # state list from etl/sources.json (§6.13)
 DIR=data/padus_gdb
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
 FIELDS="Own_Type,Own_Name,Mang_Name,Mang_Type,Des_Tp,Unit_Nm,State_Nm,GAP_Sts,Pub_Access"
-STATES=(NV CA AZ CO UT NM OR ID)
+STATES=($(reg_states_space))   # from etl/sources.json (§6.13)
 
 docker compose exec -T postgres psql -tAq -U postgres -d miningapp -c "DROP TABLE IF EXISTS staging.padus_staging;" >/dev/null
 

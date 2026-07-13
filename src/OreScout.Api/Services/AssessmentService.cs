@@ -16,9 +16,14 @@ public interface IAssessmentService
 /// Stages 1 and 2 are data/integration dependent: until the ETL builds legality_polygons and the
 /// live MLRS client lands, those resolve to honest `dataGaps` rather than fabricated verdicts.
 /// </summary>
-public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAssessmentService
+public class AssessmentService(NpgsqlDataSource db, IClaimsService claims, IConfiguration cfg) : IAssessmentService
 {
     private static int Rank(string v) => v switch { "RED" => 3, "YELLOW" => 2, "GREEN" => 1, _ => 0 };
+
+    // Built from the same SupportedStates config /meta and the Geocoder read (§6.13: adding a state
+    // is a config change, never an engine edit). Was a hardcoded "(NV, CA, …)" string literal.
+    private readonly string _outOfRegionReason =
+        $"Outside the supported region ({string.Join(", ", cfg.GetSection("SupportedStates").Get<string[]>() ?? [])}).";
 
     public async Task<AssessmentResponse> AssessAsync(double lat, double lng, CancellationToken ct)
     {
@@ -32,8 +37,7 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims) : IAs
             return Base(now) with
             {
                 CollectingStatus = "OUT_OF_REGION",
-                CollectingStatusReason =
-                    "Outside the supported region (NV, CA, AZ, CO, UT, NM, OR, ID).",
+                CollectingStatusReason = _outOfRegionReason,
             };
         }
 

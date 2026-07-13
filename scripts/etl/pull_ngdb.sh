@@ -28,11 +28,12 @@
 # Usage:  ./scripts/etl/pull_ngdb.sh [datadir]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+source scripts/etl/registry_lib.sh   # state list from etl/sources.json (§6.13)
 OUT="${1:-data/ngdb}"
 ZIP="Geochem_DataRelease_2025_11_18.parquet.zip"
 URL="https://www.sciencebase.gov/catalog/file/get/63a107a0d34e0de3a1f2795f?name=${ZIP}"
 PG="PG:host=localhost port=5432 dbname=miningapp user=postgres password=postgres"
-STATES="'NV','CA','AZ','CO','UT','NM','OR','ID'"
+STATES="$(reg_states_sqlcsv)"
 
 # Indicator species = union over every commodity entry in the config (data, not code).
 SPECIES=$(python3 - <<'EOF'

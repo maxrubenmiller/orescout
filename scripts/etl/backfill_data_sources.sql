@@ -1,6 +1,12 @@
 -- One-shot idempotent backfill of the freshness registry (public.data_sources) for a DB that
 -- predates it (docs/DATA_REFRESH_PLAN.md Phase A item 2). Values reflect the actual state of
 -- this dev DB's layers at backfill time; jobs overwrite their own rows on every refresh.
+--
+-- §6.13 NOTE: the descriptive columns (role/vintage/max_age_days/upstream_ref) are now DERIVED
+-- from etl/sources.json — regenerate/upsert them with `./scripts/etl/run.sh provenance | psql …`
+-- (single source of truth). This file is retained for the dynamic first-population values it
+-- alone carries (claims_as_of / wbd_snapshot subqueries + initial refreshed_at). Keep the two in
+-- agreement; run.sh provenance never touches refreshed_at, so it won't clobber a live job's stamp.
 -- max_age_days per the plan's staleness-alarm table; NULL = static source.
 CREATE TABLE IF NOT EXISTS public.data_sources (
     source_key text PRIMARY KEY, role text, vintage text, refreshed_at timestamptz,

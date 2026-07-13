@@ -28,9 +28,10 @@ set -euo pipefail
 
 # shellcheck source=scripts/etl/refresh_lib.sh
 source "$(cd "$(dirname "$0")" && pwd)/refresh_lib.sh"
+source "$(cd "$(dirname "$0")" && pwd)/registry_lib.sh"   # state list from etl/sources.json (§6.13)
 
 OUT="${1:-data/claims}"; shift || true
-STATES=("$@"); [ ${#STATES[@]} -eq 0 ] && STATES=(NV CA AZ CO UT NM OR ID)
+STATES=("$@"); [ ${#STATES[@]} -eq 0 ] && STATES=($(reg_states_space))   # default: all registry states
 LAYER="${LAYER:-https://gis.blm.gov/nlsdb/rest/services/HUB/BLM_Natl_MLRS_Mining_Claims_Not_Closed/MapServer/0/query}"
 FIELDS="CSE_NR,CSE_NAME,BLM_PROD,CSE_DISP,RCRD_ACRS,Modified"
 PAGE=2000

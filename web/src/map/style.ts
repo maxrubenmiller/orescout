@@ -1,4 +1,4 @@
-import type { StyleSpecification } from 'maplibre-gl';
+import type { StyleSpecification, FilterSpecification } from 'maplibre-gl';
 import type { FeatureCollection } from 'geojson';
 import { tileBaseUrl, mapboxToken } from '../api';
 import type { Basemap } from '../store';
@@ -8,7 +8,15 @@ import type { Basemap } from '../store';
 // reload when this module changes during dev.
 if (import.meta.hot) import.meta.hot.accept(() => window.location.reload());
 
-const SUPPORTED = ['NV', 'CA', 'AZ', 'CO', 'UT', 'NM', 'OR', 'ID'];
+// Out-of-scope mask filter. The authoritative supported-state list comes from the API's /meta
+// (its SupportedStates config, kept in lockstep with etl/sources.json by
+// scripts/test/supported_states_sync.sh) — the frontend never hardcodes it (§6.13: the UI never
+// changes when a state is added). Empty list (meta not loaded yet) => grey NOTHING until we know.
+export function outOfScopeMaskFilter(supportedStates: string[]): FilterSpecification {
+  return supportedStates.length
+    ? ['!', ['in', ['get', 'STUSAB'], ['literal', supportedStates]]]
+    : ['in', ['get', 'STUSAB'], ['literal', []]];
+}
 
 // MVT vector-layer name as ENCODED IN THE TILE by pg_tileserv = the full schema-qualified
 // table id (verified by decoding a .pbf). NOTE: the TileJSON `vector_layers[].id` reports it
@@ -68,7 +76,7 @@ export function basemapTiles(b: Basemap): { tiles: string[]; attribution: string
   };
 }
 
-export function buildStyle(basemap: Basemap): StyleSpecification {
+export function buildStyle(basemap: Basemap, supportedStates: string[] = []): StyleSpecification {
   const bm = basemapTiles(basemap);
   return {
     version: 8,
@@ -241,7 +249,7 @@ export function buildStyle(basemap: Basemap): StyleSpecification {
       // Out-of-scope states mask (grey everything except the 8 supported).
       {
         id: 'out-of-scope-mask', type: 'fill', source: 'states',
-        filter: ['!', ['in', ['get', 'STUSAB'], ['literal', SUPPORTED]]],
+        filter: outOfScopeMaskFilter(supportedStates),
         paint: { 'fill-color': '#444444', 'fill-opacity': 0.55 },
       },
 
