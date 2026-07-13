@@ -60,4 +60,4 @@ for f in "$OUT"/mrds_*.geojson; do
   fi
 done
 echo "loaded: $(docker compose exec -T postgres psql -tAq -U postgres -d miningapp -c 'SELECT count(*) FROM staging.mrds_gold;') rows into staging.mrds_gold"
-echo "next: docker compose exec -T postgres psql -U postgres -d miningapp < scripts/etl/build_mrds.sql"
+echo "next: ./scripts/etl/pull_mrds_details.sh  then  ./scripts/etl/build_mrds.sh  (enrich + atomic-swap tiles.mrds)"

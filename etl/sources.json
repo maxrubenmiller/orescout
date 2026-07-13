@@ -284,6 +284,13 @@
         "page": 2000
       },
       "serve": { "table": "tiles.mrds", "geom": "Point" },
+      "details": {
+        "loader": "scripts/etl/pull_mrds_details.sh",
+        "source": "https://mrdata.usgs.gov/mrds/rdbms-tab.zip",
+        "tables": ["Commodity", "Materials", "Names"],
+        "join_key": "dep_id",
+        "note": "Popup enrichment (BACKLOG 'Enrich the gold popup'). The Compact FeatureServer has no related tables; these come from USGS's bulk relational export, tab-delimited/CSV-quoted. Every related table keys on `dep_id` (schema.ini labels it 'Record ID') == our stored dep_id. build_mrds.sql aggregates into additive tiles.mrds columns (commodities_major/minor, ore/gangue_minerals, alt_names)."
+      },
       "license": "public domain (USGS)",
       "attribution": "USGS MRDS",
       "vintage": "USGS MRDS (static — USGS stopped updates 2011)",
