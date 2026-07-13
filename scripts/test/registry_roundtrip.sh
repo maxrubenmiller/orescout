@@ -70,5 +70,10 @@ chk "ut crs"     "26912"                        "$(reg_confirm ugrc_ut crs)"
 chk "ut carve"   "owner NOT IN ('Federal','State')" "$(reg_confirm ugrc_ut carve_private)"
 chk "ut sliver"  "500"                          "$(reg_confirm ugrc_ut sliver_min_m2)"
 
+echo "== mrds reference details (popup-enrichment loader) =="
+chk "mrds details loader" "scripts/etl/pull_mrds_details.sh" "$(reg_raw '.sources[]|select(.key=="mrds").details.loader')"
+chk "mrds details source" "https://mrdata.usgs.gov/mrds/rdbms-tab.zip" "$(reg_raw '.sources[]|select(.key=="mrds").details.source')"
+chk "mrds details join_key" "dep_id" "$(reg_raw '.sources[]|select(.key=="mrds").details.join_key')"
+
 if [ "$fail" -eq 0 ]; then echo ""; echo "ALL GREEN — registry transcription is faithful."; else
   echo ""; echo "FAILURES above — fix etl/sources.json before wiring scripts to it." >&2; exit 1; fi

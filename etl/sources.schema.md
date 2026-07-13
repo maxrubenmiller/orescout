@@ -18,6 +18,7 @@ Top-level: `{ "sources": [ …entries… ] }`. Each entry:
 | `classify` | ✔ | base | `{ fn, args }` — the SQL classifier function + the columns it reads. |
 | `confirm` | ✔ | confirm_open | The confirm-open parameters — see below. |
 | `serve` | ✔ | reference | `{ table, geom }` — the display-only `tiles.<key>` table it builds. NEVER touches `legality_polygons`. |
+| `details` |   | reference | Optional second, *additive* loader that enriches the served table (e.g. MRDS related-table popup detail). `{ loader, source, tables, join_key, note }` — the pull adapter path, its bulk/query URL (single source of truth, read via `reg_raw`), the source tables it consumes, the column the related tables join on, and a human note. Purely display; never feeds the engine. |
 | `attribution` | ✔ | all | Human credit line (map + panel). |
 | `vintage` | ✔ | all | Canonical provenance string. **One** per source — baked into both the polygons (`data_vintage`) and `data_sources.vintage`. |
 | `upstream_ref` | ✔ | all | URL or service name for freshness/provenance (`check_upstream`, `data_sources`). |
