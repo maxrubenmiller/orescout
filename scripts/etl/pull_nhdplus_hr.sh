@@ -4,7 +4,8 @@
 # Replaces the California-only CDFW `ca_streams` source with all-8-state NHDPlus HR.
 #
 # Dev strategy (machine-friendly): per-HU4 VPU/Current File GDBs, streamed —
-#   resolve S3 key -> download -> unzip -> ogr2ogr extract (FType=460) -> append to staging
+#   resolve S3 key -> download -> unzip -> ogr2ogr extract (FType=460 streams + FCode=55800 artificial
+#   paths = the centerline through wide double-banked rivers / lakes) -> append to staging
 #   -> DELETE the unzipped GDB (keep the small zip for re-runs). Peak disk ~1-2 GB.
 # Vertex order (= downstream flow direction) is preserved; Z/M dropped (-dim XY) — chevrons need
 # order, not measures. Resolved S3 keys are recorded for reproducibility.
@@ -54,7 +55,7 @@ for hu4 in "$@"; do
   mode="-append"; [ "$i" -eq 0 ] && mode="-overwrite"            # first HU4 of the run rebuilds staging
   # Use -sql (not -where/-select): ogr2ogr rejects -select under -append; -sql works for both modes.
   ogr2ogr -f PostgreSQL "$PG" "$OUT/$gdbdir" \
-    -sql "SELECT Permanent_Identifier, GNIS_Name, FCode, FType, FlowDir, ReachCode FROM NHDFlowline WHERE FType = 460" \
+    -sql "SELECT Permanent_Identifier, GNIS_Name, FCode, FType, FlowDir, ReachCode FROM NHDFlowline WHERE FType = 460 OR FCode = 55800" \
     -nln "$STAGING" $mode -nlt PROMOTE_TO_MULTI -dim XY -t_srs EPSG:4326 \
     -lco GEOMETRY_NAME=geom -lco FID=ogc_fid
 

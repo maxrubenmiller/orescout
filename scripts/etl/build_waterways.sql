@@ -1,14 +1,15 @@
 -- ============================================================================
 -- OreScout — waterways overlay build (PROJECT_PLAN.md §6.13 `reference` role).
--- Promotes staging.nhdplus_hr_flowlines (USGS NHDPlus HR NHDFlowline, FType=460,
--- loaded by scripts/etl/pull_nhdplus_hr.sh) into the served tiles.waterways table.
+-- Promotes staging.nhdplus_hr_flowlines (USGS NHDPlus HR NHDFlowline: FType=460 streams
+-- + FCode=55800 artificial paths, loaded by scripts/etl/pull_nhdplus_hr.sh) into tiles.waterways.
 -- Replaces the former CDFW `ca_streams` build (docs/WATERWAYS_NHDPLUS_HR_PLAN.md).
 --
 -- REFERENCE-ONLY: display tiles; never feeds orescout_base_verdict / the assessment
 -- engine (streams aren't a legality input). Upholds the §6.13 invariant.
 --
 -- Derives the two attributes the overlay features need from NHD:
---   flow_class : FCode 46006 -> 'perennial'; everything else (46003 intermittent,
+--   flow_class : FCode 46006 (perennial) + 55800 (artificial path = the always-wet centerline
+--                through wide rivers/lakes) -> 'perennial'; everything else (46003 intermittent,
 --                46007 ephemeral, 46000 unspecified) -> 'intermittent' (owner decision:
 --                ephemeral + unspecified collapse into intermittent; dashed on the map).
 --   flow_dir   : FlowDir (1 = WithDigitized -> draw chevron; 0 = Uninitialized -> none).
@@ -47,7 +48,7 @@ INSERT INTO tiles.waterways
 SELECT
     ST_Multi(s.geom),
     NULLIF(s.gnis_name, ''),
-    CASE WHEN s.fcode = 46006 THEN 'perennial' ELSE 'intermittent' END,
+    CASE WHEN s.fcode IN (46006, 55800) THEN 'perennial' ELSE 'intermittent' END,
     s.flowdir::smallint,
     s.permanent_identifier,
     NULLIF(s.reachcode, ''),
