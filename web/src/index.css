@@ -146,6 +146,8 @@ a { color: #2563eb; }
 .layers h4 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; color: var(--muted); }
 .chk { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; }
 .chk.disabled { color: var(--muted); }
+.sub-toggles { margin: 0 0 2px 20px; padding-left: 8px; border-left: 2px solid rgba(0,0,0,0.1); }
+.chk.sub { font-size: 13px; padding: 2px 0; }
 .hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
 .hint.warn { color: #92400e; } /* stale-data flag — same amber as .warnings */
 .sw { width: 16px; height: 16px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,0.2); }
@@ -157,6 +159,10 @@ a { color: #2563eb; }
 .sw-claims { background: #FF8C00; }
 .sw-open { background: #3FAE5A; }
 .sw-water { background: #2f6fb0; }
+.sw-water-dash { /* dashed-line cue for the intermittent sub-toggle */
+  background-image: repeating-linear-gradient(90deg, #2f6fb0 0 3px, transparent 3px 6px);
+  background-color: transparent;
+}
 .sw-gold { background: #FFC64B; border-color: #4a3600; }
 .sw-prospect { background: #E8590C; border-color: #7a2e06; }
 .prospect-legend { line-height: 1.6; }

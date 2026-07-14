@@ -4,7 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useUI } from '../store';
 import { usePins, useActiveAssessment, useMeta } from '../hooks';
 import {
-  basemapTiles, buildStyle, emptyFC, makeHatch, outOfScopeMaskFilter, pointFC,
+  basemapTiles, buildStyle, emptyFC, makeChevron, makeHatch, outOfScopeMaskFilter, pointFC,
   PROSPECTIVITY_IMAGES, PROSPECTIVITY_LAYER_IDS,
 } from '../map/style';
 // Per-commodity strings (pathfinder "why" blurb, chemistry-earned line, upstream note, vintage
@@ -57,6 +57,7 @@ export default function MapView() {
     map.addControl(new maplibregl.NavigationControl(), 'bottom-right');
 
     const ensureHatch = () => { if (!map.hasImage('hatch')) map.addImage('hatch', makeHatch()); };
+    const ensureChevron = () => { if (!map.hasImage('waterway-chevron')) map.addImage('waterway-chevron', makeChevron(), { pixelRatio: 2 }); };
     // Prospectivity glyphs, registered on BOTH 'load' and 'styleimagemissing' (F-5): if they ever
     // fail anyway, the symbol layers draw nothing and the fallback circles beneath still show.
     const ensureProspectivityImages = () => {
@@ -66,9 +67,10 @@ export default function MapView() {
     };
     map.on('styleimagemissing', (e) => {
       if (e.id === 'hatch') ensureHatch();
+      if (e.id === 'waterway-chevron') ensureChevron();
       if (e.id in PROSPECTIVITY_IMAGES) ensureProspectivityImages();
     });
-    map.on('load', () => { ensureHatch(); ensureProspectivityImages(); loadedRef.current = true; });
+    map.on('load', () => { ensureHatch(); ensureChevron(); ensureProspectivityImages(); loadedRef.current = true; });
 
     // Overlay tile failures (pg_tileserv 5xx/timeouts) must not be silent — the failure mode is
     // RED/YELLOW land rendering as blank. Basemap raster errors are excluded (third-party, and
@@ -221,7 +223,11 @@ export default function MapView() {
         v(`legality-ambiguous${sfx}`, layers.ambiguous);
       }
       v('mining-claims', layers.claims);
-      v('waterways', layers.waterways);
+      // Waterways: master toggle gates the layer; each flow-class sub-toggle gates its line + arrows.
+      v('waterways-perennial', layers.waterways && layers.waterwaysPerennial);
+      v('waterways-perennial-arrows', layers.waterways && layers.waterwaysPerennial);
+      v('waterways-intermittent', layers.waterways && layers.waterwaysIntermittent);
+      v('waterways-intermittent-arrows', layers.waterways && layers.waterwaysIntermittent);
       v('mrds', layers.mrds);
       // ALL prospectivity layers — symbols + their F-5 fallback circles.
       for (const id of PROSPECTIVITY_LAYER_IDS) v(id, layers.prospectivity);

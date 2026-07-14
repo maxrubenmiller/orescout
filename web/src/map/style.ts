@@ -137,16 +137,54 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
         paint: { 'fill-color': '#FF8C00', 'fill-opacity': 0.35, 'fill-outline-color': '#CC6600' },
       },
 
-      // Waterways (reference-only — CA streams; never feeds the verdict engine, §6.13).
-      // 740k dense polylines: minzoom 10 keeps low zooms readable (cf. claims minzoom 9).
+      // Waterways (reference-only — USGS NHDPlus HR, all 8 states; never feeds the verdict engine,
+      // §6.13). Split by flow_class: perennial = solid, intermittent = dashed. ~6M dense polylines →
+      // minzoom 10 keeps low zooms readable. Flow-direction chevrons ride on top (minzoom 12).
       {
-        id: 'waterways', type: 'line', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
-        minzoom: 10, layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
+        id: 'waterways-perennial', type: 'line', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
+        minzoom: 10, filter: ['==', ['get', 'flow_class'], 'perennial'],
+        layout: { visibility: 'none', 'line-cap': 'round', 'line-join': 'round' },
         paint: {
-          'line-color': '#2f6fb0',
-          'line-opacity': 0.85,
-          // taper width with zoom so dense networks stay legible
+          'line-color': '#2f6fb0', 'line-opacity': 0.85,
           'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 14, 1.6, 17, 3],
+        },
+      },
+      {
+        id: 'waterways-intermittent', type: 'line', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
+        minzoom: 10, filter: ['==', ['get', 'flow_class'], 'intermittent'],
+        layout: { visibility: 'none', 'line-cap': 'butt', 'line-join': 'round' },
+        paint: {
+          'line-color': '#2f6fb0', 'line-opacity': 0.8,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.5, 14, 1.4, 17, 2.6],
+          // dashes (unit = line width in maplibre) → reads as intermittent vs the solid perennial line
+          'line-dasharray': [2, 2],
+        },
+      },
+      // Flow-direction chevrons — a small '›' icon placed ALONG the line, centered on it, rotated to
+      // the digitized (downstream) direction; only where flow_dir=1 (direction established). One layer
+      // per class so each shows/hides with its sub-toggle. minzoom 12 + symbol-spacing avoids clutter
+      // on the dense network. icon-keep-upright defaults FALSE for icons → true flow direction is kept
+      // (a text glyph would flip to stay upright and destroy the cue — hence a drawn icon).
+      {
+        id: 'waterways-perennial-arrows', type: 'symbol', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
+        minzoom: 12,
+        filter: ['all', ['==', ['get', 'flow_class'], 'perennial'], ['==', ['get', 'flow_dir'], 1]],
+        layout: {
+          visibility: 'none', 'symbol-placement': 'line', 'symbol-spacing': 70,
+          'icon-image': 'waterway-chevron', 'icon-rotation-alignment': 'map',
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 17, 0.95],
+          'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        },
+      },
+      {
+        id: 'waterways-intermittent-arrows', type: 'symbol', source: 'waterways', 'source-layer': WATERWAYS_SRC_LAYER,
+        minzoom: 12,
+        filter: ['all', ['==', ['get', 'flow_class'], 'intermittent'], ['==', ['get', 'flow_dir'], 1]],
+        layout: {
+          visibility: 'none', 'symbol-placement': 'line', 'symbol-spacing': 70,
+          'icon-image': 'waterway-chevron', 'icon-rotation-alignment': 'map',
+          'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.55, 17, 0.95],
+          'icon-allow-overlap': true, 'icon-ignore-placement': true,
         },
       },
 
@@ -398,6 +436,30 @@ function makeDiamond(): { width: number; height: number; data: Uint8Array } {
   ctx.fillStyle = '#F76707';
   ctx.fill();
   ctx.strokeStyle = '#8A3D05'; ctx.lineWidth = 1.5; ctx.stroke();
+  const img = ctx.getImageData(0, 0, size, size);
+  return { width: size, height: size, data: new Uint8Array(img.data) };
+}
+
+// Small chevron for the waterway flow-direction arrows. Drawn pointing +x (right); MapLibre's line
+// symbol placement rotates it to the line's digitized direction (= downstream), so it always points
+// the way the water flows. Dark navy reads on the blue line. Registered by MapView (ensureChevron),
+// same idiom as makeHatch / PROSPECTIVITY_IMAGES.
+export function makeChevron(): { width: number; height: number; data: Uint8Array } {
+  const size = 18; // small — rendered ~10–16px via icon-size
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  const m = 5;
+  // Two passes: a dark halo then a white chevron on top → reads on the blue line AND the satellite
+  // imagery. Apex at right-middle → points +x, which line placement rotates to the flow direction.
+  const stroke = (color: string, w: number) => {
+    ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(m, m); ctx.lineTo(size - m, size / 2); ctx.lineTo(m, size - m);
+    ctx.stroke();
+  };
+  stroke('rgba(8,26,44,0.85)', 5);
+  stroke('#ffffff', 2.6);
   const img = ctx.getImageData(0, 0, size, size);
   return { width: size, height: size, data: new Uint8Array(img.data) };
 }

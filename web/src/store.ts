@@ -27,8 +27,10 @@ interface UIState {
   // Map config
   basemap: Basemap;
   setBasemap: (b: Basemap) => void;
-  layers: { prohibited: boolean; ambiguous: boolean; open: boolean; claims: boolean; waterways: boolean; mrds: boolean; prospectivity: boolean };
-  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'open' | 'claims' | 'waterways' | 'mrds' | 'prospectivity') => void;
+  // waterways = master toggle; waterwaysPerennial/waterwaysIntermittent = the flow-class sub-toggles
+  // (both default on) nested under it. Each class shows only when the master AND its sub-flag are on.
+  layers: { prohibited: boolean; ambiguous: boolean; open: boolean; claims: boolean; waterways: boolean; waterwaysPerennial: boolean; waterwaysIntermittent: boolean; mrds: boolean; prospectivity: boolean };
+  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'open' | 'claims' | 'waterways' | 'waterwaysPerennial' | 'waterwaysIntermittent' | 'mrds' | 'prospectivity') => void;
 
   // Imperative fly-to (MapView watches flyTarget)
   flyTarget: FlyTarget | null;
@@ -52,7 +54,7 @@ export const useUI = create<UIState>((set) => ({
 
   basemap: 'satellite',
   setBasemap: (b) => set({ basemap: b }),
-  layers: { prohibited: true, ambiguous: true, open: false, claims: false, waterways: false, mrds: false, prospectivity: false },
+  layers: { prohibited: true, ambiguous: true, open: false, claims: false, waterways: false, waterwaysPerennial: true, waterwaysIntermittent: true, mrds: false, prospectivity: false },
   toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 
   flyTarget: null,

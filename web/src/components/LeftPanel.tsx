@@ -51,7 +51,17 @@ function Layers() {
           <input type="checkbox" checked={layers.waterways} disabled={!isEntitled(FEATURES.layerWaterways)} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways
           {!isEntitled(FEATURES.layerWaterways) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
-        <p className="hint">Blue = streams &amp; rivers (zoom to ~10+). Reference only — does not affect the legality verdict.</p>
+        {layers.waterways && (
+          <div className="sub-toggles">
+            <label className="chk sub">
+              <input type="checkbox" checked={layers.waterwaysPerennial} onChange={() => toggle('waterwaysPerennial')} /> <span className="sw sw-water" /> Perennial
+            </label>
+            <label className="chk sub">
+              <input type="checkbox" checked={layers.waterwaysIntermittent} onChange={() => toggle('waterwaysIntermittent')} /> <span className="sw sw-water-dash" /> Intermittent
+            </label>
+          </div>
+        )}
+        <p className="hint">Blue = streams &amp; rivers (USGS NHDPlus HR; zoom ~10+). Solid = perennial, dashed = intermittent; chevrons show flow direction (zoom ~12+). Reference only — does not affect the legality verdict.</p>
         <label className={isEntitled(FEATURES.layerMrds) ? 'chk' : 'chk locked'}>
           <input type="checkbox" checked={layers.mrds} disabled={!isEntitled(FEATURES.layerMrds)} onChange={() => toggle('mrds')} /> <span className="sw sw-gold" /> Gold occurrences (MRDS)
           {!isEntitled(FEATURES.layerMrds) && <span className="lock-chip">🔒 Upgrade</span>}
