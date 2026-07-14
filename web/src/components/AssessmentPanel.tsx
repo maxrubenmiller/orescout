@@ -100,16 +100,25 @@ function Result({ a, lat, lng, showSaveForm }: { a: Assessment; lat: number; lng
       <div className={`verdict ${v.cls}`}>
         <span className="verdict-label">{v.label}</span>
       </div>
-      <p className="reason">{a.collectingStatusReason || v.blurb}</p>
-      {/* The two kinds of YELLOW read very differently (§4.1.1) — say WHICH one this is and what
-          to do about it, in plain words. KNOWN reasons arrive as raw agency/designation codes
-          ("Managing agency SDOL — permit / varies"), so this line carries the actual guidance. */}
+      {/* Non-YELLOW: the plain reason (or verdict blurb) is the headline. YELLOW leads with the
+          plain-language guidance instead (below); its raw agency/designation code is demoted to a
+          de-emphasized "Basis" line, so the user never reads a cryptic code as the headline. */}
+      {a.collectingStatus !== 'YELLOW' && (
+        <p className="reason">{a.collectingStatusReason || v.blurb}</p>
+      )}
+      {/* The two kinds of YELLOW read very differently (§4.1.1) — say WHICH one this is and what to
+          do about it, in plain words. This is the headline line for YELLOW. */}
       {a.collectingStatus === 'YELLOW' && (
-        <p className="yellow-kind">
+        <p className="reason">
           {a.ambiguityType === 'UNKNOWN'
             ? 'No public-land record covers this spot — most often that means unmapped private land. Verify ownership before entering, and lean toward staying out.'
             : 'This is a recognized designation with its own rules (permits are common). Contact the managing agency for this unit\u2019s collecting policy before you go.'}
         </p>
+      )}
+      {/* KNOWN's raw agency/designation code — kept for detail, de-emphasized below the guidance.
+          (UNKNOWN's code is redundant with the plain "no record" text, so it is omitted.) */}
+      {a.collectingStatus === 'YELLOW' && a.ambiguityType !== 'UNKNOWN' && a.collectingStatusReason && (
+        <p className="reason-detail muted small">Basis: {a.collectingStatusReason}</p>
       )}
 
       {(a.landManager || a.unitName) && (
