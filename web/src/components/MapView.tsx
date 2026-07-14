@@ -7,16 +7,6 @@ import {
   basemapTiles, buildStyle, emptyFC, makeChevron, makeHatch, outOfScopeMaskFilter, pointFC,
   PROSPECTIVITY_IMAGES, PROSPECTIVITY_LAYER_IDS,
 } from '../map/style';
-// Per-commodity strings (pathfinder "why" blurb, chemistry-earned line, upstream note, vintage
-// note) render from config keyed by the feature's `commodity` — never hardcoded in components,
-// never duplicated per tile feature (TIER_B brief, architecture clarifications).
-import prospectivityConfig from '../../../config/prospectivity.json';
-
-interface CommodityStrings {
-  pathfinder_blurb: string; chemistry_earned: string; upstream_note: string; vintage_note: string;
-}
-const commodityStrings = (key: unknown): CommodityStrings | null =>
-  prospectivityConfig.commodities.find((c) => c.key === key)?.strings ?? null;
 
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +22,7 @@ export default function MapView() {
   const basemap = useUI((s) => s.basemap);
   const selectedPoint = useUI((s) => s.selectedPoint);
   const viewedPinId = useUI((s) => s.viewedPinId);
+  const marker = useUI((s) => s.marker);
   const { data: pins } = usePins();
   // Authoritative supported-state list for the out-of-scope grey mask (§6.13: the list lives in
   // the API's /meta, never hardcoded in the frontend). The map is created once, so we (re)apply the
@@ -80,12 +71,9 @@ export default function MapView() {
       if (src && src !== 'basemap' && src !== 'states') setTileError(true);
     });
 
-    // MRDS gold-occurrence reference popup + hover. Dots are small (2–5px), and maplibre's
+    // Reference-marker hit-testing (gold MRDS + prospectivity). Dots are small (2–5px) and maplibre's
     // exact-point hit-test needs a near-dead-center click — so hit-test a TOLERANCE BOX around the
-    // cursor instead (that's the fix for "dots don't respond to clicks"). site_name/url are
-    // external data → escape before injecting as HTML.
-    const esc = (s: unknown) => String(s ?? '')
-      .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+    // cursor. Click details render in the assessment panel (React); hover shows a highlight ring.
     const HIT = 8; // px click/hover tolerance around a dot
     const coordsOf = (f: maplibregl.MapGeoJSONFeature): [number, number] | null =>
       f.geometry.type === 'Point' ? (f.geometry.coordinates as [number, number]) : null;
@@ -110,78 +98,25 @@ export default function MapView() {
     // stay clickable even if the glyph images failed to register.
     const nearestProspect = (pt: maplibregl.Point): maplibregl.MapGeoJSONFeature | null =>
       layerVisible('prospectivity-high-producer') ? nearestIn(pt, PROSPECTIVITY_LAYER_IDS) : null;
-    // closeOnClick:false — opening a popup with closeOnClick inside a click handler self-closes on
-    // the same event in maplibre; we manage dismissal ourselves.
-    const mrdsPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' });
-    const prospectPopup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '280px' });
-
-    // Prospecting-potential popup (contract: tier headline, anomaly line, pathfinders, the
-    // pathfinder "why" blurb, producer line, chemistry-earned line, upstream note, vintage —
-    // static per-commodity strings from config/prospectivity.json, dynamic values from the tile).
-    const prospectHtml = (p: Record<string, unknown>): string => {
-      const strings = commodityStrings(p.commodity);
-      const chem = p.tier_basis === 'chemistry';
-      const headline = p.tier === 'High' ? 'High potential' : 'Moderate potential';
-      const pctl = Math.round(Number(p.anomaly_pctl) * 100);
-      const km = p.producer_dist_m == null ? null : (Number(p.producer_dist_m) / 1000).toFixed(1);
-      return (
-        `<div class="prospect-pop"><strong>${headline}${chem ? ' · chemistry-earned' : ''}</strong>` +
-        `<div class="prospect-anom">${esc(p.anomaly_element)} anomaly — p${pctl} in its watershed</div>` +
-        (p.pathfinders ? `<div class="prospect-path">Co-elevated: ${esc(p.pathfinders)}</div>` : '') +
-        (strings ? `<div class="prospect-why">${esc(strings.pathfinder_blurb)}</div>` : '') +
-        (p.producer_name
-          ? `<div class="prospect-prod">${esc(p.producer_name)} — historic producer ${km ?? '?'} km away</div>` : '') +
-        (chem && strings ? `<div class="prospect-chem">${esc(strings.chemistry_earned)}</div>` : '') +
-        (strings ? `<div class="prospect-note">${esc(strings.upstream_note)}</div>` : '') +
-        `<div class="prospect-vintage">${esc(p.data_vintage)}</div></div>`
-      );
-    };
-
     map.on('click', (e) => {
-      // Prospectivity first — its symbols render above the MRDS dots, so it wins the click.
+      // Find the reference markers under the click — both independently, since a gold occurrence and
+      // a prospectivity site can share a spot. Details render in the assessment panel (not a popup);
+      // the clicked marker's location drives the persistent highlight ring.
       const prospect = nearestProspect(e.point);
-      const pc = prospect && coordsOf(prospect);
-      const gold = prospect && pc ? null : nearestMrds(e.point);
-      const c = gold && coordsOf(gold);
-      if (prospect && pc) {
-        mrdsPopup.remove();
-        prospectPopup.setLngLat(pc).setHTML(prospectHtml(prospect.properties ?? {})).addTo(map);
-      } else if (gold && c) {
-        prospectPopup.remove();
-        const p = gold.properties ?? {};
-        const grade = esc(p.grade);
-        const url = esc(p.url); // escaped for the href="" attribute (& → &amp;, decoded on navigate)
-        // Enrichment from the MRDS related tables (build_mrds.sql). Any may be null → fall back to
-        // the raw CODE_LIST for commodities; omit the minerals/alt-name lines when empty.
-        const majors = esc(p.commodities_major);
-        const minors = esc(p.commodities_minor);
-        const ore = esc(p.ore_minerals);
-        const gangue = esc(p.gangue_minerals);
-        const altNames = esc(p.alt_names);
-        const commLine = majors
-          ? `<div class="mrds-comm"><span class="mrds-comm-major">${majors}</span>` +
-            (minors ? ` <span class="mrds-comm-minor">· ${minors}</span>` : '') + `</div>`
-          : `<div class="mrds-comm">Commodities: ${esc(p.commodities) || '—'}</div>`;
-        const minerLine = ore || gangue
-          ? `<div class="mrds-min">` +
-            (ore ? `<span class="mrds-min-ore">Ore: ${ore}</span>` : '') +
-            (ore && gangue ? ' · ' : '') +
-            (gangue ? `<span class="mrds-min-gangue">Gangue: ${gangue}</span>` : '') + `</div>`
-          : '';
-        const altLine = altNames ? `<div class="mrds-alt">Also known as: ${altNames}</div>` : '';
-        mrdsPopup.setLngLat(c).setHTML(
-          `<div class="mrds-pop"><strong>${esc(p.site_name) || 'Unnamed site'}</strong>` +
-          `<div class="mrds-stat">${esc(p.dev_stat) || '—'}${grade ? ` · grade ${grade}` : ''}</div>` +
-          commLine + minerLine + altLine +
-          (url ? `<a class="mrds-link" href="${url}" target="_blank" rel="noopener noreferrer">Full USGS record →</a>` : '') +
-          `<div class="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div></div>`,
-        ).addTo(map);
-      } else {
-        mrdsPopup.remove();
-        prospectPopup.remove();
-      }
-      // Core interaction is preserved: every click still assesses the spot (the popups are additive).
-      assess({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      const gold = nearestMrds(e.point);
+      const pc = prospect ? coordsOf(prospect) : null;
+      const gc = gold ? coordsOf(gold) : null;
+      const point = pc ?? gc; // [lng, lat] of the clicked marker (prospectivity wins the tie)
+      const markerSel = point
+        ? {
+            prospectivity: prospect ? (prospect.properties ?? {}) : null,
+            mrds: gold ? (gold.properties ?? {}) : null,
+            point: { lat: point[1], lng: point[0] },
+          }
+        : null;
+      // Every click still assesses the spot. When a marker was hit, its details show above the
+      // assessment and the dropped cursor pin is suppressed (the ring is the indicator instead).
+      assess({ lat: e.lngLat.lat, lng: e.lngLat.lng }, markerSel);
     });
 
     // Hover affordance: pointer cursor + a highlight ring when the cursor is near a marker
@@ -261,16 +196,27 @@ export default function MapView() {
     if (loadedRef.current) set(); else map.once('load', set);
   }, [pins]);
 
-  // Selected point marker.
+  // Selected point marker — the dropped verdict pin. Suppressed when the click hit a reference
+  // marker (`marker` set): the persistent highlight ring is the indicator there, not a stacked pin.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const data = selectedPoint
+    const data = selectedPoint && !marker
       ? pointFC([{ ...selectedPoint, props: { verdict: selectedVerdict } }])
       : emptyFC();
     const set = () => (map.getSource('selected') as maplibregl.GeoJSONSource | undefined)?.setData(data);
     if (loadedRef.current) set(); else map.once('load', set);
-  }, [selectedPoint, selectedVerdict]);
+  }, [selectedPoint, selectedVerdict, marker]);
+
+  // Persistent highlight ring on the selected reference marker — stays while its details are in the
+  // panel (independent of the transient hover ring), cleared when `marker` is null.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const data = marker ? pointFC([marker.point]) : emptyFC();
+    const set = () => (map.getSource('selected-marker') as maplibregl.GeoJSONSource | undefined)?.setData(data);
+    if (loadedRef.current) set(); else map.once('load', set);
+  }, [marker]);
 
   return (
     <div ref={containerRef} className="map-root">

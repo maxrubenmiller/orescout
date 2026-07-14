@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { useUI } from '../store';
 import { useActiveAssessment, useCreatePin } from '../hooks';
 import type { Assessment, CollectingStatus, AmbiguityType } from '../types';
+import type { MarkerProps } from '../store';
+// Per-commodity strings (pathfinder "why" blurb, chemistry-earned line, upstream note) render from
+// config keyed by the feature's `commodity` — never hardcoded per component (TIER_B brief).
+import prospectivityConfig from '../../../config/prospectivity.json';
+
+interface CommodityStrings {
+  pathfinder_blurb: string; chemistry_earned: string; upstream_note: string; vintage_note: string;
+}
+const commodityStrings = (key: unknown): CommodityStrings | null =>
+  prospectivityConfig.commodities.find((c) => c.key === key)?.strings ?? null;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -31,6 +41,7 @@ export default function AssessmentPanel() {
   const open = useUI((s) => s.panelOpen);
   const close = useUI((s) => s.closePanel);
   const viewedPinId = useUI((s) => s.viewedPinId);
+  const marker = useUI((s) => s.marker);
   const a = useActiveAssessment(point, viewedPinId);
 
   if (!open || !point) return null;
@@ -43,10 +54,16 @@ export default function AssessmentPanel() {
   return (
     <div className="panel assessment">
       <div className="panel-head">
-        <strong>{a.isSnapshotView ? 'Saved location' : 'Location assessment'}</strong>
+        <strong>{a.isSnapshotView ? 'Saved location' : marker ? 'Selected site' : 'Location assessment'}</strong>
         <button className="icon-btn" onClick={close} aria-label="Close">✕</button>
       </div>
       <div className="panel-body">
+        {/* Reference-marker details (from a gold/prospectivity click) render ABOVE the location
+            assessment — prospectivity first, then gold — replacing the old floating map popup. */}
+        {marker?.prospectivity && <ProspectivityDetails p={marker.prospectivity} />}
+        {marker?.mrds && <MrdsDetails p={marker.mrds} />}
+        {marker && <div className="assess-section-head">Location assessment</div>}
+
         <div className="coords">{point.lat.toFixed(5)}, {point.lng.toFixed(5)}</div>
 
         {a.isSnapshotView && a.snapshotDate && (
@@ -72,6 +89,67 @@ export default function AssessmentPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+// Prospecting-potential marker card (was the floating map popup). Contract: tier headline, anomaly
+// line, pathfinders, the pathfinder "why" blurb, producer line, chemistry-earned line, upstream note,
+// vintage — static per-commodity strings from config/prospectivity.json, dynamic values from the tile.
+// React escapes all text, so no manual escaping is needed.
+function ProspectivityDetails({ p }: { p: MarkerProps }) {
+  const strings = commodityStrings(p.commodity);
+  const chem = p.tier_basis === 'chemistry';
+  const headline = p.tier === 'High' ? 'High potential' : 'Moderate potential';
+  const pctl = Math.round(Number(p.anomaly_pctl) * 100);
+  const km = p.producer_dist_m == null ? null : (Number(p.producer_dist_m) / 1000).toFixed(1);
+  return (
+    <section className="marker-card prospect-pop">
+      <h4 className="marker-card-head">Prospecting potential</h4>
+      <strong>{headline}{chem ? ' · chemistry-earned' : ''}</strong>
+      <div className="prospect-anom">{String(p.anomaly_element ?? '')} anomaly — p{pctl} in its watershed</div>
+      {p.pathfinders ? <div className="prospect-path">Co-elevated: {String(p.pathfinders)}</div> : null}
+      {strings ? <div className="prospect-why">{strings.pathfinder_blurb}</div> : null}
+      {p.producer_name ? (
+        <div className="prospect-prod">{String(p.producer_name)} — historic producer {km ?? '?'} km away</div>
+      ) : null}
+      {chem && strings ? <div className="prospect-chem">{strings.chemistry_earned}</div> : null}
+      {strings ? <div className="prospect-note">{strings.upstream_note}</div> : null}
+      <div className="prospect-vintage">{String(p.data_vintage ?? '')}</div>
+    </section>
+  );
+}
+
+// Gold-occurrence (MRDS) marker card (was the floating map popup). Enrichment fields
+// (commodities_major/minor, ore/gangue minerals, alt names) come from build_mrds.sql and may be null.
+function MrdsDetails({ p }: { p: MarkerProps }) {
+  const s = (k: string) => (p[k] ? String(p[k]) : '');
+  const grade = s('grade'), url = s('url');
+  const majors = s('commodities_major'), minors = s('commodities_minor');
+  const ore = s('ore_minerals'), gangue = s('gangue_minerals'), altNames = s('alt_names');
+  return (
+    <section className="marker-card mrds-pop">
+      <h4 className="marker-card-head">Gold occurrence</h4>
+      <strong>{s('site_name') || 'Unnamed site'}</strong>
+      <div className="mrds-stat">{s('dev_stat') || '—'}{grade ? ` · grade ${grade}` : ''}</div>
+      {majors ? (
+        <div className="mrds-comm">
+          <span className="mrds-comm-major">{majors}</span>
+          {minors ? <span className="mrds-comm-minor"> · {minors}</span> : null}
+        </div>
+      ) : (
+        <div className="mrds-comm">Commodities: {s('commodities') || '—'}</div>
+      )}
+      {ore || gangue ? (
+        <div className="mrds-min">
+          {ore ? <span className="mrds-min-ore">Ore: {ore}</span> : null}
+          {ore && gangue ? ' · ' : null}
+          {gangue ? <span className="mrds-min-gangue">Gangue: {gangue}</span> : null}
+        </div>
+      ) : null}
+      {altNames ? <div className="mrds-alt">Also known as: {altNames}</div> : null}
+      {url ? <a className="mrds-link" href={url} target="_blank" rel="noopener noreferrer">Full USGS record →</a> : null}
+      <div className="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div>
+    </section>
   );
 }
 

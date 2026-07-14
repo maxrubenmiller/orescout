@@ -193,6 +193,11 @@ a { color: #2563eb; }
 .prospect-pop .prospect-note { color: #6b7280; font-size: 11px; margin-top: 5px; font-style: italic; }
 .prospect-pop .prospect-vintage { color: #9ca3af; font-size: 10px; margin-top: 5px; }
 
+/* Marker detail cards inside the assessment panel (gold/prospectivity click → panel, not popup). */
+.marker-card { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+.marker-card-head { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.assess-section-head { margin: 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+
 /* ---- Pins ---- */
 .pin-list { list-style: none; margin: 0; padding: 0; }
 .pin-list li { border-bottom: 1px solid var(--border); padding: 8px 0; }

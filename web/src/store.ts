@@ -6,6 +6,18 @@ export type LeftTab = 'layers' | 'pins';
 
 interface FlyTarget extends LatLng { zoom?: number; nonce: number; }
 
+// Vector-tile feature properties for a clicked reference marker (untyped like the tile payload).
+export type MarkerProps = Record<string, unknown>;
+// A marker click carries the reference details (prospectivity and/or MRDS at that spot — either may
+// be null) plus the marker location, which drives the persistent highlight ring on the map. When set,
+// the assessment panel renders these ABOVE the location assessment and the dropped cursor pin is
+// suppressed (the ring is the "you're here" indicator instead).
+export interface MarkerSelection {
+  prospectivity: MarkerProps | null;
+  mrds: MarkerProps | null;
+  point: LatLng;
+}
+
 interface UIState {
   // Selected point (the dropped pin being assessed)
   selectedPoint: LatLng | null;
@@ -14,7 +26,9 @@ interface UIState {
   // assessment snapshot (not a fresh live verdict) and compares it to live for drift.
   // null = a fresh map click → live assessment. (§6.5 snapshot contract.)
   viewedPinId: string | null;
-  assess: (p: LatLng) => void;
+  // Set when the click landed on a reference marker (gold/prospectivity); null for bare-ground clicks.
+  marker: MarkerSelection | null;
+  assess: (p: LatLng, marker?: MarkerSelection | null) => void;
   viewPin: (id: string, p: LatLng) => void;
   closePanel: () => void;
 
@@ -41,11 +55,13 @@ export const useUI = create<UIState>((set) => ({
   selectedPoint: null,
   panelOpen: false,
   viewedPinId: null,
-  // A fresh map click is always a live assessment — clear any viewed-pin context.
-  assess: (p) => set({ selectedPoint: p, viewedPinId: null, panelOpen: true }),
-  // Opening a saved pin: show its stored snapshot (+ live drift comparison).
-  viewPin: (id, p) => set({ selectedPoint: p, viewedPinId: id, panelOpen: true }),
-  closePanel: () => set({ panelOpen: false, selectedPoint: null, viewedPinId: null }),
+  marker: null,
+  // A fresh map click is always a live assessment — clear any viewed-pin context. `marker` is set
+  // only when the click hit a reference marker (defaults to clearing it on a bare-ground click).
+  assess: (p, marker = null) => set({ selectedPoint: p, viewedPinId: null, panelOpen: true, marker }),
+  // Opening a saved pin: show its stored snapshot (+ live drift comparison); no marker context.
+  viewPin: (id, p) => set({ selectedPoint: p, viewedPinId: id, panelOpen: true, marker: null }),
+  closePanel: () => set({ panelOpen: false, selectedPoint: null, viewedPinId: null, marker: null }),
 
   leftPanelOpen: true,
   leftTab: 'layers',

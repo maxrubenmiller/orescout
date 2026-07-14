@@ -119,6 +119,7 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
         minzoom: PROSPECTIVITY_HIGH_MINZOOM, maxzoom: 14,
       },
       'prospectivity-hover': { type: 'geojson', data: emptyFC() },
+      'selected-marker': { type: 'geojson', data: emptyFC() },
       selected: { type: 'geojson', data: emptyFC() },
       pins: { type: 'geojson', data: emptyFC() },
     },
@@ -281,6 +282,18 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
           'circle-color': 'rgba(232,89,12,0.18)',
           'circle-stroke-color': '#FF8A50',
           'circle-stroke-width': 2,
+        },
+      },
+      // Persistent highlight ring on the SELECTED reference marker — stays while its details are in
+      // the assessment panel (driven by the 'selected-marker' source, not the transient hover ring).
+      // Neutral white ring, slightly larger, so it reads as "selected" over gold or prospectivity.
+      {
+        id: 'selected-marker', type: 'circle', source: 'selected-marker',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 9, 14, 14],
+          'circle-color': 'rgba(255,255,255,0.12)',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2.5,
         },
       },
 
