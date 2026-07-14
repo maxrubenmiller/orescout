@@ -48,7 +48,7 @@ function Layers() {
         </label>
         <p className="hint">Orange = recorded BLM claims (zoom to ~9+ to see them). Also listed per-location when you click the map.</p>
         <label className={isEntitled(FEATURES.layerWaterways) ? 'chk' : 'chk locked'}>
-          <input type="checkbox" checked={layers.waterways} disabled={!isEntitled(FEATURES.layerWaterways)} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways (CA)
+          <input type="checkbox" checked={layers.waterways} disabled={!isEntitled(FEATURES.layerWaterways)} onChange={() => toggle('waterways')} /> <span className="sw sw-water" /> Waterways
           {!isEntitled(FEATURES.layerWaterways) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint">Blue = streams &amp; rivers (zoom to ~10+). Reference only — does not affect the legality verdict.</p>

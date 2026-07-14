@@ -299,21 +299,23 @@
     },
 
     {
-      "key": "ca_streams",
+      "key": "nhdplus_hr_waterways",
       "role": "reference",
-      "states": ["CA"],
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
       "access": {
-        "type": "arcgis_rest",
-        "url": "https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/CA_Streams_wm/FeatureServer/0/query",
-        "fields": ["Name", "Down_Name", "Down_ID", "GNIS_ID", "NHD_Permanent_Identifier", "Hydrologic_Subregion", "Hydrologic_Subbasin"],
-        "loader": "scripts/etl/pull_ca_streams.sh",
-        "page": 2000
+        "type": "download",
+        "url": "https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHDPlusHR/VPU/Current/GDB/",
+        "loader": "scripts/etl/pull_nhdplus_hr.sh",
+        "layer": "NHDFlowline",
+        "where": "FType = 460",
+        "fields": ["Permanent_Identifier", "GNIS_Name", "FCode", "FType", "FlowDir", "ReachCode"],
+        "hu4_list": ["1002", "1018", "1019", "1025", "1026", "1102", "1103", "1104", "1108", "1109", "1110", "1112", "1205", "1208", "1301", "1302", "1303", "1304", "1305", "1306", "1307", "1401", "1402", "1403", "1404", "1405", "1406", "1407", "1408", "1501", "1502", "1503", "1504", "1505", "1506", "1507", "1508", "1601", "1602", "1603", "1604", "1605", "1606", "1701", "1704", "1705", "1706", "1707", "1708", "1709", "1710", "1712", "1801", "1802", "1803", "1804", "1805", "1806", "1807", "1808", "1809", "1810"]
       },
       "serve": { "table": "tiles.waterways", "geom": "MultiLineString" },
-      "license": "CC-BY (CDFW)",
-      "attribution": "California Streams © CDFW",
-      "vintage": "California Streams © CDFW (NHD-derived, static ~2020)",
-      "upstream_ref": "CDFW CA_Streams_wm FeatureServer",
+      "license": "public domain (USGS)",
+      "attribution": "USGS NHDPlus HR",
+      "vintage": "USGS NHDPlus HR (per-HU4 VPU/Current — dev ingest; prod upgrades to NR2 DOI 10.5066/P13V7GVY)",
+      "upstream_ref": "USGS NHDPlus HR VPU/Current per-HU4 File GDB (prod: National Release 2)",
       "max_age_days": null
     },
 

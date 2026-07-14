@@ -1,57 +1,72 @@
 -- ============================================================================
 -- OreScout — waterways overlay build (PROJECT_PLAN.md §6.13 `reference` role).
--- Promotes staging.ca_streams (raw CDFW "California Streams") into the served
--- tiles.waterways table. REFERENCE-ONLY: this table is display tiles, it never
--- feeds orescout_base_verdict / the assessment engine (streams aren't a legality
--- input). Upholds the §6.13 invariant — adding it touched zero engine code.
+-- Promotes staging.nhdplus_hr_flowlines (USGS NHDPlus HR NHDFlowline, FType=460,
+-- loaded by scripts/etl/pull_nhdplus_hr.sh) into the served tiles.waterways table.
+-- Replaces the former CDFW `ca_streams` build (docs/WATERWAYS_NHDPLUS_HR_PLAN.md).
 --
--- Carries the network attributes (not just geometry) per the "data first,
--- intelligence later" decision so it can later become the prospecting substrate:
--- down_name/down_id (downstream connectivity), the WBD watershed locators, and the
--- GNIS / NHD ids that join back to NHD for perennial vs intermittent + stream order.
+-- REFERENCE-ONLY: display tiles; never feeds orescout_base_verdict / the assessment
+-- engine (streams aren't a legality input). Upholds the §6.13 invariant.
+--
+-- Derives the two attributes the overlay features need from NHD:
+--   flow_class : FCode 46006 -> 'perennial'; everything else (46003 intermittent,
+--                46007 ephemeral, 46000 unspecified) -> 'intermittent' (owner decision:
+--                ephemeral + unspecified collapse into intermittent; dashed on the map).
+--   flow_dir   : FlowDir (1 = WithDigitized -> draw chevron; 0 = Uninitialized -> none).
+-- Geometry vertex order (= downstream) is preserved from the loader -> chevrons follow it.
+-- Clipped to the 8-state boundary (public.supported_region): keep whole lines that
+-- intersect an in-scope state (the out-of-scope mask hides any neighbor-state overdraw).
 -- Idempotent: drops and rebuilds.
 -- ============================================================================
+
+-- Speeds up the in-scope intersect on a multi-million-row staging table (no-op if present).
+CREATE INDEX IF NOT EXISTS nhdplus_hr_flowlines_geom_idx
+    ON staging.nhdplus_hr_flowlines USING GIST (geom);
 
 DROP TABLE IF EXISTS tiles.waterways;
 
 CREATE TABLE tiles.waterways (
-    ogc_fid               bigserial PRIMARY KEY,
-    geom                  geometry(MultiLineString, 4326),
-    name                  text,
-    down_name             text,   -- what this stream flows into (network topology)
-    down_id               integer,
-    gnis_id               text,
-    nhd_id                text,   -- NHD_Permanent_Identifier → join to NHD for stream type/order
-    hydrologic_subregion  text,   -- USGS WBD locators (→ §5.3 watershed grouping)
-    hydrologic_subbasin   text,   -- HUC8
-    state_nm              text,
-    data_vintage          text,
-    source_key            text    -- registry provenance (§6.13): 'ca_streams'
+    ogc_fid       bigserial PRIMARY KEY,
+    geom          geometry(MultiLineString, 4326),
+    name          text,        -- GNIS_Name
+    flow_class    text,        -- 'perennial' | 'intermittent'
+    flow_dir      smallint,    -- FlowDir: 1 = draw chevron, 0 = direction not established
+    permanent_id  text,        -- NHD Permanent_Identifier (stable key)
+    reachcode     text,        -- left 8 = HUC8 (join to WBD / §5.3)
+    state_nm      text,        -- dominant in-scope state (display provenance; not queried by app)
+    data_vintage  text,
+    source_key    text         -- registry provenance (§6.13)
 );
 
+-- Dissolved 8-state boundary for the in-scope filter (built once).
+DROP TABLE IF EXISTS _region8;
+CREATE TEMP TABLE _region8 AS SELECT ST_Union(geom) AS geom FROM public.supported_region;
+CREATE INDEX ON _region8 USING GIST (geom);
+
 INSERT INTO tiles.waterways
-    (geom, name, down_name, down_id, gnis_id, nhd_id,
-     hydrologic_subregion, hydrologic_subbasin, state_nm, data_vintage, source_key)
+    (geom, name, flow_class, flow_dir, permanent_id, reachcode, state_nm, data_vintage, source_key)
 SELECT
     ST_Multi(s.geom),
-    NULLIF(s.name, ''),
-    NULLIF(s.down_name, ''),
-    s.down_id,
-    NULLIF(s.gnis_id, ''),
-    NULLIF(s.nhd_permanent_identifier, ''),
-    NULLIF(s.hydrologic_subregion, ''),
-    NULLIF(s.hydrologic_subbasin, ''),
-    'California',
-    'CDFW California Streams (NHD-derived, static ~2020)',
-    'ca_streams'
-FROM staging.ca_streams s
-WHERE s.geom IS NOT NULL
-  AND NOT ST_IsEmpty(s.geom);
+    NULLIF(s.gnis_name, ''),
+    CASE WHEN s.fcode = 46006 THEN 'perennial' ELSE 'intermittent' END,
+    s.flowdir::smallint,
+    s.permanent_identifier,
+    NULLIF(s.reachcode, ''),
+    (SELECT r.state_code FROM public.supported_region r
+        WHERE ST_Intersects(ST_StartPoint(ST_GeometryN(s.geom, 1)), r.geom) LIMIT 1),
+    'USGS NHDPlus HR (per-HU4 VPU/Current — dev ingest; prod upgrades to NR2)',
+    'nhdplus_hr_waterways'
+FROM staging.nhdplus_hr_flowlines s
+JOIN _region8 r ON ST_Intersects(s.geom, r.geom)
+WHERE s.geom IS NOT NULL AND NOT ST_IsEmpty(s.geom);
 
 CREATE INDEX waterways_geom_idx  ON tiles.waterways USING GIST (geom);
 CREATE INDEX waterways_state_idx ON tiles.waterways (state_nm);
+CREATE INDEX waterways_class_idx ON tiles.waterways (flow_class);
 
 -- pg_tileserv's low-priv role must be able to read it (§6.8).
 GRANT SELECT ON tiles.waterways TO tileserv_ro;
 
-SELECT state_nm, count(*) AS lines, count(name) AS named FROM tiles.waterways GROUP BY state_nm;
+-- Validation readout.
+SELECT flow_class, count(*) AS lines, count(name) AS named FROM tiles.waterways GROUP BY flow_class ORDER BY flow_class;
+SELECT count(*) FILTER (WHERE flow_dir = 1) AS directional, count(*) AS total FROM tiles.waterways;
+SELECT state_nm, count(*) FROM tiles.waterways GROUP BY state_nm ORDER BY 2 DESC;
