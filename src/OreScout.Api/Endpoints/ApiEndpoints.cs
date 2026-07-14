@@ -224,12 +224,14 @@ public static class ApiEndpoints
 
             var pin = await db.Pins.FindAsync([id], ct);
             if (pin is null) return Err(404, "not_found", "Pin not found.");
-            format ??= "gpx";
-            if (!string.Equals(format, "gpx", StringComparison.OrdinalIgnoreCase))
-                return Err(400, "unsupported_format", "Only 'gpx' is supported in the POC (KML deferred — see README).");
+            format = (format ?? "gpx").ToLowerInvariant();
+            if (format is not ("gpx" or "kml"))
+                return Err(400, "unsupported_format", "format must be 'gpx' or 'kml'.");
 
-            var bytes = Encoding.UTF8.GetBytes(BuildGpx(pin));
-            return Results.File(bytes, "application/gpx+xml", $"{SafeFileName(pin.Title)}.gpx");
+            var (body, contentType, ext) = format == "kml"
+                ? (BuildKml(pin), "application/vnd.google-earth.kml+xml", "kml")
+                : (BuildGpx(pin), "application/gpx+xml", "gpx");
+            return Results.File(Encoding.UTF8.GetBytes(body), contentType, $"{SafeFileName(pin.Title)}.{ext}");
         });
     }
 
@@ -287,6 +289,26 @@ public static class ApiEndpoints
 
         if (a.ActiveClaims is { Count: > 0 }) tags.Add("Active Claim Nearby");
         return [.. tags];
+    }
+
+    private static string BuildKml(Pin p)
+    {
+        var name = System.Security.SecurityElement.Escape(p.Title);
+        var desc = System.Security.SecurityElement.Escape(p.Notes ?? "");
+        var lat = p.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var lng = p.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return $"""
+            <?xml version="1.0" encoding="UTF-8"?>
+            <kml xmlns="http://www.opengis.net/kml/2.2">
+              <Document>
+                <Placemark>
+                  <name>{name}</name>
+                  <description>{desc}</description>
+                  <Point><coordinates>{lng},{lat},0</coordinates></Point>
+                </Placemark>
+              </Document>
+            </kml>
+            """;
     }
 
     private static string BuildGpx(Pin p)

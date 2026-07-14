@@ -54,8 +54,8 @@ export const api = {
 
   deletePin: (id: string) => request<void>(`/pins/${id}`, { method: 'DELETE' }),
 
-  exportPin: async (id: string): Promise<Blob> => {
-    const res = await fetch(`${BASE}/pins/${id}/export?format=gpx`, { headers: { 'X-Api-Key': KEY } });
+  exportPin: async (id: string, format: 'gpx' | 'kml' = 'gpx'): Promise<Blob> => {
+    const res = await fetch(`${BASE}/pins/${id}/export?format=${format}`, { headers: { 'X-Api-Key': KEY } });
     if (!res.ok) throw new ApiError('export_failed', 'Export failed', res.status);
     return res.blob();
   },

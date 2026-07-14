@@ -263,13 +263,12 @@ Pass `DATABASE_URL` as a secret/env var.
 **Cadence:** nightly (~3am). The source updates near-daily (`Modified` was yesterday), so daily
 captures it. PROJECT_PLAN.md §6.6.2.
 
-### Future: KML export (Google Earth)
+### Pin export: GPX + KML
 
-The POC exports pins as **GPX only** (`GET /api/v1/pins/{id}/export?format=gpx`) — GPX covers Gaia
-and handheld GPS units, and the Google Maps / Gaia deep-links (plan §6.9) cover "open in app." The
-export endpoint already takes a `format` param, so KML is an additive change, not a redesign: add a
-`kml` branch that emits a `<Placemark>` with the pin's name/description/coordinates, and list KML
-in the §4.2 export options. Worth doing when Google Earth handoff is requested.
+Pins export as **GPX** (Gaia, handheld GPS) or **KML** (Google Earth) via
+`GET /api/v1/pins/{id}/export?format=gpx|kml` (default `gpx`); the "My Pins" list has a button for
+each. KML emits a `<Placemark>` with the pin's name/description/coordinates. The Google Maps / Gaia
+deep-links (plan §6.9) additionally cover "open in app."
 
 ### Future: production-grade private-land validation
 

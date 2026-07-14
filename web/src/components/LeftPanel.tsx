@@ -160,13 +160,13 @@ function Pins() {
   // Open the saved pin = show its stored snapshot (+ drift check), NOT a fresh assessment.
   const goTo = (p: Pin) => { flyTo(p.lat, p.lng, 13); viewPin(p.id, { lat: p.lat, lng: p.lng }); };
 
-  const exportGpx = async (p: Pin) => {
+  const exportPin = async (p: Pin, format: 'gpx' | 'kml') => {
     setActionErr(null);
     try {
-      const blob = await api.exportPin(p.id);
+      const blob = await api.exportPin(p.id, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `${p.title.replace(/[^a-z0-9]+/gi, '_')}.gpx`; a.click();
+      a.href = url; a.download = `${p.title.replace(/[^a-z0-9]+/gi, '_')}.${format}`; a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
       setActionErr({ id: p.id, msg: `Export failed: ${(e as Error).message}` });
@@ -190,7 +190,8 @@ function Pins() {
             <span className="pin-sub">{p.status === 'visited' ? 'Visited' : 'Want to visit'} · {p.lat.toFixed(4)}, {p.lng.toFixed(4)}</span>
           </button>
           <div className="pin-actions">
-            <button className="btn small" onClick={() => exportGpx(p)}>GPX</button>
+            <button className="btn small" onClick={() => exportPin(p, 'gpx')}>GPX</button>
+            <button className="btn small" onClick={() => exportPin(p, 'kml')}>KML</button>
             <button className="btn small danger" disabled={del.isPending} onClick={() => deletePin(p)}>
               {del.isPending && del.variables === p.id ? 'Deleting…' : 'Delete'}
             </button>
