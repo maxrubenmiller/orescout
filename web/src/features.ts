@@ -6,6 +6,7 @@ export const FEATURES = {
   layerMrds: 'layer.mrds',
   layerProspectivity: 'layer.prospectivity',
   layerClaims: 'layer.claims',
+  layerAccess: 'layer.access',
   exportGpx: 'export.gpx',
   routingAccess: 'routing.access',
 } as const;

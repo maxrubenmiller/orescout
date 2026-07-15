@@ -337,6 +337,58 @@
     },
 
     {
+      "key": "access",
+      "role": "reference",
+      "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],
+      "access": {
+        "type": "download",
+        "url": "https://data.fs.usda.gov/geodata/edw/datasets.php?dsetCategory=transportation",
+        "loader": "scripts/etl/pull_access.sh",
+        "sources": [
+          {
+            "id": "usfs_mvum_roads",
+            "kind": "download",
+            "zip_match": "Trans_MVUM_Road.*\\.gdb\\.zip",
+            "layer_match": "MVUM_Road",
+            "staging": "staging.access_mvum_roads"
+          },
+          {
+            "id": "usfs_mvum_trails",
+            "kind": "download",
+            "zip_match": "Trans_MVUM_Trail.*\\.gdb\\.zip",
+            "layer_match": "MVUM_Trail",
+            "staging": "staging.access_mvum_trails"
+          },
+          {
+            "id": "usfs_nfs_trails",
+            "kind": "download",
+            "zip_match": "Trans_Trail_NFS_Publish.*\\.gdb\\.zip",
+            "layer_match": "Trail_NFS_Publish",
+            "rest_fallback": "https://apps.fs.usda.gov/arcx/rest/services/EDW/EDW_TrailNFSPublish_01/MapServer/0",
+            "fields": ["trail_name", "trail_type", "trail_cn", "trail_no", "trail_class", "trail_surface", "terra_motorized", "hiker_pedestrian_managed", "pack_saddle_managed", "bicycle_managed", "motorcycle_managed", "atv_managed", "fourwd_managed", "snowmobile_managed"],
+            "page": 1000,
+            "staging": "staging.access_nfs_trails"
+          },
+          {
+            "id": "blm_gtlf",
+            "kind": "arcgis_rest",
+            "url": "https://gis.blm.gov/arcgis/rest/services/transportation/BLM_Natl_GTLF_Public_Display/MapServer",
+            "layers": [0, 1, 2, 3, 4, 5, 6, 7],
+            "fields": ["ROUTE_PRMRY_NM", "PLAN_ASSET_CLASS", "PLAN_MODE_TRNSPRT", "OBSRVE_ROUTE_USE_CLASS", "PLAN_OHV_ROUTE_DSGNTN", "OBSRVE_SRFCE_TYPE", "PLAN_SEASON_RSTRCT_CODE", "PLAN_ACCESS_RSTRCT", "ADMIN_ST", "FAMS_ID", "GlobalID"],
+            "page": 2000,
+            "staging": "staging.access_gtlf"
+          }
+        ]
+      },
+      "serve": { "table": "tiles.access", "geom": "MultiLineString" },
+      "license": "public domain (US federal work). USFS metadata use-constraint verified 2026-07-14: no access constraint; no-warranty + 'not legal documents' disclaimer only. BLM: disclaimer-only.",
+      "attribution": "USDA Forest Service (MVUM/NFS Trails) + BLM (GTLF)",
+      "vintage": "USFS MVUM Roads/Trails + NFS Trails EDW File GDBs (pub 2026-07-09) + BLM Natl GTLF Public Display (REST harvest 2026-07-14)",
+      "upstream_ref": "https://data.fs.usda.gov/geodata/edw/datasets.php?dsetCategory=transportation",
+      "max_age_days": 180
+    },
+
+    {
       "key": "wbd",
       "role": "reference",
       "states": ["NV", "CA", "AZ", "CO", "UT", "NM", "OR", "ID"],

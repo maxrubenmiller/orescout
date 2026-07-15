@@ -36,6 +36,8 @@ Top-level: `{ "sources": [ …entries… ] }`. Each entry:
 | `where` | Optional server-side filter (e.g. MRDS `CODE_LIST LIKE '%AU%'`). |
 | `loader` | For `base`/`reference`: the pull/load script. |
 | `layer` | Optional layer name (PAD-US combined layer, etc.). |
+| `hu4_list` | (waterways) The per-HU4 list `pull_nhdplus_hr.sh` iterates. |
+| `sources` | (access) Multi-source composite: the sub-source list `pull_access.sh` iterates — each with `id`, `kind` (`download`\|`arcgis_rest`), `staging`, and per-kind params (`zip_match`/`layer_match`/`rest_fallback` for FSGeodata GDBs; `url`/`layers`/`fields`/`page` for paged REST). One registry entry still = one served overlay (`tiles.access`); the sub-list is the loader's iteration detail, mirroring `hu4_list`. |
 
 ### `confirm` (confirm_open sources)
 | Field | Meaning |
