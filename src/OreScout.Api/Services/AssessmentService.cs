@@ -110,9 +110,18 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims, IConf
             // An existing RED or known-YELLOW base keeps its verdict/reason; the claim adds a warning.
             if (Rank(status) < Rank("YELLOW") || ambiguity == "UNKNOWN")
             {
+                // Where the base was UNKNOWN (no land-management data — possibly-private surface),
+                // the claim resolves the MINERAL estate but the SURFACE owner is still unknown: a
+                // possible split estate, so both must be cleared. Where the base was open/public,
+                // only the minerals are spoken for.
+                var wasUnknownSurface = ambiguity == "UNKNOWN";
                 status = "YELLOW";
                 ambiguity = "KNOWN";
-                reason = "Recorded mining claim(s) within 100m — verify before prospecting.";
+                reason = wasUnknownSurface
+                    ? "Recorded mining claim(s) within 100m confirm federal mineral estate here, but surface " +
+                      "ownership is still unknown — a possible split estate. Verify both the claim and surface " +
+                      "access before prospecting."
+                    : "Recorded mining claim(s) within 100m — verify before prospecting.";
             }
             warnings.Add(ClaimWarning(activeClaims));
         }
@@ -144,8 +153,8 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims, IConf
             .OrderByDescending(g => g.Count())
             .Select(g => $"{g.Count()} {g.Key}");
         return $"Mining claim(s) within 100m: {claims.Count} ({string.Join(", ", byStatus)}). " +
-               "A claimant holds mineral rights; verify before prospecting. " +
-               "Casual hand-tool collecting may still be allowed.";
+               "A claimant holds the mineral rights here — do not prospect or collect without their permission. " +
+               "Verify claim status before entering.";
     }
 
     private static (string status, string? ambiguity, string reason) NoData() =>
