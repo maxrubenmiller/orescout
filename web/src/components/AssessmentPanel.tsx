@@ -62,6 +62,7 @@ export default function AssessmentPanel() {
             assessment — prospectivity first, then gold — replacing the old floating map popup. */}
         {marker?.prospectivity && <ProspectivityDetails p={marker.prospectivity} />}
         {marker?.mrds && <MrdsDetails p={marker.mrds} />}
+        {marker?.access && <AccessDetails p={marker.access} />}
         {marker && <div className="assess-section-head">Location assessment</div>}
 
         <div className="coords">{point.lat.toFixed(5)}, {point.lng.toFixed(5)}</div>
@@ -149,6 +150,36 @@ function MrdsDetails({ p }: { p: MarkerProps }) {
       {altNames ? <div className="mrds-alt">Also known as: {altNames}</div> : null}
       {url ? <a className="mrds-link" href={url} target="_blank" rel="noopener noreferrer">Full USGS record →</a> : null}
       <div className="mrds-note">Historic USGS MRDS record (pre-2011) — not current.</div>
+    </section>
+  );
+}
+
+// Access road/trail card (from a click on an access & trails line — §5.4). Contract per the
+// brief: name · travel mode · surface · seasonal window (ADVISORY free text, never parsed) ·
+// source agency · the mandatory MVUM-authority disclaimer line.
+const TRAVEL_MODE_LABELS: Record<string, string> = {
+  drive: 'Drive in — open to passenger vehicles',
+  off_road: 'Off-road — high-clearance / 4WD / OHV',
+  hike_in: 'Hike in — non-motorized',
+};
+function AccessDetails({ p }: { p: MarkerProps }) {
+  const s = (k: string) => (p[k] ? String(p[k]) : '');
+  const mode = s('travel_mode');
+  const usfs = s('agency').includes('Forest Service');
+  return (
+    <section className="marker-card access-pop">
+      <h4 className="marker-card-head">Road / trail access</h4>
+      <strong>{s('name') || (p['is_road'] ? 'Unnamed road' : 'Unnamed trail')}{s('route_id') ? ` (#${s('route_id')})` : ''}</strong>
+      <div className={`access-mode ${mode}`}>{TRAVEL_MODE_LABELS[mode] ?? mode}</div>
+      {s('surface') ? <div className="access-attr">Surface: {s('surface')}</div> : null}
+      {s('seasonal') ? <div className="access-attr">Open dates (advisory): {s('seasonal')}</div> : null}
+      {s('mode_detail') ? <div className="access-detail">{s('mode_detail')}</div> : null}
+      <div className="access-agency">Source: {s('agency') || '—'}</div>
+      <div className="access-note">
+        {usfs
+          ? 'Feature data can lag the legally authoritative Motor Vehicle Use Map — confirm against the official MVUM before you go.'
+          : 'Designations can change — confirm current travel rules with the local BLM office (and the official MVUM on Forest Service land) before you go.'}
+      </div>
     </section>
   );
 }

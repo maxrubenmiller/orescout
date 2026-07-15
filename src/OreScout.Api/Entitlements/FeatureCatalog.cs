@@ -28,6 +28,7 @@ public static class FeatureCatalog
     public const string LayerMrds = "layer.mrds";
     public const string LayerProspectivity = "layer.prospectivity";
     public const string LayerClaims = "layer.claims";
+    public const string LayerAccess = "layer.access";
 
     // API-served capabilities — gate at the endpoint.
     public const string ExportGpx = "export.gpx";
@@ -42,6 +43,7 @@ public static class FeatureCatalog
         new(LayerMrds,          "Gold occurrences (MRDS)",      FeatureTier.Free),
         new(LayerProspectivity, "Prospecting potential",        FeatureTier.Free),
         new(LayerClaims,        "Active mining claims",         FeatureTier.Free),
+        new(LayerAccess,        "Access & trails overlay",      FeatureTier.Free),
         new(ExportGpx,          "GPX export",                   FeatureTier.Free),
         new(RoutingAccess,      "Access routing (MVUM/trails)", FeatureTier.Free),
     ];

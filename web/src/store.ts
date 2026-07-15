@@ -8,13 +8,15 @@ interface FlyTarget extends LatLng { zoom?: number; nonce: number; }
 
 // Vector-tile feature properties for a clicked reference marker (untyped like the tile payload).
 export type MarkerProps = Record<string, unknown>;
-// A marker click carries the reference details (prospectivity and/or MRDS at that spot — either may
-// be null) plus the marker location, which drives the persistent highlight ring on the map. When set,
-// the assessment panel renders these ABOVE the location assessment and the dropped cursor pin is
-// suppressed (the ring is the "you're here" indicator instead).
+// A marker click carries the reference details (prospectivity and/or MRDS and/or an access
+// road/trail segment at that spot — any may be null) plus the marker location, which drives the
+// persistent highlight ring on the map. When set, the assessment panel renders these ABOVE the
+// location assessment and the dropped cursor pin is suppressed (the ring is the "you're here"
+// indicator instead).
 export interface MarkerSelection {
   prospectivity: MarkerProps | null;
   mrds: MarkerProps | null;
+  access: MarkerProps | null;
   point: LatLng;
 }
 
@@ -43,8 +45,10 @@ interface UIState {
   setBasemap: (b: Basemap) => void;
   // waterways = master toggle; waterwaysPerennial/waterwaysIntermittent = the flow-class sub-toggles
   // (both default on) nested under it. Each class shows only when the master AND its sub-flag are on.
-  layers: { prohibited: boolean; ambiguous: boolean; open: boolean; claims: boolean; waterways: boolean; waterwaysPerennial: boolean; waterwaysIntermittent: boolean; mrds: boolean; prospectivity: boolean };
-  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'open' | 'claims' | 'waterways' | 'waterwaysPerennial' | 'waterwaysIntermittent' | 'mrds' | 'prospectivity') => void;
+  // access mirrors the same nesting: access = master, accessDrive/accessOffRoad/accessHikeIn = the
+  // travel-mode sub-toggles (default on, master default off — waterways parity).
+  layers: { prohibited: boolean; ambiguous: boolean; open: boolean; claims: boolean; waterways: boolean; waterwaysPerennial: boolean; waterwaysIntermittent: boolean; mrds: boolean; prospectivity: boolean; access: boolean; accessDrive: boolean; accessOffRoad: boolean; accessHikeIn: boolean };
+  toggleLayer: (k: 'prohibited' | 'ambiguous' | 'open' | 'claims' | 'waterways' | 'waterwaysPerennial' | 'waterwaysIntermittent' | 'mrds' | 'prospectivity' | 'access' | 'accessDrive' | 'accessOffRoad' | 'accessHikeIn') => void;
 
   // Imperative fly-to (MapView watches flyTarget)
   flyTarget: FlyTarget | null;
@@ -70,7 +74,7 @@ export const useUI = create<UIState>((set) => ({
 
   basemap: 'satellite',
   setBasemap: (b) => set({ basemap: b }),
-  layers: { prohibited: true, ambiguous: true, open: false, claims: false, waterways: false, waterwaysPerennial: true, waterwaysIntermittent: true, mrds: false, prospectivity: false },
+  layers: { prohibited: true, ambiguous: true, open: false, claims: false, waterways: false, waterwaysPerennial: true, waterwaysIntermittent: true, mrds: false, prospectivity: false, access: false, accessDrive: true, accessOffRoad: true, accessHikeIn: true },
   toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 
   flyTarget: null,

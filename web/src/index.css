@@ -166,6 +166,17 @@ a { color: #2563eb; }
 .sw-gold { background: #FFC64B; border-color: #4a3600; }
 .sw-prospect { background: #E8590C; border-color: #7a2e06; }
 .prospect-legend { line-height: 1.6; }
+/* Access & trails travel-mode swatches (master = split motorized/non-motorized cue). */
+.sw-access { background: linear-gradient(135deg, #d946ef 0 50%, #2dd4bf 50% 100%); }
+.sw-access-drive { background: #e879f9; }
+.sw-access-offroad { /* dashed-line cue mirroring the off-road dash */
+  background-image: repeating-linear-gradient(90deg, #c026d3 0 3px, transparent 3px 6px);
+  background-color: transparent;
+}
+.sw-access-hikein { /* short-dash teal cue for non-motorized */
+  background-image: repeating-linear-gradient(90deg, #2dd4bf 0 2px, transparent 2px 4px);
+  background-color: transparent;
+}
 
 /* MRDS gold-occurrence popup (reference overlay). */
 .mrds-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
@@ -192,6 +203,18 @@ a { color: #2563eb; }
 .prospect-pop .prospect-chem { color: #9a3412; font-size: 11px; margin-top: 4px; font-style: italic; }
 .prospect-pop .prospect-note { color: #6b7280; font-size: 11px; margin-top: 5px; font-style: italic; }
 .prospect-pop .prospect-vintage { color: #9ca3af; font-size: 10px; margin-top: 5px; }
+
+/* Access route/trail popup (reference overlay — §5.4 access & trails). */
+.access-pop { font-size: 12px; line-height: 1.35; color: #1f2937; }
+.access-pop strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.access-pop .access-mode { font-weight: 600; }
+.access-pop .access-mode.drive { color: #a21caf; }
+.access-pop .access-mode.off_road { color: #86198f; }
+.access-pop .access-mode.hike_in { color: #0f766e; }
+.access-pop .access-attr { color: #4b5563; margin-top: 2px; }
+.access-pop .access-detail { color: #6b7280; font-size: 11px; margin-top: 4px; }
+.access-pop .access-agency { color: #9ca3af; font-size: 10px; margin-top: 5px; }
+.access-pop .access-note { color: #9ca3af; font-size: 10px; margin-top: 5px; font-style: italic; }
 
 /* Marker detail cards inside the assessment panel (gold/prospectivity click → panel, not popup). */
 .marker-card { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border); }

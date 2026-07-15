@@ -67,6 +67,24 @@ function Layers() {
           {!isEntitled(FEATURES.layerMrds) && <span className="lock-chip">🔒 Upgrade</span>}
         </label>
         <p className="hint">Gold dots = historic gold sites (USGS MRDS; brighter = past producers). Zoom to ~8+ and click a dot for details. A pre-2011 record — historical, not current — and reference only: it does not affect the legality verdict.</p>
+        <label className={isEntitled(FEATURES.layerAccess) ? 'chk' : 'chk locked'}>
+          <input type="checkbox" checked={layers.access} disabled={!isEntitled(FEATURES.layerAccess)} onChange={() => toggle('access')} /> <span className="sw sw-access" /> Access &amp; trails
+          {!isEntitled(FEATURES.layerAccess) && <span className="lock-chip">🔒 Upgrade</span>}
+        </label>
+        {layers.access && (
+          <div className="sub-toggles">
+            <label className="chk sub">
+              <input type="checkbox" checked={layers.accessDrive} onChange={() => toggle('accessDrive')} /> <span className="sw sw-access-drive" /> Drive
+            </label>
+            <label className="chk sub">
+              <input type="checkbox" checked={layers.accessOffRoad} onChange={() => toggle('accessOffRoad')} /> <span className="sw sw-access-offroad" /> Off-road
+            </label>
+            <label className="chk sub">
+              <input type="checkbox" checked={layers.accessHikeIn} onChange={() => toggle('accessHikeIn')} /> <span className="sw sw-access-hikein" /> Hike-in
+            </label>
+          </div>
+        )}
+        <p className="hint">Roads &amp; trails colored by travel mode (USFS MVUM/NFS trails + BLM GTLF). Solid pink = passenger-vehicle roads, dashed = high-clearance/OHV, teal = non-motorized. Trails from zoom ~9, roads ~10; click a line for details. Seasonal dates are advisory — confirm against the official MVUM before you go. Reference only — does not affect the legality verdict.</p>
         <label className={isEntitled(FEATURES.layerProspectivity) ? 'chk' : 'chk locked'}>
           <input type="checkbox" checked={layers.prospectivity} disabled={!isEntitled(FEATURES.layerProspectivity)} onChange={() => toggle('prospectivity')} /> <span className="sw sw-prospect" /> Prospecting potential (gold)
           {!isEntitled(FEATURES.layerProspectivity) && <span className="lock-chip">🔒 Upgrade</span>}
@@ -143,6 +161,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ugrc_ut: 'UT ownership (SGID)',
   ngdb_prospectivity: 'Prospecting geochemistry',
   wbd: 'Watersheds (WBD)',
+  access: 'Access & trails (MVUM/GTLF)',
 };
 
 function Pins() {

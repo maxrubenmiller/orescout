@@ -5,7 +5,7 @@ import { useUI } from '../store';
 import { usePins, useActiveAssessment, useMeta } from '../hooks';
 import {
   basemapTiles, buildStyle, emptyFC, makeChevron, makeHatch, outOfScopeMaskFilter, pointFC,
-  PROSPECTIVITY_IMAGES, PROSPECTIVITY_LAYER_IDS,
+  ACCESS_LAYER_IDS, ALL_ACCESS_LAYER_IDS, PROSPECTIVITY_IMAGES, PROSPECTIVITY_LAYER_IDS,
 } from '../map/style';
 
 export default function MapView() {
@@ -98,19 +98,31 @@ export default function MapView() {
     // stay clickable even if the glyph images failed to register.
     const nearestProspect = (pt: maplibregl.Point): maplibregl.MapGeoJSONFeature | null =>
       layerVisible('prospectivity-high-producer') ? nearestIn(pt, PROSPECTIVITY_LAYER_IDS) : null;
+    // Access road/trail lines: tolerance-box hit-test over whichever class layers are visible;
+    // the topmost rendered feature wins (lines have no meaningful center to distance-sort on).
+    const accessAt = (pt: maplibregl.Point): maplibregl.MapGeoJSONFeature | null => {
+      const layers = ALL_ACCESS_LAYER_IDS.filter((id) => layerVisible(id));
+      if (layers.length === 0) return null;
+      const fs = map.queryRenderedFeatures([[pt.x - HIT, pt.y - HIT], [pt.x + HIT, pt.y + HIT]], { layers });
+      return fs[0] ?? null;
+    };
     map.on('click', (e) => {
-      // Find the reference markers under the click — both independently, since a gold occurrence and
-      // a prospectivity site can share a spot. Details render in the assessment panel (not a popup);
-      // the clicked marker's location drives the persistent highlight ring.
+      // Find the reference markers under the click — each independently, since a gold occurrence,
+      // a prospectivity site, and an access route can share a spot. Details render in the
+      // assessment panel (not a popup); the clicked marker's location drives the highlight ring.
       const prospect = nearestProspect(e.point);
       const gold = nearestMrds(e.point);
+      const access = accessAt(e.point);
       const pc = prospect ? coordsOf(prospect) : null;
       const gc = gold ? coordsOf(gold) : null;
-      const point = pc ?? gc; // [lng, lat] of the clicked marker (prospectivity wins the tie)
+      // [lng, lat] of the clicked marker (point markers win the tie; an access line anchors the
+      // ring at the click itself — any point along the line is "the spot").
+      const point = pc ?? gc ?? (access ? [e.lngLat.lng, e.lngLat.lat] as [number, number] : null);
       const markerSel = point
         ? {
             prospectivity: prospect ? (prospect.properties ?? {}) : null,
             mrds: gold ? (gold.properties ?? {}) : null,
+            access: access ? (access.properties ?? {}) : null,
             point: { lat: point[1], lng: point[0] },
           }
         : null;
@@ -126,7 +138,7 @@ export default function MapView() {
       const pc = prospect ? coordsOf(prospect) : null;
       const gold = pc ? null : nearestMrds(e.point);
       const c = gold ? coordsOf(gold) : null;
-      map.getCanvas().style.cursor = pc || c ? 'pointer' : '';
+      map.getCanvas().style.cursor = pc || c || accessAt(e.point) ? 'pointer' : '';
       (map.getSource('mrds-hover') as maplibregl.GeoJSONSource | undefined)
         ?.setData(c ? pointFC([{ lng: c[0], lat: c[1] }]) : emptyFC());
       (map.getSource('prospectivity-hover') as maplibregl.GeoJSONSource | undefined)
@@ -166,6 +178,11 @@ export default function MapView() {
       v('mrds', layers.mrds);
       // ALL prospectivity layers — symbols + their F-5 fallback circles.
       for (const id of PROSPECTIVITY_LAYER_IDS) v(id, layers.prospectivity);
+      // Access & trails: master toggle gates the layer; each travel-mode sub-toggle gates its
+      // road+trail pair (waterways idiom).
+      for (const id of ACCESS_LAYER_IDS.drive) v(id, layers.access && layers.accessDrive);
+      for (const id of ACCESS_LAYER_IDS.offRoad) v(id, layers.access && layers.accessOffRoad);
+      for (const id of ACCESS_LAYER_IDS.hikeIn) v(id, layers.access && layers.accessHikeIn);
     };
     if (loadedRef.current) apply(); else map.once('load', apply);
   }, [layers]);

@@ -27,6 +27,7 @@ export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
 export const MRDS_SRC_LAYER = 'tiles.mrds';
 export const PROSPECTIVITY_SRC_LAYER = 'tiles.prospectivity';
+export const ACCESS_SRC_LAYER = 'tiles.access';
 
 // Prospecting-potential zoom gates (owner call #1): High from z7, Moderate from z10
 // (mirrors how claims z9 / waterways z10 gate density).
@@ -41,6 +42,26 @@ export const PROSPECTIVITY_LAYER_IDS = [
   'prospectivity-high-producer',
   'prospectivity-high-chemistry',
   'prospectivity-moderate',
+];
+
+// Access & trails zoom gates (owner lock #4: roads gate HIGHER than trails so low zooms don't
+// drown in forest-road spaghetti — mirrors how claims z9 / waterways z10 gate density).
+// Trails from z9, roads from z10 (aligns waterways). z8 was rejected by measurement: a tile
+// carries ALL rows regardless of client-side layer gating, and the worst z8 tile (Sierra
+// foothills) weighed 692 KB vs the 500 KB budget; worst z9 tile measured 421 KB (2026-07-14).
+export const ACCESS_TRAIL_MINZOOM = 9;
+export const ACCESS_ROAD_MINZOOM = 10;
+
+// Access layer ids per travel-mode class — MapView toggles/hit-tests these sets. Each class
+// splits road/trail so the road half can gate at the higher minzoom (hike_in is trail-only by
+// construction — non-motorized segments are never roads).
+export const ACCESS_LAYER_IDS: Record<'drive' | 'offRoad' | 'hikeIn', string[]> = {
+  drive: ['access-drive-road', 'access-drive-trail'],
+  offRoad: ['access-offroad-road', 'access-offroad-trail'],
+  hikeIn: ['access-hikein'],
+};
+export const ALL_ACCESS_LAYER_IDS = [
+  ...ACCESS_LAYER_IDS.drive, ...ACCESS_LAYER_IDS.offRoad, ...ACCESS_LAYER_IDS.hikeIn,
 ];
 
 // Below this zoom the legality overlay renders from the generalized `tiles.legality_lowzoom`
@@ -111,6 +132,13 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
         minzoom: 0, maxzoom: 14,
       },
       'mrds-hover': { type: 'geojson', data: emptyFC() },
+      access: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.access/{z}/{x}/{y}.pbf`],
+        // Never rendered below the trail gate (all its layers carry minzoom) — belt & braces,
+        // and skips fetching tiles that could never draw.
+        minzoom: ACCESS_TRAIL_MINZOOM, maxzoom: 14,
+      },
       prospectivity: {
         type: 'vector',
         tiles: [`${tileBaseUrl}/tiles.prospectivity/{z}/{x}/{y}.pbf`],
@@ -188,6 +216,14 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
           'icon-allow-overlap': true, 'icon-ignore-placement': true,
         },
       },
+
+      // Access & trails (reference-only — USFS MVUM/NFS Trails + BLM GTLF; never feeds the
+      // verdict engine, §6.13/§5.4). One line layer per travel_mode × road/trail so roads can
+      // gate at the higher minzoom (lock #4). Palette: motorized = fuchsia family (drive solid
+      // light, off-road dashed deep), non-motorized = teal short-dash — motorized vs not reads
+      // at a glance, and nothing collides with the blue waterways, gold/orange markers, or the
+      // red/green legality fills.
+      ...accessLayerSet(),
 
       // Gold occurrences (reference-only — USGS MRDS, gold-filtered; never feeds the verdict
       // engine, §6.13). Points are dense in mining districts: minzoom 8 + small radius keeps it
@@ -330,6 +366,45 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
       },
     ],
   };
+}
+
+// The five access & trails line layers (3 travel-mode classes; drive/off-road split road vs
+// trail so roads gate at ACCESS_ROAD_MINZOOM per lock #4; hike_in is trail-only by construction).
+// All default hidden — MapView applies master ∧ sub-toggle visibility (waterways idiom).
+function accessLayerSet(): StyleSpecification['layers'] {
+  const line = (
+    id: string,
+    mode: string,
+    road: boolean | null,
+    paint: Record<string, unknown>,
+    dash?: number[],
+  ): StyleSpecification['layers'][number] => ({
+    id, type: 'line', source: 'access', 'source-layer': ACCESS_SRC_LAYER,
+    minzoom: road ? ACCESS_ROAD_MINZOOM : ACCESS_TRAIL_MINZOOM,
+    filter: road == null
+      ? ['==', ['get', 'travel_mode'], mode]
+      : ['all', ['==', ['get', 'travel_mode'], mode], ['==', ['get', 'is_road'], road]],
+    layout: { visibility: 'none', 'line-cap': dash ? 'butt' : 'round', 'line-join': 'round' },
+    paint: {
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.8, 12, 1.8, 14, 2.6, 17, 4],
+      'line-opacity': 0.9,
+      ...(dash ? { 'line-dasharray': dash } : {}),
+      ...paint,
+    } as never,
+  });
+  return [
+    // drive — open to standard passenger vehicles (solid, light fuchsia)
+    line('access-drive-road', 'drive', true, { 'line-color': '#e879f9' }),
+    line('access-drive-trail', 'drive', false, { 'line-color': '#e879f9' }),
+    // off_road — high-clearance / 4WD / ATV / motorcycle (dashed, deep fuchsia)
+    line('access-offroad-road', 'off_road', true, { 'line-color': '#c026d3' }, [2.4, 1.6]),
+    line('access-offroad-trail', 'off_road', false, { 'line-color': '#c026d3' }, [2.4, 1.6]),
+    // hike_in — non-motorized only (short-dash teal; thinner — it's the quiet class)
+    line('access-hikein', 'hike_in', null, {
+      'line-color': '#2dd4bf',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 0.7, 12, 1.5, 14, 2.2, 17, 3.4],
+    }, [1.2, 1.4]),
+  ];
 }
 
 // The five legality overlay layers for one source/zoom band. `suffix` distinguishes the ids
