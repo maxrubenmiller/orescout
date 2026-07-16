@@ -36,9 +36,11 @@ function Layers() {
       <section>
         <h4>Legality overlay</h4>
         <label className="chk"><input type="checkbox" checked={layers.prohibited} onChange={() => toggle('prohibited')} /> <span className="sw sw-red" /> Prohibited (red)</label>
+        <p className="hint">Closed to prospecting and mineral collection — protected or restricted land such as Wilderness, national parks and monuments, wildlife refuges, and tribal land.</p>
         <label className="chk"><input type="checkbox" checked={layers.ambiguous} onChange={() => toggle('ambiguous')} /> <span className="sw sw-hatch" /> Ambiguous (grey)</label>
+        <p className="hint">We can't confirm whether prospecting or mineral collection is allowed in these areas — verify the specific rules yourself before collecting.</p>
         <label className="chk"><input type="checkbox" checked={layers.open} onChange={() => toggle('open')} /> <span className="sw sw-open" /> Confirmed open (green)</label>
-        <p className="hint">Green = confirmed open for casual collecting (opt-in). No overlay = open or unknown. A decision-support tool, not legal advice.</p>
+        <p className="hint">Public land affirmatively confirmed open to casual hand-tool collecting. This shading is conservative — an area without it isn't necessarily closed, just not <strong>confirmed</strong> open.</p>
       </section>
       <section>
         <h4>Data layers</h4>

@@ -74,6 +74,17 @@ lz=$(q "SELECT count(*) FROM tiles.legality_lowzoom")
 [ "$lz" -gt 0 ] || fail "build_lowzoom produced 0 rows"
 echo "[rebuild]   legality_lowzoom: $lz rows"
 
+# Dissolved most-restrictive DISPLAY partition (UI_CHANGES.md Changes 1+2): uniform per-verdict
+# fills (no overlap darkening) + green clipped from under yellow. Reference/DISPLAY ONLY — the
+# verdict engine keeps querying tiles.legality_polygons, so this never changes a verdict. Built
+# from BOTH source tiers; low-zoom uses a coarser grid for lighter z0-8 tiles.
+echo "[rebuild] build_legality_display.sql (display partition — normal + low-zoom)..."
+"${PSQL[@]}" -v src=tiles.legality_polygons -v tgt=tiles.legality_display < scripts/etl/build_legality_display.sql >/dev/null
+"${PSQL[@]}" -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom -v cellsize=1.0 < scripts/etl/build_legality_display.sql >/dev/null
+disp=$(q "SELECT count(*) FROM tiles.legality_display")
+[ "$disp" -gt 0 ] || fail "build_legality_display produced 0 rows"
+echo "[rebuild]   legality_display: $disp pieces (+ low-zoom variant)"
+
 # ---- 4./5. fixture gates ----------------------------------------------------
 echo "[rebuild] Tier-A classifier fixtures…"
 ./scripts/run-fixtures.sh

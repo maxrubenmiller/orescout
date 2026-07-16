@@ -20,9 +20,18 @@ export function outOfScopeMaskFilter(supportedStates: string[]): FilterSpecifica
 
 // MVT vector-layer name as ENCODED IN THE TILE by pg_tileserv = the full schema-qualified
 // table id (verified by decoding a .pbf). NOTE: the TileJSON `vector_layers[].id` reports it
-// WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_polygons`.
-export const LEGALITY_SRC_LAYER = 'tiles.legality_polygons';
-export const LEGALITY_LOWZOOM_SRC_LAYER = 'tiles.legality_lowzoom';
+// WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_display`.
+// UI_CHANGES.md Changes 1+2: the MAP renders the display-only PARTITION tables (dissolved per
+// verdict + most-restrictive clip) so fills are uniform (no overlap darkening) and green is absent
+// under yellow. The VERDICT ENGINE still queries tiles.legality_polygons — this repoint is
+// display-only and cannot change a verdict.
+export const LEGALITY_SRC_LAYER = 'tiles.legality_display';
+export const LEGALITY_LOWZOOM_SRC_LAYER = 'tiles.legality_display_lowzoom';
+// The RED outline draws from the ORIGINAL polygons (natural boundaries), NOT the dissolved display
+// partition — otherwise the line layer traces the display build's internal grid/subdivide seams as
+// spurious red lines over the fill. Fill = display (uniform, no darkening); outline = original (clean).
+export const LEGALITY_OUTLINE_SRC_LAYER = 'tiles.legality_polygons';
+export const LEGALITY_OUTLINE_LOWZOOM_SRC_LAYER = 'tiles.legality_lowzoom';
 export const CLAIMS_SRC_LAYER = 'tiles.claims_polygons';
 export const WATERWAYS_SRC_LAYER = 'tiles.waterways';
 export const MRDS_SRC_LAYER = 'tiles.mrds';
@@ -107,11 +116,23 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
       states: { type: 'geojson', data: '/assets/us-states.geojson' },
       legality: {
         type: 'vector',
-        tiles: [`${tileBaseUrl}/tiles.legality_polygons/{z}/{x}/{y}.pbf`],
+        tiles: [`${tileBaseUrl}/tiles.legality_display/{z}/{x}/{y}.pbf`],
         // Never fetched below the split (all its layers carry minzoom) — belt & braces.
         minzoom: LOWZOOM_SPLIT, maxzoom: 14,
       },
       legality_lowzoom: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.legality_display_lowzoom/{z}/{x}/{y}.pbf`],
+        minzoom: 0, maxzoom: LOWZOOM_SPLIT,
+      },
+      // Original (undissolved) polygons — used ONLY for the RED outline so borders trace natural
+      // boundaries, not the display partition's grid/subdivide seams.
+      legality_outline: {
+        type: 'vector',
+        tiles: [`${tileBaseUrl}/tiles.legality_polygons/{z}/{x}/{y}.pbf`],
+        minzoom: LOWZOOM_SPLIT, maxzoom: 14,
+      },
+      legality_outline_lowzoom: {
         type: 'vector',
         tiles: [`${tileBaseUrl}/tiles.legality_lowzoom/{z}/{x}/{y}.pbf`],
         minzoom: 0, maxzoom: LOWZOOM_SPLIT,
@@ -156,8 +177,8 @@ export function buildStyle(basemap: Basemap, supportedStates: string[] = []): St
 
       // Legality overlays, twice: generalized low-zoom set (z < LOWZOOM_SPLIT) + full-resolution
       // detail set (z >= LOWZOOM_SPLIT). Identical styling; only source + zoom band differ.
-      ...legalityLayerSet('legality_lowzoom', LEGALITY_LOWZOOM_SRC_LAYER, '-lowzoom', { maxzoom: LOWZOOM_SPLIT }),
-      ...legalityLayerSet('legality', LEGALITY_SRC_LAYER, '', { minzoom: LOWZOOM_SPLIT }),
+      ...legalityLayerSet('legality_lowzoom', LEGALITY_LOWZOOM_SRC_LAYER, '-lowzoom', { maxzoom: LOWZOOM_SPLIT }, 'legality_outline_lowzoom', LEGALITY_OUTLINE_LOWZOOM_SRC_LAYER),
+      ...legalityLayerSet('legality', LEGALITY_SRC_LAYER, '', { minzoom: LOWZOOM_SPLIT }, 'legality_outline', LEGALITY_OUTLINE_SRC_LAYER),
 
       // Active mining claims (nightly tiles — empty until ingested; renders nothing if 404).
       {
@@ -414,6 +435,8 @@ function legalityLayerSet(
   srcLayer: string,
   suffix: string,
   zoom: { minzoom?: number; maxzoom?: number },
+  outlineSource: string,
+  outlineSrcLayer: string,
 ): StyleSpecification['layers'] {
   return [
     // Confirmed-open overlay (opt-in, default off). A slight green shading affirmatively marking
@@ -432,18 +455,21 @@ function legalityLayerSet(
       paint: { 'fill-color': '#CC2200', 'fill-opacity': 0.45 },
     },
     {
-      id: `legality-prohibited-outline${suffix}`, type: 'line', source, 'source-layer': srcLayer, ...zoom,
+      // Outline from the ORIGINAL polygons (outlineSource), not the dissolved partition — traces
+      // natural RED boundaries instead of the display build's internal grid/subdivide seams.
+      id: `legality-prohibited-outline${suffix}`, type: 'line', source: outlineSource,
+      'source-layer': outlineSrcLayer, ...zoom,
       filter: ['==', ['get', 'verdict'], 'RED'],
       paint: { 'line-color': '#991100', 'line-width': 1 },
     },
     // Fail-safe under-layer for YELLOW: a fill-pattern layer renders NOTHING if the 'hatch'
     // sprite is missing (fill-color is ignored when a pattern is set), which would silently
-    // hide ambiguous land. This subtle grey-yellow tint sits beneath the hatch so a missing
+    // hide ambiguous land. This strengthened neutral-grey wash (UI_CHANGES.md Change 2 — clearer
     // sprite degrades to a visible wash instead of invisible.
     {
       id: `legality-ambiguous-base${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
       filter: ['==', ['get', 'verdict'], 'YELLOW'],
-      paint: { 'fill-color': '#B0A44E', 'fill-opacity': 0.18 },
+      paint: { 'fill-color': '#6e6e6e', 'fill-opacity': 0.33 },
     },
     {
       id: `legality-ambiguous${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,
