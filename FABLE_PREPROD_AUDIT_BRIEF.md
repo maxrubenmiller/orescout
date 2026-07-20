@@ -14,7 +14,11 @@ HERE?"* for amateur miners (RED / YELLOW / GREEN verdicts over public-land + min
 8 western states). This is the **pre-production gate**: before the owner pours effort into Phase-1
 productionization, find every hole that is expensive to fix once the app is under IaC + real users.
 **Red-team the cardinal safety property, verify the reference-role invariant across all the new
-overlays, sweep security, and — for confirmed Critical/High safety bugs — fix and lock them.**
+overlays, and — for confirmed Critical/High safety bugs — fix and lock them.**
+
+> **Security review is OUT of scope for this run** (handled separately via `/security-review` / Opus).
+> Do not perform vulnerability scanning, secret scanning, or penetration testing. Your focus is
+> **verdict correctness and the false-GREEN safety property** — the highest-value work and your strength.
 
 ## The cardinal safety property (red-team this above all else)
 **The app must never tell a user that closed or private land is open.** A **false-GREEN** (GREEN
@@ -85,16 +89,17 @@ All of this landed *after* Pass-A and has **not** had a dedicated adversarial re
 4. **Frontend safety** — verdict/ambiguity rendering fail-safes (Pass-A F-5 pattern); the new legality
    display repoint + the original-sourced RED outline; does any display path make prohibited/ambiguous
    land look open?
-5. **Security** (Phase-3.6 scope) — the API-key middleware + CORS + input validation; injection
-   surfaces (the raw SQL point queries, ArcGIS/ETL inputs); the pins path; the tile-proxy gap;
-   **dependency-vulnerability scan** and **secret scan** (produce CI-ready form).
+5. **Security — OUT OF SCOPE for this run** (separate pass via `/security-review` / Opus). Do not
+   do vulnerability scanning, secret scanning, or pen-testing. If you happen to notice an obvious
+   input-validation or injection gap while auditing correctness, note it as a one-line backlog item
+   for that separate pass — but do not pursue it as a security review here.
 6. **Production-readiness (triage depth only)** — flag launch blockers (geocoder ToS, tile pipeline,
    privacy/retention) but do NOT deep-dive infra; that's owner/Phase-1 work.
 
 ## Deliverables
 - **`docs/REVIEW_PREPROD_AUDIT.md`** — findings (severity-ranked, each with a **runnable repro** and a
-  proposed **regression test**), the reference-role invariant proof table, the security-sweep results,
-  and a prioritized remediation backlog (mark which you fixed in Phase 2 vs left for approval).
+  proposed **regression test**), the reference-role invariant proof table, and a prioritized
+  remediation backlog (mark which you fixed in Phase 2 vs left for approval).
 - **Phase-2 branch(es)** — one per Critical/High safety fix, each with its locking test, merge-ready.
 - **Updated regression coverage** — new goldens/fixtures for the new overlays where you found gaps.
 - **Report honestly:** what you verified vs assumed; every finding backed by evidence; what you
@@ -124,8 +129,8 @@ these methods over a single linear read-through.)*
 **1. Fan out adversarial review lenses as parallel sub-agents; you orchestrate + synthesize.**
 Don't sweep the repo linearly. Spawn concurrent sub-agents, each owning one lens — (a) false-GREEN
 red-team, (b) data/ETL integrity + registry faithfulness, (c) reference-role invariant, (d) frontend
-verdict-display safety, (e) security/injection/deps. Each runs blind to the others (diversity catches
-what redundancy can't); you dedupe and rank their findings. This is long-horizon orchestration — your
+verdict-display safety. Each runs blind to the others (diversity catches what redundancy can't); you
+dedupe and rank their findings. This is long-horizon orchestration — your
 strength; sustain the sub-agents asynchronously and intervene only when one goes off-track.
 
 **2. Adversarially VERIFY every candidate finding before it ships.** For each finding, spawn skeptic
