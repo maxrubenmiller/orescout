@@ -25,7 +25,12 @@ DROP TABLE IF EXISTS staging.conf_notpub_nm;
 -- Small pieces keep every LATERAL union local and bounded.
 CREATE TABLE staging.conf_notpub_nm AS
   SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.sma_nm
-  WHERE NOT (upper(own) IN ('BLM','FS','NPS','FWS','BOR','S','SGF','SP','OFA','DOD','DOE','DOA'));
+  -- NOT TRUE, not NOT(...): for a row whose ownership attribute is NULL the predicate is NULL,
+  -- and NOT(NULL) is NULL, so plain NOT silently dropped every unknown-ownership parcel from the
+  -- carve — the exact rows the design says must be carved (review finding PP-5; confirm_open_ut.sql
+  -- got this right with 'owner IS NULL OR owner NOT IN (...)', the generator did not). NULL/unknown
+  -- ownership must never confirm open (PROJECT_PLAN.md:2359).
+  WHERE (upper(own) IN ('BLM','FS','NPS','FWS','BOR','S','SGF','SP','OFA','DOD','DOE','DOA')) IS NOT TRUE;
 -- PARCEL-GRADE CARVE (Tier-1 validation finding, 2026-07-12): SMA sources are GCDB/PLSS-grade
 -- and miss parcel-sized private inholdings inside blocks they map federal — the validation
 -- caught 9 real false-GREENs in CO/NM cabin/ranch country. Where county parcel data is loaded
@@ -66,7 +71,27 @@ FROM (
     SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_nm cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
   ) b ON true
 ) d
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 1000;
+-- SLIVER FILTER (review findings PP-1 / PP-18). The 1000 m² threshold exists to drop
+-- registration noise where two sources roughly agree on a boundary. Applied to raw ST_Dump
+-- fragments it did something else: the 100 m buffer erodes a private parcel from every edge and
+-- the ST_Subdivide(...,256) chunk lines cut what is left, so a large private block survives only
+-- as crumbs — and every crumb under the threshold was discarded, leaving live GREEN over mapped
+-- private land. Measured on this data: a 2,624,031 m² NV parcel mapped PVT reduced to an 882 m²
+-- fragment and dropped.
+-- A fragment overlapping ground an authoritative source affirmatively maps as NOT public is not
+-- noise, it is the signal. Such fragments are kept down to the project's own documented
+-- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
+-- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
+-- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
+WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
+  AND (
+    ST_Area(d.geom::geography) > 1000
+    OR COALESCE((
+         SELECT ST_Area(ST_Intersection(d.geom, ST_Union(np.geom))::geography)
+         FROM staging.conf_notpub_nm np
+         WHERE ST_Intersects(np.geom, d.geom)
+       ), 0) > 400
+  );
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'blmsma_nm';

@@ -75,7 +75,21 @@ FROM (
     SELECT ST_Union(cb.geom) AS buf FROM staging.ugrc_buf cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
   ) b ON true
 ) d
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 500;
+-- SLIVER FILTER (review findings PP-1 / PP-18) — same correction as the generated states, applied
+-- to UT's cadastral-grade 500 m² threshold. Applied to raw ST_Dump fragments the threshold erases
+-- real private ground: the 100 m buffer erodes a parcel from every edge and the ST_Subdivide
+-- chunk lines cut the remainder, so a large private block can survive only as sub-threshold
+-- crumbs. A fragment overlapping affirmatively-not-public ground is signal, not noise, and is kept
+-- down to the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374).
+WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
+  AND (
+    ST_Area(d.geom::geography) > 500
+    OR COALESCE((
+         SELECT ST_Area(ST_Intersection(d.geom, ST_Union(n.geom))::geography)
+         FROM staging.ugrc_notpub n
+         WHERE ST_Intersects(n.geom, d.geom)
+       ), 0) > 400
+  );
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'ugrc_ut';
