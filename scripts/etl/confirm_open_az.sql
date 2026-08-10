@@ -6,9 +6,18 @@
 -- are carved back out of the buffer so adjacency never blankets a known-not-public parcel.
 -- Prereq: staging.sma_az loaded (scripts/etl/pull_sma.sh az); legality_polygons built (unify.sql).
 -- Idempotent: deletes prior blmsma_az rows first.
+--
+-- TARGET TABLE (review PP-8): reads and writes go to the psql variable :legality_tbl, defaulting
+-- to the live tiles.legality_polygons. rebuild_legality.sh passes tiles.legality_polygons_new so
+-- the whole sequence builds off to the side and reaches live only via atomic_swap after gating.
 SET client_min_messages TO WARNING;
 
-DELETE FROM tiles.legality_polygons WHERE source_key = 'blmsma_az';
+\if :{?legality_tbl}
+\else
+  \set legality_tbl tiles.legality_polygons
+\endif
+
+DELETE FROM :legality_tbl WHERE source_key = 'blmsma_az';
 
 DROP TABLE IF EXISTS staging.conf_notpub_az;
 -- SubDivide the not-public side too: wall-to-wall states (CO) have thousands of large private
@@ -41,7 +50,7 @@ CREATE TABLE staging.conf_buf_az AS
   ) np ON true;
 CREATE INDEX conf_buf_az_gix ON staging.conf_buf_az USING GIST (geom);
 
-INSERT INTO tiles.legality_polygons
+INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
   'Open status not confirmed by AZ public-ownership data (BLM AZ SMA (ALRIS lineage)) — possibly private; verify before collecting.',
@@ -51,7 +60,7 @@ FROM (
             ST_CollectionExtract(
               ST_MakeValid(ST_Difference(g.geom,
                 COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM tiles.legality_polygons
+  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
         WHERE state_nm='AZ' AND verdict='GREEN' AND source_key='padus') g
   LEFT JOIN LATERAL (
     SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_az cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
@@ -60,4 +69,4 @@ FROM (
 WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 1000;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
-FROM tiles.legality_polygons WHERE source_key = 'blmsma_az';
+FROM :legality_tbl WHERE source_key = 'blmsma_az';

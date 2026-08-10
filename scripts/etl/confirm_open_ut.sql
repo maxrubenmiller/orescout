@@ -22,10 +22,19 @@
 -- Metric buffer in EPSG:26912 (NAD83 / UTM 12N — Utah-appropriate; CA uses 3310).
 -- Idempotent: deletes prior ugrc_ut rows first. Prereq: staging.ugrc_ownership loaded
 -- (pull_ugrc.sh); legality_polygons built with source_key (unify.sql).
+--
+-- TARGET TABLE (review PP-8): reads and writes go to the psql variable :legality_tbl, defaulting
+-- to the live tiles.legality_polygons. rebuild_legality.sh passes tiles.legality_polygons_new so
+-- the whole sequence builds off to the side and reaches live only via atomic_swap after gating.
 SET client_min_messages TO WARNING;
 
+\if :{?legality_tbl}
+\else
+  \set legality_tbl tiles.legality_polygons
+\endif
+
 -- idempotency
-DELETE FROM tiles.legality_polygons WHERE source_key = 'ugrc_ut';
+DELETE FROM :legality_tbl WHERE source_key = 'ugrc_ut';
 
 -- not-public parcels (affirmative private/tribal + the null-owner slivers)
 DROP TABLE IF EXISTS staging.ugrc_notpub;
@@ -48,7 +57,7 @@ CREATE TABLE staging.ugrc_buf AS
 CREATE INDEX ugrc_buf_gix ON staging.ugrc_buf USING GIST (geom);
 
 -- per UT GREEN (PAD-US) polygon: subtract local buffered SGID public -> unconfirmed-open YELLOW rows
-INSERT INTO tiles.legality_polygons
+INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
   'Open status not confirmed by UT public-ownership data (Utah SGID/SITLA) — possibly private; verify before collecting.',
@@ -60,7 +69,7 @@ FROM (
                 COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
   -- ST_Subdivide the (sometimes very large) GREEN polygons into ≤256-vertex pieces so each piece
   -- only matches a handful of local SGID buffers (same large-vs-many-small pattern as CA, #35).
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM tiles.legality_polygons
+  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
         WHERE state_nm='UT' AND verdict='GREEN' AND source_key='padus') g
   LEFT JOIN LATERAL (
     SELECT ST_Union(cb.geom) AS buf FROM staging.ugrc_buf cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
@@ -69,4 +78,4 @@ FROM (
 WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 500;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
-FROM tiles.legality_polygons WHERE source_key = 'ugrc_ut';
+FROM :legality_tbl WHERE source_key = 'ugrc_ut';

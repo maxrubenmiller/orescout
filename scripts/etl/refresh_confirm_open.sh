@@ -6,10 +6,23 @@
 #   ./scripts/etl/refresh_confirm_open.sh ca      # CA CAL FIRE (upstream ~annual)
 #
 # Sequence + gates (any failure exits non-zero; the live layer keeps its previous rows):
-#   lock -> pull to staging -> schema assertion -> confirm_open_<st>.sql in ONE TRANSACTION
-#   (psql -1: readers keep the old YELLOW rows until commit — no window where the confirm-open
-#   layer is missing, the F-4 failure mode) -> row-count band vs previous -> Tier-A fixtures ->
-#   Tier-B goldens (needs the API up; includes the confirm-open golden points) -> registry stamp.
+#   lock -> pull to staging -> schema assertion -> clone live legality to _new ->
+#   confirm_open_<st>.sql against _new in ONE TRANSACTION -> PRE-SWAP gates (0-row, row-count
+#   band vs previous, Tier-B golden tileBase) -> atomic_swap -> POST-SWAP Tier-A/Tier-B ->
+#   registry stamp.
+#
+# GATE ORDERING (review finding PP-9) — why the clone step exists:
+#   This job used to run confirm_open_<st>.sql directly against the live table with psql -1.
+#   The single transaction removed the *missing-layer* window, but it COMMITTED before any gate
+#   ran: the 0-row check, the ±40% band, and the fixture gates all executed against rows that
+#   were already serving. (The band's own error text admitted "rows ARE live".) A rebuild that
+#   succeeded in SQL but under-produced YELLOW — upstream ownership-semantics drift, a corrupt
+#   staging load — was live the moment it committed, and every point that lost its YELLOW
+#   overlay fell through to the underlying PAD-US GREEN. A drop of less than 40% passed every
+#   gate silently and got stamped fresh.
+#   Now the SQL runs against a clone and the gates decide whether it ever becomes live, per the
+#   refresh_lib.sh contract ("ANY failure exits non-zero with the LIVE table untouched") that
+#   refresh_claims.sh already honored and this job did not. The clone costs ~11s.
 #
 # NOT wired into refresh_due auto-runs for legality-adjacent safety? It IS Class-2 (auto): the
 # same scripts, newer data, gated by the fixture suites — the design's normal operation. The
@@ -60,20 +73,45 @@ $PULL
 # shellcheck disable=SC2086  # word-splitting SCHEMA_COLS is intended
 assert_schema "$STAGING" $SCHEMA_COLS
 
-echo "[confirm-open ${ST}] rebuilding rows (single transaction — old rows serve until commit)…"
-eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -1 -q" < "$SQL"
+LIVE=tiles.legality_polygons
+NEW="${LIVE}_new"
 
-after=$(_rq "SELECT count(*) FROM tiles.legality_polygons WHERE source_key='${SRC_KEY}'")
-[ "$after" -gt 0 ] || rfail "confirm-open ${ST}: rebuild produced 0 rows"
+# Structural clone of the live layer, then rebuild THIS state's rows inside it. LIKE INCLUDING ALL
+# carries the indexes, PK and CHECK constraint, but its ogc_fid default would point at the live
+# table's sequence (dropped with the old table at swap time), so the clone gets its own.
+echo "[confirm-open ${ST}] cloning ${LIVE} -> ${NEW}…"
+_rx "DROP TABLE IF EXISTS ${NEW};
+     CREATE TABLE ${NEW} (LIKE ${LIVE} INCLUDING ALL);
+     CREATE SEQUENCE ${NEW}_ogc_fid_seq OWNED BY ${NEW}.ogc_fid;
+     ALTER TABLE ${NEW} ALTER COLUMN ogc_fid SET DEFAULT nextval('${NEW}_ogc_fid_seq');
+     INSERT INTO ${NEW} SELECT * FROM ${LIVE};
+     SELECT setval('${NEW}_ogc_fid_seq', COALESCE((SELECT max(ogc_fid) FROM ${NEW}), 1));
+     GRANT SELECT ON ${NEW} TO tileserv_ro;" \
+  || rfail "confirm-open ${ST}: could not clone ${LIVE}"
+
+echo "[confirm-open ${ST}] rebuilding rows in ${NEW} (single transaction)…"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -v legality_tbl=${NEW} -1 -q" < "$SQL" \
+  || rfail "confirm-open ${ST}: SQL failed — ${NEW} left for inspection, live table untouched"
+
+# ---- PRE-SWAP gates: nothing below is serving yet ----------------------------
+after=$(_rq "SELECT count(*) FROM ${NEW} WHERE source_key='${SRC_KEY}'")
+[ "$after" -gt 0 ] || rfail "confirm-open ${ST}: rebuild produced 0 rows — live table untouched"
 if [ "$before" -gt 0 ]; then
   lo=$(( before * 60 / 100 )); hi=$(( before * 140 / 100 ))
   if [ "$after" -lt "$lo" ] || [ "$after" -gt "$hi" ]; then
-    rfail "confirm-open ${ST}: row count $after outside ±40% of previous $before — investigate before trusting (rows ARE live; rerun the previous data via git-pinned staging if needed)"
+    rfail "confirm-open ${ST}: row count $after outside ±40% of previous $before — investigate before trusting (nothing is live; ${NEW} left for inspection)"
   fi
 fi
-echo "[confirm-open ${ST}] rows: $before -> $after"
+echo "[confirm-open ${ST}] rows: $before -> $after (not yet live)"
 
-echo "[confirm-open ${ST}] fixture gates…"
+echo "[confirm-open ${ST}] pre-swap golden gate…"
+./scripts/etl/gate_legality_tilebase.sh "$NEW" \
+  || rfail "confirm-open ${ST}: pre-swap tileBase gate failed — ${NEW} left for inspection, live table untouched"
+
+# ---- swap, then confirm ------------------------------------------------------
+atomic_swap "$LIVE"
+
+echo "[confirm-open ${ST}] post-swap fixture gates…"
 ./scripts/run-fixtures.sh
 curl -sqf -o /dev/null --max-time 5 "$API/health" \
   || rfail "API not reachable at $API — start it and run ./scripts/run-tier-b.sh to finish the gate"
