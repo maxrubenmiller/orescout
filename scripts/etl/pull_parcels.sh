@@ -34,7 +34,25 @@ PSQL() { docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U postgres -d 
 die() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; exit 1; }
 
 # Government/public owner-name patterns (CO/NM classing). Greedy toward public on doubt.
-PUB_REGEX='(UNITED STATES|^USA\b|U S A|US GOVT|BUREAU OF LAND|\bBLM\b|FOREST SERVICE|USDA|USFS|DEPT OF AGRICULTURE|DEPARTMENT OF (THE )?INTERIOR|STATE OF|\bCITY OF\b|\bTOWN OF\b|\bCOUNTY OF\b|COUNTY COMMISSIONERS|SCHOOL DISTRICT|HOUSING AUTHORITY|WATER DISTRICT|FIRE DISTRICT|IRRIGATION DISTRICT|\bDISTRICT\b.*(WATER|FIRE|SCHOOL)|NATIONAL PARK|FISH AND WILDLIFE|BUREAU OF RECLAMATION|CORPS OF ENGINEERS|INDIAN TRIBE|\bTRIBE\b|\bNATION\b|\bPUEBLO OF\b|BbIA\b|LAND BOARD|DIVISION OF WILDLIFE|PARKS AND WILDLIFE|GAME (AND|&) FISH|PUBLIC LANDS?)'
+#
+# WORD BOUNDARIES (review finding PP-10 + a defect found while fixing it): this regex is evaluated
+# by Postgres (`upper(owner) ~ '<regex>'`), and in Postgres ARE `\b` is BACKSPACE, not a word
+# boundary — the word-boundary escape is `\y` (`\m`/`\M` for word start/end). Every `\b` pattern
+# here was therefore dead: verified in psql, 'BLM' ~ '\bBLM\b' is FALSE, 'CITY OF DENVER' ~
+# '\bCITY OF\b' is FALSE, 'USA' ~ '^USA\b' is FALSE. Ten alternatives never matched anything, so
+# city/town/county/tribal parcels were classed 'private'. That direction is safe for the carve
+# (over-carving yields extra YELLOW) but it pollutes the §6.4.1 validation frame, which counts
+# those parcels as private ground truth. All `\b` -> `\y`, and the `BbIA\b` typo -> `\yBIA\y`.
+#
+# 'STATE OF' (PP-10) was unbounded, so 'ESTATE OF JOHN A SMITH', 'SMITH JOHN ESTATE OF' and
+# 'REAL ESTATE OF THE ROCKIES INC' all classed 'public' — and estates of deceased owners are
+# common in exactly the rural CO/NM cabin/ranch counties the parcel carve targets. A private
+# parcel misclassified public is NOT carved, so PAD-US GREEN over it survives. Note the safe
+# direction INVERTS between the two consumers: the header above reasons about the validation
+# frame, where greedy-toward-public is conservative; for the carve it is the dangerous direction.
+# `\mSTATE OF` anchors to a word start: 'STATE OF COLORADO' matches, 'ESTATE OF' does not,
+# 'INTERSTATE OFFICE PARK LLC' does not.
+PUB_REGEX='(UNITED STATES|^USA\y|U S A|US GOVT|BUREAU OF LAND|\yBLM\y|FOREST SERVICE|USDA|USFS|DEPT OF AGRICULTURE|DEPARTMENT OF (THE )?INTERIOR|\mSTATE OF|\yCITY OF\y|\yTOWN OF\y|\yCOUNTY OF\y|COUNTY COMMISSIONERS|SCHOOL DISTRICT|HOUSING AUTHORITY|WATER DISTRICT|FIRE DISTRICT|IRRIGATION DISTRICT|\yDISTRICT\y.*(WATER|FIRE|SCHOOL)|NATIONAL PARK|FISH AND WILDLIFE|BUREAU OF RECLAMATION|CORPS OF ENGINEERS|INDIAN TRIBE|\yTRIBE\y|\yNATION\y|\yPUEBLO OF\y|\yBIA\y|LAND BOARD|DIVISION OF WILDLIFE|PARKS AND WILDLIFE|GAME (AND|&) FISH|PUBLIC LANDS?)'
 
 # paginated ArcGIS GeoJSON pull -> files (mirrors pull_mrds.sh conventions)
 pull_pages() { # <query_url> <where> <fields> <prefix>

@@ -55,5 +55,61 @@ FROM (
 ) d
 WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 2000;
 
+-- ============================================================================
+-- PASS 2 — WIDTH-AWARE CARVE (review finding PP-3)
+--
+-- The 100 m buffer above is ONE-SIDED: it grows CAL FIRE public land outward and subtracts the
+-- result. CAL FIRE maps public ownership only, so unlike every other state there is no
+-- affirmative-private layer to carve back out of that buffer (registry carve_private is null).
+-- Consequence: any private corridor narrower than ~200 m flanked by national forest is wholly
+-- inside the forgiveness band and is exempted no matter how large it is. Mt Baldy Village sits
+-- in a 361,956 m² contiguous piece with NO CAL FIRE public ownership anywhere inside it and
+-- returned "Managing agency USFS — generally open"; Forest Falls, Fawnskin and the Sierra County
+-- mining towns (Alleghany, Downieville, Sierra City) are the same shape.
+--
+-- This pass asks a question the buffer cannot: is the un-mapped-public residue WIDE, rather than
+-- merely far from public land? Eroding each residual component by 25 m in EPSG:3310 leaves a core
+-- only where the component is wider than ~50 m. That distinguishes a village from a boundary
+-- strip by shape instead of by size — measured on this data, a 34,841 m² thin registration strip
+-- erodes to nothing (correctly ignored) while Mt Baldy's 361,956 m² village keeps a 282,630 m²
+-- core. A plain area threshold would have flagged both.
+--
+-- Anything the buffer pass already demoted is subtracted first, so this only adds new ground.
+-- This does NOT make CA equivalent to the other states: without an affirmative-private layer,
+-- narrow private strips under ~50 m wide remain unprotected. Closing that needs CA parcel data.
+-- ============================================================================
+INSERT INTO :legality_tbl
+  (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
+SELECT ST_Multi(d.geom), 'YELLOW',
+  'Open status not confirmed by CA public-ownership data (CAL FIRE) — possibly private; verify before collecting.',
+  NULL, NULL, 'unconfirmed-open', 'CA', 'CAL FIRE 2024 (confirm-open vs PAD-US)', 'calfire_ca'
+FROM (
+  SELECT (ST_Dump(ST_CollectionExtract(ST_MakeValid(ST_Difference(w.geom,
+            COALESCE(y.already, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+  FROM (
+    -- residual GREEN with no CAL FIRE public ownership inside it, wide enough to have a core
+    SELECT r.geom
+    FROM (
+      SELECT (ST_Dump(ST_CollectionExtract(ST_MakeValid(ST_Difference(g.geom,
+                COALESCE(p.pub, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+      FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
+            WHERE state_nm='CA' AND verdict='GREEN' AND source_key='padus') g
+      LEFT JOIN LATERAL (
+        SELECT ST_Union(c.geom) AS pub FROM staging.calfire_ownership c
+        WHERE c.own_level IS NOT NULL AND ST_DWithin(c.geom, g.geom, 0.003)
+      ) p ON true
+    ) r
+    WHERE r.geom IS NOT NULL AND NOT ST_IsEmpty(r.geom)
+      AND ST_Area(r.geom::geography) > 1000
+      AND NOT ST_IsEmpty(ST_Buffer(ST_Transform(r.geom, 3310), -25))
+      AND ST_Area(ST_Buffer(ST_Transform(r.geom, 3310), -25)) > 400
+  ) w
+  LEFT JOIN LATERAL (
+    SELECT ST_Union(l.geom) AS already FROM :legality_tbl l
+    WHERE l.source_key = 'calfire_ca' AND ST_Intersects(l.geom, w.geom)
+  ) y ON true
+) d
+WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > 400;
+
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'calfire_ca';
