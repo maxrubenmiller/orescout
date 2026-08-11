@@ -148,8 +148,15 @@ CREATE OR REPLACE FUNCTION orescout_in_region(lat double precision, lng double p
   RETURNS boolean LANGUAGE sql STABLE AS $$
     SELECT CASE
       WHEN NOT EXISTS (SELECT 1 FROM public.supported_region) THEN true
+      -- ST_Covers, not ST_Contains (review finding PP-16): supported_region holds one MultiPolygon
+      -- per state, so a shared state line is each polygon's BOUNDARY. ST_Contains excludes
+      -- boundaries, so a GPS point exactly on e.g. the NV/CA line — interior to the supported
+      -- region, both states supported — was contained by neither row and returned OUT_OF_REGION.
+      -- Stage 1 already uses ST_Covers for exactly this reason (AssessmentService.cs:193-199);
+      -- this makes Stage 0 agree. Fails safe either way (it denies rather than granting GREEN),
+      -- which is why it was MEDIUM, but it is a correctness bug on real border coordinates.
       ELSE EXISTS (
         SELECT 1 FROM public.supported_region
-        WHERE ST_Contains(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326)))
+        WHERE ST_Covers(geom, ST_SetSRID(ST_MakePoint(lng, lat), 4326)))
     END;
 $$;

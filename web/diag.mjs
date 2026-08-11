@@ -65,7 +65,11 @@ const features = await page.evaluate(() => {
   const qr = (layer) => { try { return m.queryRenderedFeatures({ layers: [layer] }).length; } catch (e) { return String(e); } };
   let src = -1; let sampleProps = null;
   try {
-    const f = m.querySourceFeatures('legality', { sourceLayer: 'tiles.legality_polygons' });
+    // Review finding PP-19 (a regression of Pass-A L-2 / IMP-06): the 'legality' source was
+    // repointed to tiles.legality_display by the display-partition wave, so the old sourceLayer
+    // name matched nothing and this probe silently reported 0 — the exact defect IMP-06 fixed.
+    // Keep this string equal to LEGALITY_SRC_LAYER in web/src/map/style.ts.
+    const f = m.querySourceFeatures('legality', { sourceLayer: 'tiles.legality_display' });
     src = f.length;
     if (f[0]) sampleProps = f[0].properties;
   } catch (e) { src = String(e); }

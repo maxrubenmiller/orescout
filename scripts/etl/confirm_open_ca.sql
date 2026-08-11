@@ -34,16 +34,20 @@ DELETE FROM :legality_tbl WHERE source_key = 'calfire_ca';
 -- CA has never had one (registry carve_private was null) because CAL FIRE maps public ownership
 -- only — private land is simply absent rather than labelled. This does not close that gap, but
 -- it does mean tribal and land-trust parcels are no longer blanketed by the federal buffer.
+-- ST_SubDivide(512) like every generated state: CA tribal/land-trust parcels reach 370 km² and
+-- 7,284 vertices, and feeding those whole into the per-buffer-row LATERAL union below is the
+-- un-subdivided carve union that OOM-crashed this container on 2026-07-12
+-- (gen_confirm_open.sh:58-60). Small pieces keep each union local and bounded.
 DROP TABLE IF EXISTS staging.calfire_notpub;
 CREATE TABLE staging.calfire_notpub AS
-  SELECT ST_MakeValid(geom) AS geom FROM staging.calfire_ownership
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.calfire_ownership
   WHERE own_level IN ('Tribal','Non Profit');
 CREATE INDEX calfire_notpub_gix ON staging.calfire_notpub USING GIST (geom);
 
 -- Public but NOT open: state, city, county and special-district land. Permit or closure likely.
 DROP TABLE IF EXISTS staging.calfire_nonopen;
 CREATE TABLE staging.calfire_nonopen AS
-  SELECT ST_MakeValid(geom) AS geom FROM staging.calfire_ownership
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.calfire_ownership
   WHERE own_level IN ('State','City','County','Special District');
 CREATE INDEX calfire_nonopen_gix ON staging.calfire_nonopen USING GIST (geom);
 
@@ -54,7 +58,9 @@ DROP TABLE IF EXISTS staging.calfire_buf;
 CREATE TABLE staging.calfire_buf AS
   SELECT ST_CollectionExtract(ST_MakeValid(ST_Difference(b.geom,
            COALESCE(np.geom, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3) AS geom
-  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(geom, 3310), 100), 4326) AS geom
+  -- Subdivide the buffer source too (generator pattern): un-subdivided this was fine when the
+  -- step was a plain buffer, but it now feeds a per-row LATERAL difference.
+  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(ST_SubDivide(ST_MakeValid(geom), 512), 3310), 100), 4326) AS geom
         FROM staging.calfire_ownership
         WHERE own_level = 'Federal') b          -- public_predicate (PP-2: was own_level IS NOT NULL)
   LEFT JOIN LATERAL (
