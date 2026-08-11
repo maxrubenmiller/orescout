@@ -63,7 +63,7 @@ chk "nv maxage"  "540"               "$(reg_maxage blmsma_nv)"
 chk "ut ref"     "https://gis.trustlands.utah.gov/server/rest/services/Ownership/UT_SITLA_Ownership_LandOwnership_WM/FeatureServer/0" "$(reg_upstream ugrc_ut)"
 
 echo "== confirm_open (CA/UT bespoke) confirm params =="
-chk "ca pub"     "own_level IS NOT NULL"        "$(reg_confirm calfire_ca public_predicate)"
+chk "ca pub"     "own_level = 'Federal'"        "$(reg_confirm calfire_ca public_predicate)"
 chk "ca crs"     "3310"                         "$(reg_confirm calfire_ca crs)"
 chk "ut pub"     "owner = 'Federal'" "$(reg_confirm ugrc_ut public_predicate)"
 chk "ut crs"     "26912"                        "$(reg_confirm ugrc_ut crs)"

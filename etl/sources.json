@@ -43,7 +43,9 @@
       "sql": "scripts/etl/confirm_open_ca.sql",
       "confirm": {
         "staging": "staging.calfire_ownership",
-        "public_predicate": "own_level IS NOT NULL",
+        "public_predicate": "own_level = 'Federal'",
+        "nonopen_public_predicate": "own_level IN ('State','City','County','Special District')",
+        "carve_private": "own_level IN ('Tribal','Non Profit')",
         "buffer_m": 100,
         "crs": 3310,
         "sliver_min_m2": 2000,
