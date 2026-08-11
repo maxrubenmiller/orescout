@@ -30,7 +30,7 @@ CREATE TABLE staging.conf_notpub_nv AS
   -- carve — the exact rows the design says must be carved (review finding PP-5; confirm_open_ut.sql
   -- got this right with 'owner IS NULL OR owner NOT IN (...)', the generator did not). NULL/unknown
   -- ownership must never confirm open (PROJECT_PLAN.md:2359).
-  WHERE (upper(abbr) IN ('BLM','FS','NPS','FWS','BR','NVST','CNTY','PK','DOD','DOE')) IS NOT TRUE;
+  WHERE (upper(abbr) IN ('BLM','FS','NPS','FWS','BR')) IS NOT TRUE;
 -- PARCEL-GRADE CARVE (Tier-1 validation finding, 2026-07-12): SMA sources are GCDB/PLSS-grade
 -- and miss parcel-sized private inholdings inside blocks they map federal — the validation
 -- caught 9 real false-GREENs in CO/NM cabin/ranch country. Where county parcel data is loaded
@@ -43,13 +43,26 @@ INSERT INTO staging.conf_notpub_nv
     AND state = 'NV' AND owner_class = 'private';
 CREATE INDEX conf_notpub_nv_gix ON staging.conf_notpub_nv USING GIST (geom);
 
+-- NON-OPEN PUBLIC (review finding PP-2): state trust / state park / wildlife / county / military
+-- ground. It is public, so it is NOT private — but it does not confirm that PAD-US's GREEN is
+-- open, because collecting there needs a permit or is prohibited outright. These codes used to
+-- live in the public predicate, which is why the app served "Managing agency BLM — generally
+-- open" over Utah State Trust land, Colorado State Land Board sections, NM State Trust and DOD,
+-- and Idaho endowment land. Kept as its own layer so the demotion can say WHY, instead of
+-- mislabelling state land "possibly private".
+DROP TABLE IF EXISTS staging.conf_nonopen_nv;
+CREATE TABLE staging.conf_nonopen_nv AS
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.sma_nv
+  WHERE (upper(abbr) IN ('NVST','CNTY','PK','DOD','DOE')) IS TRUE;
+CREATE INDEX conf_nonopen_nv_gix ON staging.conf_nonopen_nv USING GIST (geom);
+
 DROP TABLE IF EXISTS staging.conf_buf_nv;
 CREATE TABLE staging.conf_buf_nv AS
   SELECT ST_CollectionExtract(ST_MakeValid(ST_Difference(b.geom,
            COALESCE(np.geom, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3) AS geom
   FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(ST_SubDivide(ST_MakeValid(geom), 512), 5070), 100), 4326) AS geom
         FROM staging.sma_nv
-        WHERE upper(abbr) IN ('BLM','FS','NPS','FWS','BR','NVST','CNTY','PK','DOD','DOE')) b
+        WHERE upper(abbr) IN ('BLM','FS','NPS','FWS','BR')) b
   LEFT JOIN LATERAL (
     SELECT ST_Union(n.geom) AS geom FROM staging.conf_notpub_nv n WHERE ST_Intersects(n.geom, b.geom)
   ) np ON true;
@@ -58,18 +71,31 @@ CREATE INDEX conf_buf_nv_gix ON staging.conf_buf_nv USING GIST (geom);
 INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
-  'Open status not confirmed by NV public-ownership data (BLM Nevada Surface Management Agency) — possibly private; verify before collecting.',
+  CASE WHEN d.nonopen_m2 > 400
+    THEN 'State trust / state park / military land per NV ownership data (BLM Nevada Surface Management Agency) — permit or closure likely; ownership sources conflict. Verify before collecting.'
+    ELSE 'Open status not confirmed by NV public-ownership data (BLM Nevada Surface Management Agency) — possibly private; verify before collecting.'
+  END,
   NULL, NULL, 'unconfirmed-open', 'NV', 'BLM NV SMA (hosted snapshot 2023-04) (confirm-open vs PAD-US)', 'blmsma_nv'
 FROM (
-  SELECT (ST_Dump(
-            ST_CollectionExtract(
-              ST_MakeValid(ST_Difference(g.geom,
-                COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
-        WHERE state_nm='NV' AND verdict='GREEN' AND source_key='padus') g
-  LEFT JOIN LATERAL (
-    SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_nv cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
-  ) b ON true
+  SELECT frag.geom,
+         -- overlap with affirmatively-not-public ground (drives the sliver exemption below)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(np.geom))::geography)
+                   FROM staging.conf_notpub_nv np WHERE ST_Intersects(np.geom, frag.geom)), 0) AS notpub_m2,
+         -- overlap with public-but-not-open ground (drives which reason the user is shown)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
+                   FROM staging.conf_nonopen_nv no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+  FROM (
+    SELECT (ST_Dump(
+              ST_CollectionExtract(
+                ST_MakeValid(ST_Difference(g.geom,
+                  COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+    FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
+          WHERE state_nm='NV' AND verdict='GREEN' AND source_key='padus') g
+    LEFT JOIN LATERAL (
+      SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_nv cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
+    ) b ON true
+  ) frag
+  WHERE frag.geom IS NOT NULL AND NOT ST_IsEmpty(frag.geom)
 ) d
 -- SLIVER FILTER (review findings PP-1 / PP-18). The 1000 m² threshold exists to drop
 -- registration noise where two sources roughly agree on a boundary. Applied to raw ST_Dump
@@ -83,15 +109,10 @@ FROM (
 -- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
 -- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
 -- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
-  AND (
-    ST_Area(d.geom::geography) > 1000
-    OR COALESCE((
-         SELECT ST_Area(ST_Intersection(d.geom, ST_Union(np.geom))::geography)
-         FROM staging.conf_notpub_nv np
-         WHERE ST_Intersects(np.geom, d.geom)
-       ), 0) > 400
-  );
+-- notpub_m2/nonopen_m2 are computed once in the subquery above, so this costs nothing extra.
+WHERE ST_Area(d.geom::geography) > 1000
+   OR d.notpub_m2  > 400
+   OR d.nonopen_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'blmsma_nv';

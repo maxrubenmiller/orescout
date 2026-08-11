@@ -37,11 +37,22 @@ SET client_min_messages TO WARNING;
 DELETE FROM :legality_tbl WHERE source_key = 'ugrc_ut';
 
 -- not-public parcels (affirmative private/tribal + the null-owner slivers)
+-- PP-2: 'State' no longer counts as public here, so state-owned parcels join the carve.
 DROP TABLE IF EXISTS staging.ugrc_notpub;
 CREATE TABLE staging.ugrc_notpub AS
   SELECT ST_MakeValid(geom) AS geom FROM staging.ugrc_ownership
-  WHERE owner IS NULL OR owner NOT IN ('Federal','State');
+  WHERE owner IS NULL OR owner <> 'Federal';
 CREATE INDEX ugrc_notpub_gix ON staging.ugrc_notpub USING GIST (geom);
+
+-- NON-OPEN PUBLIC (review finding PP-2): SITLA state trust land, state parks, UDWR wildlife
+-- areas and FFSL sovereign land. Public, so not private — but collecting there needs a permit
+-- or is prohibited, so it must not confirm that PAD-US's GREEN is open. This is what served
+-- "Managing agency BLM — generally open" over 285.4 km² of SITLA trust land and Utah State
+-- Parks near Goblin Valley. Separate from ugrc_notpub so the demotion can say why.
+DROP TABLE IF EXISTS staging.ugrc_nonopen;
+CREATE TABLE staging.ugrc_nonopen AS
+  SELECT ST_MakeValid(geom) AS geom FROM staging.ugrc_ownership WHERE owner = 'State';
+CREATE INDEX ugrc_nonopen_gix ON staging.ugrc_nonopen USING GIST (geom);
 
 -- pre-buffer SGID public by 100m in UTM 12N, then carve affirmative-not-public back OUT
 DROP TABLE IF EXISTS staging.ugrc_buf;
@@ -50,7 +61,7 @@ CREATE TABLE staging.ugrc_buf AS
            COALESCE(np.geom, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3) AS geom
   FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(geom, 26912), 100), 4326) AS geom
         FROM staging.ugrc_ownership
-        WHERE owner IN ('Federal','State')) b          -- public_predicate
+        WHERE owner = 'Federal') b                     -- public_predicate (PP-2: was Federal+State)
   LEFT JOIN LATERAL (
     SELECT ST_Union(n.geom) AS geom FROM staging.ugrc_notpub n WHERE ST_Intersects(n.geom, b.geom)
   ) np ON true;
@@ -60,20 +71,31 @@ CREATE INDEX ugrc_buf_gix ON staging.ugrc_buf USING GIST (geom);
 INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
-  'Open status not confirmed by UT public-ownership data (Utah SGID/SITLA) — possibly private; verify before collecting.',
+  CASE WHEN d.nonopen_m2 > 400
+    THEN 'State trust / state park / military land per UT ownership data (Utah SGID/SITLA) — permit or closure likely; ownership sources conflict. Verify before collecting.'
+    ELSE 'Open status not confirmed by UT public-ownership data (Utah SGID/SITLA) — possibly private; verify before collecting.'
+  END,
   NULL, NULL, 'unconfirmed-open', 'UT', 'Utah SGID land ownership 2026 (confirm-open vs PAD-US)', 'ugrc_ut'
 FROM (
-  SELECT (ST_Dump(
-            ST_CollectionExtract(
-              ST_MakeValid(ST_Difference(g.geom,
-                COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  -- ST_Subdivide the (sometimes very large) GREEN polygons into ≤256-vertex pieces so each piece
-  -- only matches a handful of local SGID buffers (same large-vs-many-small pattern as CA, #35).
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
-        WHERE state_nm='UT' AND verdict='GREEN' AND source_key='padus') g
-  LEFT JOIN LATERAL (
-    SELECT ST_Union(cb.geom) AS buf FROM staging.ugrc_buf cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
-  ) b ON true
+  SELECT frag.geom,
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(n.geom))::geography)
+                   FROM staging.ugrc_notpub n WHERE ST_Intersects(n.geom, frag.geom)), 0) AS notpub_m2,
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
+                   FROM staging.ugrc_nonopen no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+  FROM (
+    SELECT (ST_Dump(
+              ST_CollectionExtract(
+                ST_MakeValid(ST_Difference(g.geom,
+                  COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+    -- ST_Subdivide the (sometimes very large) GREEN polygons into ≤256-vertex pieces so each piece
+    -- only matches a handful of local SGID buffers (same large-vs-many-small pattern as CA, #35).
+    FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
+          WHERE state_nm='UT' AND verdict='GREEN' AND source_key='padus') g
+    LEFT JOIN LATERAL (
+      SELECT ST_Union(cb.geom) AS buf FROM staging.ugrc_buf cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
+    ) b ON true
+  ) frag
+  WHERE frag.geom IS NOT NULL AND NOT ST_IsEmpty(frag.geom)
 ) d
 -- SLIVER FILTER (review findings PP-1 / PP-18) — same correction as the generated states, applied
 -- to UT's cadastral-grade 500 m² threshold. Applied to raw ST_Dump fragments the threshold erases
@@ -81,15 +103,9 @@ FROM (
 -- chunk lines cut the remainder, so a large private block can survive only as sub-threshold
 -- crumbs. A fragment overlapping affirmatively-not-public ground is signal, not noise, and is kept
 -- down to the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374).
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
-  AND (
-    ST_Area(d.geom::geography) > 500
-    OR COALESCE((
-         SELECT ST_Area(ST_Intersection(d.geom, ST_Union(n.geom))::geography)
-         FROM staging.ugrc_notpub n
-         WHERE ST_Intersects(n.geom, d.geom)
-       ), 0) > 400
-  );
+WHERE ST_Area(d.geom::geography) > 500
+   OR d.notpub_m2  > 400
+   OR d.nonopen_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'ugrc_ut';

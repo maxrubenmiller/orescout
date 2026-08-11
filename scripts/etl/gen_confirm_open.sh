@@ -35,6 +35,10 @@ KEY=$(reg_key_for_state_role "$STU" confirm_open) \
 SRC="$KEY"
 STAGING=$(reg_confirm "$KEY" staging)
 PUB=$(reg_confirm "$KEY" public_predicate)
+# Codes that ARE public but do not confirm OPEN (review finding PP-2): state trust/parks/wildlife,
+# county/local, and military. They used to sit inside public_predicate, so a PAD-US GREEN mismapped
+# over them was confirmed open by the state's own layer saying "State".
+NONOPEN=$(reg_confirm "$KEY" nonopen_public_predicate)
 ATTR=$(reg_attribution "$KEY")
 VINTAGE=$(reg_vintage "$KEY")
 CRS=$(reg_confirm "$KEY" crs)
@@ -87,6 +91,19 @@ INSERT INTO staging.conf_notpub_${ST}
     AND state = '${STU}' AND owner_class = 'private';
 CREATE INDEX conf_notpub_${ST}_gix ON staging.conf_notpub_${ST} USING GIST (geom);
 
+-- NON-OPEN PUBLIC (review finding PP-2): state trust / state park / wildlife / county / military
+-- ground. It is public, so it is NOT private — but it does not confirm that PAD-US's GREEN is
+-- open, because collecting there needs a permit or is prohibited outright. These codes used to
+-- live in the public predicate, which is why the app served "Managing agency BLM — generally
+-- open" over Utah State Trust land, Colorado State Land Board sections, NM State Trust and DOD,
+-- and Idaho endowment land. Kept as its own layer so the demotion can say WHY, instead of
+-- mislabelling state land "possibly private".
+DROP TABLE IF EXISTS staging.conf_nonopen_${ST};
+CREATE TABLE staging.conf_nonopen_${ST} AS
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM ${STAGING}
+  WHERE (${NONOPEN}) IS TRUE;
+CREATE INDEX conf_nonopen_${ST}_gix ON staging.conf_nonopen_${ST} USING GIST (geom);
+
 DROP TABLE IF EXISTS staging.conf_buf_${ST};
 CREATE TABLE staging.conf_buf_${ST} AS
   SELECT ST_CollectionExtract(ST_MakeValid(ST_Difference(b.geom,
@@ -102,18 +119,31 @@ CREATE INDEX conf_buf_${ST}_gix ON staging.conf_buf_${ST} USING GIST (geom);
 INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
-  'Open status not confirmed by ${STU} public-ownership data (${ATTR}) — possibly private; verify before collecting.',
+  CASE WHEN d.nonopen_m2 > 400
+    THEN 'State trust / state park / military land per ${STU} ownership data (${ATTR}) — permit or closure likely; ownership sources conflict. Verify before collecting.'
+    ELSE 'Open status not confirmed by ${STU} public-ownership data (${ATTR}) — possibly private; verify before collecting.'
+  END,
   NULL, NULL, 'unconfirmed-open', '${STU}', '${VINTAGE} (confirm-open vs PAD-US)', '${SRC}'
 FROM (
-  SELECT (ST_Dump(
-            ST_CollectionExtract(
-              ST_MakeValid(ST_Difference(g.geom,
-                COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
-        WHERE state_nm='${STU}' AND verdict='GREEN' AND source_key='padus') g
-  LEFT JOIN LATERAL (
-    SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_${ST} cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
-  ) b ON true
+  SELECT frag.geom,
+         -- overlap with affirmatively-not-public ground (drives the sliver exemption below)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(np.geom))::geography)
+                   FROM staging.conf_notpub_${ST} np WHERE ST_Intersects(np.geom, frag.geom)), 0) AS notpub_m2,
+         -- overlap with public-but-not-open ground (drives which reason the user is shown)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
+                   FROM staging.conf_nonopen_${ST} no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+  FROM (
+    SELECT (ST_Dump(
+              ST_CollectionExtract(
+                ST_MakeValid(ST_Difference(g.geom,
+                  COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+    FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
+          WHERE state_nm='${STU}' AND verdict='GREEN' AND source_key='padus') g
+    LEFT JOIN LATERAL (
+      SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_${ST} cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
+    ) b ON true
+  ) frag
+  WHERE frag.geom IS NOT NULL AND NOT ST_IsEmpty(frag.geom)
 ) d
 -- SLIVER FILTER (review findings PP-1 / PP-18). The ${SLIVER} m² threshold exists to drop
 -- registration noise where two sources roughly agree on a boundary. Applied to raw ST_Dump
@@ -127,15 +157,10 @@ FROM (
 -- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
 -- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
 -- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
-  AND (
-    ST_Area(d.geom::geography) > ${SLIVER}
-    OR COALESCE((
-         SELECT ST_Area(ST_Intersection(d.geom, ST_Union(np.geom))::geography)
-         FROM staging.conf_notpub_${ST} np
-         WHERE ST_Intersects(np.geom, d.geom)
-       ), 0) > 400
-  );
+-- notpub_m2/nonopen_m2 are computed once in the subquery above, so this costs nothing extra.
+WHERE ST_Area(d.geom::geography) > ${SLIVER}
+   OR d.notpub_m2  > 400
+   OR d.nonopen_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = '${SRC}';

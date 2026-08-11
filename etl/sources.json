@@ -71,11 +71,12 @@
       "sql": "scripts/etl/confirm_open_ut.sql",
       "confirm": {
         "staging": "staging.ugrc_ownership",
-        "public_predicate": "owner IN ('Federal','State')",
+        "public_predicate": "owner = 'Federal'",
+        "nonopen_public_predicate": "owner = 'State'",
         "buffer_m": 100,
         "crs": 26912,
         "sliver_min_m2": 500,
-        "carve_private": "owner NOT IN ('Federal','State')",
+        "carve_private": "owner IS NULL OR owner <> 'Federal'",
         "schema_cols": ["owner", "geom"]
       },
       "license": "CC-BY 4.0 (UGRC/SITLA)",
@@ -99,7 +100,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_nv",
-        "public_predicate": "upper(abbr) IN ('BLM','FS','NPS','FWS','BR','NVST','CNTY','PK','DOD','DOE')",
+        "public_predicate": "upper(abbr) IN ('BLM','FS','NPS','FWS','BR')",
+        "nonopen_public_predicate": "upper(abbr) IN ('NVST','CNTY','PK','DOD','DOE')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
@@ -127,7 +129,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_az",
-        "public_predicate": "category IN ('BLM','USFS','NPS','USFWS','BR','Bankhead-Jones Act','State','State Wildlife Area','Local or State Parks','County','Military')",
+        "public_predicate": "category IN ('BLM','USFS','NPS','USFWS','BR','Bankhead-Jones Act')",
+        "nonopen_public_predicate": "category IN ('State','State Wildlife Area','Local or State Parks','County','Military')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
@@ -155,7 +158,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_co",
-        "public_predicate": "upper(adm_code) IN ('BLM','BLM_LU','USFS','USFS_LU','USFS_NG','NPS','USFW','BOR','STA','LOCAL','DOD')",
+        "public_predicate": "upper(adm_code) IN ('BLM','BLM_LU','USFS','USFS_LU','USFS_NG','NPS','USFW','BOR')",
+        "nonopen_public_predicate": "upper(adm_code) IN ('STA','LOCAL','DOD')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
@@ -183,7 +187,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_nm",
-        "public_predicate": "upper(own) IN ('BLM','FS','NPS','FWS','BOR','S','SGF','SP','OFA','DOD','DOE','DOA')",
+        "public_predicate": "upper(own) IN ('BLM','FS','NPS','FWS','BOR','OFA','DOA')",
+        "nonopen_public_predicate": "upper(own) IN ('S','SGF','SP','DOD','DOE')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
@@ -211,7 +216,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_or",
-        "public_predicate": "landmanager IN ('BLM','USFS','FWS','NPS','USBR','USACE','ODF','ODFW','OPRD','ODSL','ODFODSL','ODOT','OR','OSU','OUS','LG','BPA','DOE','DOD','GSA','USDA','FAA')",
+        "public_predicate": "landmanager IN ('BLM','USFS','FWS','NPS','USBR','USACE','BPA','GSA','USDA','FAA')",
+        "nonopen_public_predicate": "landmanager IN ('ODF','ODFW','OPRD','ODSL','ODFODSL','ODOT','OR','OSU','OUS','LG','DOE','DOD')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
@@ -239,7 +245,8 @@
       "sql": "generated",
       "confirm": {
         "staging": "staging.sma_id",
-        "public_predicate": "upper(mgmt_agncy) IN ('BLM','USFS','NPS','NWR','BOR','COE','LU_DOI','LU_USDA','STATE','STATEFG','STATEPR','STATEOTH','MIL')",
+        "public_predicate": "upper(mgmt_agncy) IN ('BLM','USFS','NPS','NWR','BOR','COE','LU_DOI','LU_USDA')",
+        "nonopen_public_predicate": "upper(mgmt_agncy) IN ('STATE','STATEFG','STATEPR','STATEOTH','MIL')",
         "buffer_m": 100,
         "crs": 5070,
         "sliver_min_m2": 1000,
