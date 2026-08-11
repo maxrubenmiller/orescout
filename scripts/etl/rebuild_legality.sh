@@ -110,6 +110,7 @@ count_gate "$LIVE" "$BAND"
 
 # ---- 6. atomic swap ---------------------------------------------------------
 atomic_swap "$LIVE"
+stamp_legality_generation
 
 # ---- 7. derived display tables (read the now-live table) --------------------
 # NOTE (review findings PP-6/PP-7): these derived tables have their own non-atomic rebuild and
@@ -131,6 +132,8 @@ echo "[rebuild] build_legality_display.sql (display partition — normal + low-z
 disp=$(q "SELECT count(*) FROM tiles.legality_display")
 [ "$disp" -gt 0 ] || fail "build_legality_display produced 0 rows"
 echo "[rebuild]   legality_display: $disp pieces (+ low-zoom variant)"
+# Derived tables now match the swapped-in source; record that (review finding PP-6).
+stamp_display_generation
 
 # ---- 8. POST-SWAP gates -----------------------------------------------------
 # The baked data already passed the golden check pre-swap; these confirm the engine and API

@@ -110,6 +110,27 @@ echo "[confirm-open ${ST}] pre-swap golden gate…"
 
 # ---- swap, then confirm ------------------------------------------------------
 atomic_swap "$LIVE"
+stamp_legality_generation
+
+# ---- derived display tables (review finding PP-6) ----------------------------
+# This job used to rebuild ONLY tiles.legality_polygons. tiles.legality_lowzoom and both display
+# tables are derived from it and were never touched, so every Class-2 refresh silently widened the
+# gap between what /assessment says and what the map paints — and refresh_due.sh auto-runs this
+# job, so the divergence re-created itself forever. It is how the z<9 map came to paint GREEN over
+# 243 km² of blmsma_nm land the engine already called YELLOW. There is no staleness guard because
+# the derived tables carry no vintage; the generation stamp below adds one.
+# This is the slow part of the job (~10-15 min). Correctness over cadence: a fast refresh that
+# leaves the map contradicting the verdict is not a refresh worth having.
+echo "[confirm-open ${ST}] rebuilding derived display tables (lowzoom + display partition)…"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q" < scripts/etl/build_lowzoom.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_lowzoom failed — legality_polygons is live but the low-zoom map is now STALE; re-run ./scripts/etl/rebuild_legality.sh"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_polygons -v tgt=tiles.legality_display" \
+  < scripts/etl/build_legality_display.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_legality_display (normal) failed — map display is STALE"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom -v cellsize=1.0" \
+  < scripts/etl/build_legality_display.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_legality_display (low-zoom) failed — map display is STALE"
+stamp_display_generation
 
 echo "[confirm-open ${ST}] post-swap fixture gates…"
 ./scripts/run-fixtures.sh
