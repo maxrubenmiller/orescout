@@ -121,15 +121,23 @@ stamp_legality_generation
 # the derived tables carry no vintage; the generation stamp below adds one.
 # This is the slow part of the job (~10-15 min). Correctness over cadence: a fast refresh that
 # leaves the map contradicting the verdict is not a refresh worth having.
+# Each derived table builds into _new and swaps atomically (PP-31): a failure mid-build leaves the
+# live display serving its previous generation instead of an empty table.
 echo "[confirm-open ${ST}] rebuilding derived display tables (lowzoom + display partition)…"
-eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q" < scripts/etl/build_lowzoom.sql >/dev/null \
-  || rfail "confirm-open ${ST}: build_lowzoom failed — legality_polygons is live but the low-zoom map is now STALE; re-run ./scripts/etl/rebuild_legality.sh"
-eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_polygons -v tgt=tiles.legality_display" \
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v lowzoom_tbl=tiles.legality_lowzoom_new" < scripts/etl/build_lowzoom.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_lowzoom failed — live low-zoom layer untouched, but it is now STALE vs legality_polygons; re-run ./scripts/etl/rebuild_legality.sh"
+count_gate tiles.legality_lowzoom 40
+atomic_swap tiles.legality_lowzoom
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_polygons -v tgt=tiles.legality_display_new" \
   < scripts/etl/build_legality_display.sql >/dev/null \
-  || rfail "confirm-open ${ST}: build_legality_display (normal) failed — map display is STALE"
-eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom -v cellsize=1.0" \
+  || rfail "confirm-open ${ST}: build_legality_display (normal) failed — live display untouched but STALE"
+count_gate tiles.legality_display 40
+atomic_swap tiles.legality_display
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom_new -v cellsize=1.0" \
   < scripts/etl/build_legality_display.sql >/dev/null \
-  || rfail "confirm-open ${ST}: build_legality_display (low-zoom) failed — map display is STALE"
+  || rfail "confirm-open ${ST}: build_legality_display (low-zoom) failed — live display untouched but STALE"
+count_gate tiles.legality_display_lowzoom 40
+atomic_swap tiles.legality_display_lowzoom
 stamp_display_generation
 
 echo "[confirm-open ${ST}] post-swap fixture gates…"

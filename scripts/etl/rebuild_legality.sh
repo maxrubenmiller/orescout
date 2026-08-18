@@ -113,25 +113,35 @@ atomic_swap "$LIVE"
 stamp_legality_generation
 
 # ---- 7. derived display tables (read the now-live table) --------------------
-# NOTE (review findings PP-6/PP-7): these derived tables have their own non-atomic rebuild and
-# their own correctness defects; both are out of scope for the PP-8 fix and tracked separately.
-# What matters here is that they are rebuilt from the swapped-in data on every full rebuild.
-echo "[rebuild] build_lowzoom.sql (generalized z<9 layer)..."
-"${PSQL[@]}" < scripts/etl/build_lowzoom.sql >/dev/null
-lz=$(q "SELECT count(*) FROM tiles.legality_lowzoom")
-[ "$lz" -gt 0 ] || fail "build_lowzoom produced 0 rows"
+# Each derived table is built into _new and atomically swapped (review finding PP-31), the same
+# contract the source table now follows. Previously these were DROP-then-INSERT against the live
+# serving tables: when the GREEN clip hit a GEOS error on 2026-08-18 the DROP had already
+# committed and tiles.legality_lowzoom was left EMPTY until the rebuild was re-run.
+echo "[rebuild] build_lowzoom.sql (generalized z<9 layer) -> _new..."
+"${PSQL[@]}" -v lowzoom_tbl=tiles.legality_lowzoom_new < scripts/etl/build_lowzoom.sql >/dev/null
+lz=$(q "SELECT count(*) FROM tiles.legality_lowzoom_new")
+[ "$lz" -gt 0 ] || fail "build_lowzoom produced 0 rows — live low-zoom layer untouched"
+count_gate tiles.legality_lowzoom 40
+atomic_swap tiles.legality_lowzoom
 echo "[rebuild]   legality_lowzoom: $lz rows"
 
 # Dissolved most-restrictive DISPLAY partition (UI_CHANGES.md Changes 1+2): uniform per-verdict
 # fills (no overlap darkening) + green clipped from under yellow. Reference/DISPLAY ONLY — the
 # verdict engine keeps querying tiles.legality_polygons, so this never changes a verdict. Built
 # from BOTH source tiers; low-zoom uses a coarser grid for lighter z0-8 tiles.
-echo "[rebuild] build_legality_display.sql (display partition — normal + low-zoom)..."
-"${PSQL[@]}" -v src=tiles.legality_polygons -v tgt=tiles.legality_display < scripts/etl/build_legality_display.sql >/dev/null
-"${PSQL[@]}" -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom -v cellsize=1.0 < scripts/etl/build_legality_display.sql >/dev/null
-disp=$(q "SELECT count(*) FROM tiles.legality_display")
-[ "$disp" -gt 0 ] || fail "build_legality_display produced 0 rows"
-echo "[rebuild]   legality_display: $disp pieces (+ low-zoom variant)"
+echo "[rebuild] build_legality_display.sql (display partition — normal + low-zoom) -> _new..."
+"${PSQL[@]}" -v src=tiles.legality_polygons -v tgt=tiles.legality_display_new < scripts/etl/build_legality_display.sql >/dev/null
+disp=$(q "SELECT count(*) FROM tiles.legality_display_new")
+[ "$disp" -gt 0 ] || fail "build_legality_display (normal) produced 0 rows — live display untouched"
+count_gate tiles.legality_display 40
+atomic_swap tiles.legality_display
+
+"${PSQL[@]}" -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom_new -v cellsize=1.0 < scripts/etl/build_legality_display.sql >/dev/null
+displz=$(q "SELECT count(*) FROM tiles.legality_display_lowzoom_new")
+[ "$displz" -gt 0 ] || fail "build_legality_display (low-zoom) produced 0 rows — live display untouched"
+count_gate tiles.legality_display_lowzoom 40
+atomic_swap tiles.legality_display_lowzoom
+echo "[rebuild]   legality_display: $disp pieces / display_lowzoom: $displz pieces"
 # Derived tables now match the swapped-in source; record that (review finding PP-6).
 stamp_display_generation
 

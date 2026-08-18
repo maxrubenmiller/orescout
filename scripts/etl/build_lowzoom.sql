@@ -22,9 +22,22 @@
 -- ============================================================================
 SET client_min_messages TO WARNING;
 
-DROP TABLE IF EXISTS tiles.legality_lowzoom;
+-- TARGET TABLE (review finding PP-31): the target is the psql variable :lowzoom_tbl, defaulting to
+-- the live table so a standalone run behaves as before. rebuild_legality.sh passes
+-- tiles.legality_lowzoom_new so this builds off to the side and reaches live via atomic_swap.
+-- Building in place is DROP-then-INSERT against a serving table: when the GREEN clip below hit a
+-- GEOS TopologyException on 2026-08-18 the DROP had already committed, so the z<9 map had NO
+-- legality data until the rebuild was re-run. Same non-atomic pattern PP-8 fixed for
+-- legality_polygons; it failed safe (blank is not an affirmative claim of open) but the window is
+-- real and only the PP-6 generation stamps flagged it.
+\if :{?lowzoom_tbl}
+\else
+  \set lowzoom_tbl tiles.legality_lowzoom
+\endif
 
-CREATE TABLE tiles.legality_lowzoom (
+DROP TABLE IF EXISTS :lowzoom_tbl;
+
+CREATE TABLE :lowzoom_tbl (
     ogc_fid  bigserial PRIMARY KEY,
     verdict  text CHECK (verdict IN ('RED','YELLOW','GREEN')),
     geom     geometry(MultiPolygon, 4326)
@@ -52,7 +65,7 @@ WHERE verdict IN ('RED','YELLOW') AND geom IS NOT NULL AND NOT ST_IsEmpty(geom);
 DELETE FROM _lz_protect WHERE ST_GeometryType(geom) NOT IN ('ST_Polygon','ST_MultiPolygon');
 CREATE INDEX ON _lz_protect USING GIST (geom);
 
-INSERT INTO tiles.legality_lowzoom (verdict, geom)
+INSERT INTO :lowzoom_tbl (verdict, geom)
 SELECT c.verdict, ST_Multi(c.geom)
 FROM (
     SELECT p.verdict,
@@ -94,9 +107,11 @@ FROM (
 ) c
 WHERE c.geom IS NOT NULL AND NOT ST_IsEmpty(c.geom) AND ST_Dimension(c.geom) = 2;
 
-CREATE INDEX legality_lowzoom_geom_idx ON tiles.legality_lowzoom USING GIST (geom);
-GRANT SELECT ON tiles.legality_lowzoom TO tileserv_ro;
+-- Index name left to Postgres so a _new build cannot collide with the live table's; atomic_swap
+-- strips the '_new' infix after the rename.
+CREATE INDEX ON :lowzoom_tbl USING GIST (geom);
+GRANT SELECT ON :lowzoom_tbl TO tileserv_ro;
 
 SELECT verdict, count(*) AS polys,
        round(sum(ST_NPoints(geom))/1000.0) AS kvertices
-FROM tiles.legality_lowzoom GROUP BY verdict ORDER BY verdict;
+FROM :lowzoom_tbl GROUP BY verdict ORDER BY verdict;
