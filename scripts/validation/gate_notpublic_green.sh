@@ -112,12 +112,10 @@ SELECT s.pt, s.src_m2,
        (SELECT l.verdict FROM tiles.legality_polygons l
         WHERE ST_Covers(l.geom, s.pt) ORDER BY orescout_rank(l.verdict) DESC LIMIT 1) AS v
 FROM sampled s;
--- The 6th field is the number that decides pass/fail: false-GREENs on source polygons at or above
--- the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374). The carve
--- deliberately does not rescue sub-400 m² fragments — that is its stated design, not a leak — so
--- failing on them would be holding the gate to a standard the pipeline never claimed. Measured in
--- CO: 337 raw residuals, of which 336 sit on source polygons under 400 m² (median 6 m²) and
--- exactly 1 is a real parcel. Both numbers are reported; only the above-floor one gates.
+-- Last field decides pass/fail: false-GREENs on source polygons at or above the documented
+-- 400 m2 meaningful-parcel floor (PROJECT_PLAN.md:2374). Sub-floor fragments are counted and
+-- printed but never gate: the carve documents that it does not rescue them. NOTE: no double
+-- quotes in this string - it lives inside a double-quoted bash assignment and they terminate it.
 SELECT 'SUMMARY|' || count(*) || '|' || count(*) FILTER (WHERE v='GREEN') || '|' ||
        count(*) FILTER (WHERE v='RED') || '|' || count(*) FILTER (WHERE v='YELLOW') || '|' ||
        count(*) FILTER (WHERE v IS NULL) || '|' ||
@@ -135,6 +133,18 @@ DROP TABLE IF EXISTS ${SCRATCH};
   none=$(echo "$summary" | cut -d'|' -f6); real=$(echo "$summary" | cut -d'|' -f7)
   pts=${pts:-0}; green=${green:-0}; real=${real:-0}
   total_pts=$((total_pts + pts)); total_green=$((total_green + green)); total_real=$((total_real + real))
+
+  # A gate that measured NOTHING must never report clean. This is not hypothetical: a stray pair of
+  # double quotes in the SQL comment above once terminated the GATESQL bash string early, so every
+  # state returned no SUMMARY row and the gate cheerfully printed "0 of 0 sampled - clean" for all
+  # eight. Silence and success have to be distinguishable, especially in a safety gate.
+  if [ "$pts" -eq 0 ]; then
+    echo "  ✗ $STU  BROKEN: the sweep returned no rows (expected ~${notpub_n} not-public polygons)."
+    echo "        This is a gate failure, NOT a pass — something went wrong before any point was scored."
+    failed_states="$failed_states $STU(broken)"
+    continue
+  fi
+
   if [ "$real" -gt 0 ]; then
     echo "  ✗ $STU  FALSE-GREEN: $real on parcels >=400 m2 ($green raw) of $pts sampled  (RED $red / YELLOW $yellow / no-polygon $none)"
     failed_states="$failed_states $STU"
