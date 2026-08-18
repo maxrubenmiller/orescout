@@ -57,8 +57,17 @@ SELECT c.verdict, ST_Multi(c.geom)
 FROM (
     SELECT p.verdict,
            CASE WHEN p.verdict <> 'GREEN' THEN p.geom
-                ELSE ST_CollectionExtract(ST_MakeValid(ST_Difference(p.geom,
-                       COALESCE(pr.protect, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3)
+                -- gridSize 1e-7 deg (~1 cm): ST_Difference on these dissolved, simplified shapes
+                -- hits GEOS robustness failures without snap-rounding — observed as
+                -- "TopologyException: unable to assign free hole to a shell" at
+                -- -122.2597,41.1517 on the first run. The grid is four orders of magnitude finer
+                -- than the 0.002 deg (~200 m) simplify tolerance already applied above, so it
+                -- costs nothing this layer has not already given up. ST_MakeValid on BOTH sides:
+                -- the union of many subdivided pieces is not guaranteed valid either.
+                ELSE ST_CollectionExtract(ST_MakeValid(ST_Difference(
+                       ST_MakeValid(p.geom),
+                       COALESCE(ST_MakeValid(pr.protect), ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)),
+                       0.0000001)), 3)
            END AS geom
     FROM (
         SELECT d.verdict, ST_CollectionExtract(sub.piece, 3) AS geom

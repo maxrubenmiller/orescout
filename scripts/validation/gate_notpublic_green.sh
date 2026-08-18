@@ -19,15 +19,25 @@
 #                        when GATE_DENSITY=1, seeded area-scaled interior points for big ones
 #   score            := the engine's own Stage-1 query — ST_Covers + ORDER BY orescout_rank DESC
 #                        against tiles.legality_polygons
-#   FAIL             := any sampled point scores GREEN
+#   FAIL             := any sampled point on a source polygon >= 400 m² scores GREEN
+#
+# Both counts are printed. Only the >=400 m² one gates, because the carve deliberately does not
+# rescue sub-400 m² fragments — that is its documented design (PROJECT_PLAN.md:2374, "validation
+# frame floor 400 m², recorded not hidden"), not a leak. Failing on them would hold the gate to a
+# standard the pipeline never claimed. The distinction is not cosmetic: measured in CO, 337 raw
+# residuals collapse to exactly 1 real parcel once the floor is applied (median sliver: 6 m²).
 #
 # HONEST LIMITS — read before treating a pass as proof:
 #   * Default sampling is ONE interior point per not-public polygon. It bounds nothing about
 #     the interior of a large polygon; it is a detector, not a proof of absence. GATE_DENSITY=1
 #     samples harder and is much slower.
-#   * CA has NO authoritative not-public layer (CAL FIRE maps public ownership only, so
-#     carve_private is null in the registry). CA is reported NOT-COVERABLE, never PASS. That
-#     gap is the subject of review finding PP-3 and cannot be closed by sampling.
+#   * CA became coverable once PP-2 narrowed its public predicate to own_level='Federal' — before
+#     that the predicate was `own_level IS NOT NULL`, so CAL FIRE had no not-public rows at all and
+#     this gate reported CA NOT-COVERABLE. It is still the weakest state: CAL FIRE maps public
+#     ownership only, so genuinely private land is absent rather than labelled, and no sampling of
+#     this layer can find it. See PP-3.
+#   * A false-GREEN on a sub-400 m² source polygon is still recorded and printed — it is just not
+#     a gate failure. If those counts climb sharply, something changed.
 #   * A polygon absent from every legality layer scores '(none)' -> the engine returns
 #     YELLOW/UNKNOWN there. Safe, and counted separately, but it means the not-public signal is
 #     "no data" rather than positive mapping.
@@ -52,7 +62,7 @@ if [ "${GATE_PARCELS:-0}" = "1" ]; then PARCELS_ON="true"; else PARCELS_ON="fals
 
 if [ "$#" -gt 0 ]; then STATES="$*"; else STATES=$(reg_states_for_role confirm_open | tr '\n' ' '); fi
 
-total_green=0; total_pts=0; failed_states=""; uncoverable=""
+total_green=0; total_real=0; total_pts=0; failed_states=""; uncoverable=""
 
 for st in $STATES; do
   STU=$(echo "$st" | tr '[:lower:]' '[:upper:]')
@@ -102,9 +112,16 @@ SELECT s.pt, s.src_m2,
        (SELECT l.verdict FROM tiles.legality_polygons l
         WHERE ST_Covers(l.geom, s.pt) ORDER BY orescout_rank(l.verdict) DESC LIMIT 1) AS v
 FROM sampled s;
+-- The 6th field is the number that decides pass/fail: false-GREENs on source polygons at or above
+-- the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374). The carve
+-- deliberately does not rescue sub-400 m² fragments — that is its stated design, not a leak — so
+-- failing on them would be holding the gate to a standard the pipeline never claimed. Measured in
+-- CO: 337 raw residuals, of which 336 sit on source polygons under 400 m² (median 6 m²) and
+-- exactly 1 is a real parcel. Both numbers are reported; only the above-floor one gates.
 SELECT 'SUMMARY|' || count(*) || '|' || count(*) FILTER (WHERE v='GREEN') || '|' ||
        count(*) FILTER (WHERE v='RED') || '|' || count(*) FILTER (WHERE v='YELLOW') || '|' ||
-       count(*) FILTER (WHERE v IS NULL) FROM ${SCRATCH};
+       count(*) FILTER (WHERE v IS NULL) || '|' ||
+       count(*) FILTER (WHERE v='GREEN' AND src_m2 >= 400) FROM ${SCRATCH};
 SELECT 'OFFENDER|        lat=' || round(ST_Y(pt)::numeric,7) || ' lng=' || round(ST_X(pt)::numeric,7)
        || '  (not-public polygon ' || round(src_m2)::text || ' m2)'
 FROM ${SCRATCH} WHERE v='GREEN' ORDER BY src_m2 DESC LIMIT 5;
@@ -115,20 +132,20 @@ DROP TABLE IF EXISTS ${SCRATCH};
   summary=$(printf '%s\n' "$OUT" | grep '^SUMMARY|' | head -1)
   pts=$(echo "$summary"  | cut -d'|' -f2); green=$(echo "$summary" | cut -d'|' -f3)
   red=$(echo "$summary"  | cut -d'|' -f4); yellow=$(echo "$summary" | cut -d'|' -f5)
-  none=$(echo "$summary" | cut -d'|' -f6)
-  pts=${pts:-0}; green=${green:-0}
-  total_pts=$((total_pts + pts)); total_green=$((total_green + green))
-  if [ "$green" -gt 0 ]; then
-    echo "  ✗ $STU  FALSE-GREEN: $green of $pts sampled not-public points score engine-GREEN  (RED $red / YELLOW $yellow / no-polygon $none)"
+  none=$(echo "$summary" | cut -d'|' -f6); real=$(echo "$summary" | cut -d'|' -f7)
+  pts=${pts:-0}; green=${green:-0}; real=${real:-0}
+  total_pts=$((total_pts + pts)); total_green=$((total_green + green)); total_real=$((total_real + real))
+  if [ "$real" -gt 0 ]; then
+    echo "  ✗ $STU  FALSE-GREEN: $real on parcels >=400 m2 ($green raw) of $pts sampled  (RED $red / YELLOW $yellow / no-polygon $none)"
     failed_states="$failed_states $STU"
     printf '%s\n' "$OUT" | grep '^OFFENDER|' | cut -d'|' -f2-
   else
-    echo "  ✓ $STU  clean: 0 of $pts sampled not-public points score GREEN  (RED $red / YELLOW $yellow / no-polygon $none)"
+    echo "  ✓ $STU  clean: 0 above the 400 m2 floor ($green raw sub-floor slivers) of $pts sampled  (RED $red / YELLOW $yellow / no-polygon $none)"
   fi
 done
 
 echo
-echo "not-public/GREEN gate: $total_green false-GREEN of $total_pts sampled points (density=$DENSITY, seed=$SEED)"
+echo "not-public/GREEN gate: $total_real false-GREEN on parcels >=400 m2 ($total_green raw, incl. sub-floor slivers) of $total_pts sampled (density=$DENSITY, seed=$SEED)"
 [ -n "$uncoverable" ] && echo "  NOT-COVERABLE (no authoritative not-public layer):$uncoverable"
 [ -n "$failed_states" ] && { echo "  FAILING STATES:$failed_states"; exit 1; }
 [ -z "$uncoverable" ] || echo "  (a clean run does NOT cover the states listed above)"

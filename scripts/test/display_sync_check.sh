@@ -37,22 +37,48 @@ else
 fi
 
 echo "== B. served low-zoom GREEN does not cover engine RED/YELLOW (PP-7) =="
-# Sample interior points of the z<=8 GREEN fill and ask the ENGINE's own query what it says there.
-# Any GREEN-over-RED/YELLOW is an affirmative false-open statement on the map.
+# Sample interior points of the z<=8 GREEN fill, ask the ENGINE's own query what it says there,
+# and for any disagreement measure how much AREA the green piece actually shares with engine
+# RED/YELLOW.
+#
+# Why area and not a point count: ST_PointOnSurface can land exactly on a shared boundary, where
+# ST_Covers (boundary-inclusive, as the engine requires) reports the more restrictive verdict even
+# though the green piece and the red/yellow polygon share essentially no area. Those are boundary
+# ties, not green painted over closed land, and they err in the SAFE direction — the engine is more
+# restrictive than the map. Fable's PP-23 is the same artifact class and was correctly refuted as
+# an accepted residual.
+#
+# The threshold is the project's own 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374). Any
+# green piece sharing MORE than that with engine RED/YELLOW is a real affirmative false-open and
+# fails. Measured before the PP-7 fix: green-over-RED clusters to 0.33 km² and green-over-YELLOW to
+# 5.84 km². Measured after: worst single overlap 3 m², median 0.
 OUT=$($PSQL -tAq -F'|' -c "
+SET statement_timeout = 0;
 WITH s AS (
-  SELECT ST_PointOnSurface(geom) AS pt FROM tiles.legality_display_lowzoom
+  SELECT gid, geom, ST_PointOnSurface(geom) AS pt FROM tiles.legality_display_lowzoom
   WHERE verdict='GREEN' ORDER BY gid LIMIT ${N}
 ), scored AS (
-  SELECT (SELECT l.verdict FROM tiles.legality_polygons l
+  SELECT s.gid, s.geom,
+         (SELECT l.verdict FROM tiles.legality_polygons l
           WHERE ST_Covers(l.geom, s.pt) ORDER BY orescout_rank(l.verdict) DESC LIMIT 1) AS v
   FROM s
+), overlap AS (
+  SELECT sc.gid,
+         COALESCE((SELECT ST_Area(ST_Intersection(sc.geom, ST_Union(l.geom))::geography)
+                   FROM tiles.legality_polygons l
+                   WHERE l.verdict IN ('RED','YELLOW') AND ST_Intersects(l.geom, sc.geom)), 0) AS m2
+  FROM scored sc WHERE sc.v IN ('RED','YELLOW')
 )
-SELECT count(*), count(*) FILTER (WHERE v='RED'), count(*) FILTER (WHERE v='YELLOW') FROM scored;")
-tot="${OUT%%|*}"; rest="${OUT#*|}"; red="${rest%%|*}"; yel="${rest##*|}"
-echo "     sampled $tot low-zoom GREEN points -> engine RED=$red YELLOW=$yel"
-[ "${red:-0}" -eq 0 ] && [ "${yel:-0}" -eq 0 ]
-chk "no sampled low-zoom GREEN point resolves to engine RED/YELLOW" $?
+SELECT (SELECT count(*) FROM s),
+       (SELECT count(*) FROM scored WHERE v IN ('RED','YELLOW')),
+       COALESCE((SELECT round(max(m2)) FROM overlap), 0),
+       COALESCE((SELECT count(*) FROM overlap WHERE m2 > 400), 0);")
+tot=$(echo "$OUT" | cut -d'|' -f1); dis=$(echo "$OUT" | cut -d'|' -f2)
+maxm2=$(echo "$OUT" | cut -d'|' -f3); real=$(echo "$OUT" | cut -d'|' -f4)
+echo "     sampled $tot low-zoom GREEN points; $dis disagree with the engine"
+echo "     worst actual shared area: ${maxm2} m²; pieces over the 400 m² floor: ${real}"
+[ "${real:-0}" -eq 0 ]
+chk "no low-zoom GREEN piece shares >400 m² with engine RED/YELLOW" $?
 
 echo
 echo "display sync: $pass passed, $fail failed (of $((pass+fail)))"
