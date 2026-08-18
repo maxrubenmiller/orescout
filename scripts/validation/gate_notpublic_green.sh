@@ -84,7 +84,7 @@ for st in $STATES; do
   fi
 
   extra="0"
-  [ "$DENSITY" = "1" ] && extra="LEAST(GREATEST((ST_Area(g.geom::geography)/500000)::int,0),8)"
+  [ "$DENSITY" = "1" ] && extra="LEAST(GREATEST((ST_Area(gv.geom::geography)/500000)::int,0),8)"
 
   # ONE sweep per state: score into a scratch table, then read both the summary and the worst
   # offenders out of it. Scoring is the expensive part (a correlated ST_Covers per point over a
@@ -100,13 +100,27 @@ WITH notpub AS (
   SELECT ST_MakeValid(geom) FROM staging.parcels
    WHERE ${PARCELS_ON} AND to_regclass('staging.parcels') IS NOT NULL
      AND state='$STU' AND owner_class='private'
+), region AS (
+  SELECT ST_Union(geom) AS geom FROM public.supported_region WHERE state_code = '$STU'
 ), g AS (
-  SELECT geom FROM notpub WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom) AND ST_Dimension(geom)=2
+  -- Clip to the state's own region. These ownership layers overrun their borders: BLM's Nevada SMA
+  -- extent contains polygons lying over the California line, where it is not the authority and CAL
+  -- FIRE disagrees. Unclipped, 10 of NV's 23 residuals were such out-of-state points, i.e. the gate
+  -- was scoring one state's source against another state's ground and calling the disagreement a
+  -- false-GREEN. src_m2 below is the IN-STATE area, which is what the 400 m2 floor should judge.
+  -- If region is empty this yields zero rows, which the 'BROKEN' guard downstream turns into a hard
+  -- failure rather than a silent pass (public.supported_region has a documented fail-open, PP-15).
+  SELECT ST_CollectionExtract(ST_MakeValid(ST_Intersection(n.geom, r.geom)), 3) AS geom
+  FROM notpub n CROSS JOIN region r
+  WHERE n.geom IS NOT NULL AND NOT ST_IsEmpty(n.geom) AND ST_Dimension(n.geom) = 2
+    AND ST_Intersects(n.geom, r.geom)
+), gv AS (
+  SELECT geom FROM g WHERE geom IS NOT NULL AND NOT ST_IsEmpty(geom) AND ST_Dimension(geom) = 2
 ), sampled AS (
-  SELECT ST_PointOnSurface(g.geom) AS pt, ST_Area(g.geom::geography) AS src_m2 FROM g
+  SELECT ST_PointOnSurface(gv.geom) AS pt, ST_Area(gv.geom::geography) AS src_m2 FROM gv
   UNION ALL
-  SELECT (ST_Dump(ST_GeneratePoints(g.geom, ${extra}, ${SEED}))).geom, ST_Area(g.geom::geography)
-    FROM g WHERE ${extra} > 0
+  SELECT (ST_Dump(ST_GeneratePoints(gv.geom, ${extra}, ${SEED}))).geom, ST_Area(gv.geom::geography)
+    FROM gv WHERE ${extra} > 0
 )
 SELECT s.pt, s.src_m2,
        (SELECT l.verdict FROM tiles.legality_polygons l
