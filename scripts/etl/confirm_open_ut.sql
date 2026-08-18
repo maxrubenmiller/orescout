@@ -38,9 +38,15 @@ DELETE FROM :legality_tbl WHERE source_key = 'ugrc_ut';
 
 -- not-public parcels (affirmative private/tribal + the null-owner slivers)
 -- PP-2: 'State' no longer counts as public here, so state-owned parcels join the carve.
+-- ST_SubDivide(512) like every generated state. This was un-subdivided historically and got away
+-- with it while notpub held only private/tribal/null parcels. PP-2 moved all State land into it,
+-- and Utah's state parcels are enormous: 12,176 rows with one reaching 46,822 vertices and
+-- 5,113 km². Feeding those whole into the per-buffer-row LATERAL union below is the un-subdivided
+-- carve union documented as having OOM-crashed this container (gen_confirm_open.sh:58-60);
+-- observed here as staging.ugrc_buf running 19+ minutes with no end in sight.
 DROP TABLE IF EXISTS staging.ugrc_notpub;
 CREATE TABLE staging.ugrc_notpub AS
-  SELECT ST_MakeValid(geom) AS geom FROM staging.ugrc_ownership
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.ugrc_ownership
   WHERE owner IS NULL OR owner <> 'Federal';
 CREATE INDEX ugrc_notpub_gix ON staging.ugrc_notpub USING GIST (geom);
 
@@ -51,7 +57,7 @@ CREATE INDEX ugrc_notpub_gix ON staging.ugrc_notpub USING GIST (geom);
 -- Parks near Goblin Valley. Separate from ugrc_notpub so the demotion can say why.
 DROP TABLE IF EXISTS staging.ugrc_nonopen;
 CREATE TABLE staging.ugrc_nonopen AS
-  SELECT ST_MakeValid(geom) AS geom FROM staging.ugrc_ownership WHERE owner = 'State';
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM staging.ugrc_ownership WHERE owner = 'State';
 CREATE INDEX ugrc_nonopen_gix ON staging.ugrc_nonopen USING GIST (geom);
 
 -- pre-buffer SGID public by 100m in UTM 12N, then carve affirmative-not-public back OUT
@@ -59,7 +65,8 @@ DROP TABLE IF EXISTS staging.ugrc_buf;
 CREATE TABLE staging.ugrc_buf AS
   SELECT ST_CollectionExtract(ST_MakeValid(ST_Difference(b.geom,
            COALESCE(np.geom, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3) AS geom
-  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(geom, 26912), 100), 4326) AS geom
+  -- Subdivide the buffer source too (generator pattern): it now feeds a per-row LATERAL difference.
+  FROM (SELECT ST_Transform(ST_Buffer(ST_Transform(ST_SubDivide(ST_MakeValid(geom), 512), 26912), 100), 4326) AS geom
         FROM staging.ugrc_ownership
         WHERE owner = 'Federal') b                     -- public_predicate (PP-2: was Federal+State)
   LEFT JOIN LATERAL (
