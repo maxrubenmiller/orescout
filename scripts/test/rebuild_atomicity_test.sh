@@ -113,6 +113,34 @@ chk "rebuild_legality.sh: every confirm_open_*.sql targets _new" $?
 grep -q 'legality_tbl=\${NEW}' "$C"
 chk "refresh_confirm_open.sh: confirm_open SQL targets _new" $?
 
+echo "== E. the refresh job's psql command strings actually dispatch =="
+# refresh_confirm_open.sh builds its psql invocations as strings passed through `eval`. That form is
+# where a stray quote or an unexpanded variable turns into a silent no-op or a hard parse error, and
+# this job is expensive to exercise end-to-end (~45-60 min, it rebuilds the whole derived chain), so
+# it went to review never having been run once. Dispatching each command string with EMPTY input
+# proves the quoting and wiring without doing any work. This is not a substitute for a real run —
+# see REFRESH_DRY_RUN=1 for that — it is the cheap check that catches the likeliest failure class.
+# Precedent: a stray pair of double quotes inside a SQL comment silently truncated the
+# gate_notpublic_green.sh command string and made it report "0 of 0 sampled — clean".
+# shellcheck source=/dev/null
+. scripts/etl/refresh_lib.sh >/dev/null 2>&1
+_NEW=tiles.legality_polygons_new
+for spec in \
+  "carve|-v ON_ERROR_STOP=1 -v legality_tbl=${_NEW} -1 -q" \
+  "lowzoom|-v ON_ERROR_STOP=1 -q -v lowzoom_tbl=tiles.legality_lowzoom_new" \
+  "display|-v ON_ERROR_STOP=1 -q -v src=tiles.legality_polygons -v tgt=tiles.legality_display_new" \
+  "display_lowzoom|-v ON_ERROR_STOP=1 -q -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom_new -v cellsize=1.0"
+do
+  n="${spec%%|*}"; a="${spec#*|}"
+  eval "$REFRESH_PSQL $a" < /dev/null >/dev/null 2>&1
+  chk "refresh psql command string dispatches: $n" $?
+done
+
+# The dry-run stop must sit BEFORE the swap, or it is not a dry run.
+dry_ln=$(lineno "$C" 'REFRESH_DRY_RUN')
+[ "$dry_ln" -gt 0 ] && [ "$cswap_ln" -gt 0 ] && [ "$dry_ln" -lt "$cswap_ln" ]
+chk "refresh_confirm_open.sh: DRY_RUN stop precedes atomic_swap (line $dry_ln < $cswap_ln)" $?
+
 echo
 echo "rebuild atomicity (PP-8/PP-9): $pass passed, $fail failed (of $((pass+fail)))"
 [ "$fail" -eq 0 ]

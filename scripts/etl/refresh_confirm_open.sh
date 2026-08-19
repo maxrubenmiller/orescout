@@ -108,6 +108,23 @@ echo "[confirm-open ${ST}] pre-swap golden gate…"
 ./scripts/etl/gate_legality_tilebase.sh "$NEW" \
   || rfail "confirm-open ${ST}: pre-swap tileBase gate failed — ${NEW} left for inspection, live table untouched"
 
+# ---- DRY RUN stop point ------------------------------------------------------
+# REFRESH_DRY_RUN=1 exercises everything above this line for real — registry lookup, upstream pull,
+# assert_schema, the clone, the carve against _new, and all three pre-swap gates — then discards the
+# candidate and stops. Live is untouched by construction, because the swap is the next statement.
+#
+# Two uses. Operationally: rehearse a refresh before committing to one, e.g. when upstream has
+# changed and you want to see the row delta and the golden gate before it can serve. And as the
+# cheap integration test for this job, which is otherwise expensive to exercise (a full run rebuilds
+# the derived display chain and takes ~45-60 min).
+if [ "${REFRESH_DRY_RUN:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] DRY RUN — pre-swap gates PASSED; discarding ${NEW}, not swapping."
+  echo "[confirm-open ${ST}]   would have gone live: ${before} -> ${after} ${SRC_KEY} rows"
+  _rx "DROP TABLE IF EXISTS ${NEW};"
+  echo "[confirm-open ${ST}] ✓ dry run complete — live table untouched, nothing stamped"
+  exit 0
+fi
+
 # ---- swap, then confirm ------------------------------------------------------
 atomic_swap "$LIVE"
 stamp_legality_generation
