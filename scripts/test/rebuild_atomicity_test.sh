@@ -136,6 +136,15 @@ do
   chk "refresh psql command string dispatches: $n" $?
 done
 
+# The output-property gate must also sit before the swap in both jobs — a gate that runs after the
+# rows are serving reports history, not a decision.
+ng_r=$(lineno "$R" 'GATE_TARGET="\$NEW" ./scripts/validation/gate_notpublic_green.sh')
+[ "$ng_r" -gt 0 ] && [ "$swap_ln" -gt 0 ] && [ "$ng_r" -lt "$swap_ln" ]
+chk "rebuild_legality.sh: not-public gate precedes atomic_swap (line $ng_r < $swap_ln)" $?
+ng_c=$(lineno "$C" 'GATE_TARGET="\$NEW" ./scripts/validation/gate_notpublic_green.sh')
+[ "$ng_c" -gt 0 ] && [ "$cswap_ln" -gt 0 ] && [ "$ng_c" -lt "$cswap_ln" ]
+chk "refresh_confirm_open.sh: not-public gate precedes atomic_swap (line $ng_c < $cswap_ln)" $?
+
 # The dry-run stop must sit BEFORE the swap, or it is not a dry run.
 dry_ln=$(lineno "$C" 'REFRESH_DRY_RUN')
 [ "$dry_ln" -gt 0 ] && [ "$cswap_ln" -gt 0 ] && [ "$dry_ln" -lt "$cswap_ln" ]

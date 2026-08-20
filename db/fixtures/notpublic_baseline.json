@@ -1,0 +1,38 @@
+{
+  "_what": "Per-state ceiling of KNOWN, ACCEPTED false-GREENs for scripts/validation/gate_notpublic_green.sh.",
+  "_how_it_gates": [
+    "The gate counts false-GREENs on not-public source parcels at or above the documented 400 m2",
+    "meaningful-parcel floor (PROJECT_PLAN.md:2374), per state, region-clipped. It FAILS if a state",
+    "EXCEEDS its number here. Equal is a pass; fewer is a pass and is reported as an improvement.",
+    "A state absent from this file is held to ZERO - a newly added state must introduce no",
+    "false-GREEN at all."
+  ],
+  "_why_not_zero_everywhere": [
+    "These are not 'acceptable bugs'. Every count below is attributable to review finding PP-30:",
+    "the confirm-open carve selects its input by the PAD-US state_nm ATTRIBUTE, so a GREEN polygon",
+    "labelled with one state but physically covering another is judged by the wrong authority, or by",
+    "none. 730 km2 across the 8 states sits in that gap. The fix (a post-carve sweeper) is specified",
+    "in docs/REVIEW_PREPROD_BACKLOG.md and not yet built.",
+    "Adopting the gate at these numbers rather than waiting for PP-30 is deliberate: it starts",
+    "catching REGRESSIONS immediately, during exactly the waves where the carve is being changed."
+  ],
+  "_rules": [
+    "NEVER auto-update this file. Lowering a number is a deliberate human commit that says a fix",
+    "landed; raising one is an admission that something regressed and needs its own justification.",
+    "A gate whose baseline quietly follows reality is not a gate."
+  ],
+  "_recorded": "2026-08-19",
+  "_recorded_against": "tiles.legality_polygons generation 20260818T011749Z (232,574 rows)",
+  "_measured_by": "GATE_DENSITY=0, seed 42, region-clipped, parcels off",
+  "_total_at_record": 18,
+  "states": {
+    "AZ": 3,
+    "CA": 4,
+    "CO": 1,
+    "ID": 1,
+    "NM": 0,
+    "NV": 7,
+    "OR": 0,
+    "UT": 2
+  }
+}

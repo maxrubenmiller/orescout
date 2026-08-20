@@ -56,13 +56,29 @@ source scripts/etl/registry_lib.sh
 
 PSQL="docker compose exec -T postgres psql -U postgres -d miningapp"
 DENSITY="${GATE_DENSITY:-0}"
+# Which legality table to score against. Defaults to live; the orchestrators pass
+# tiles.legality_polygons_new so a rebuild/refresh is gated BEFORE it can serve, not after.
+# Scoring a candidate table is the whole point: a gate that can only tell you the live layer is
+# already wrong is the PP-8/PP-9 shape of mistake.
+TARGET="${GATE_TARGET:-tiles.legality_polygons}"
+# Baseline of known-accepted false-GREENs, per state. The gate fails on REGRESSION past these,
+# not on their existence — see the file itself for why they are not all zero and why it must never
+# be updated automatically. GATE_BASELINE=none holds every state to zero (use once PP-30 lands).
+BASELINE_FILE="${GATE_BASELINE:-db/fixtures/notpublic_baseline.json}"
 SEED=42   # fixed: the gate must give the same answer twice
 # Parcels off by default — see HONEST LIMITS above. 'false' short-circuits the UNION branch.
 if [ "${GATE_PARCELS:-0}" = "1" ]; then PARCELS_ON="true"; else PARCELS_ON="false"; fi
 
 if [ "$#" -gt 0 ]; then STATES="$*"; else STATES=$(reg_states_for_role confirm_open | tr '\n' ' '); fi
 
-total_green=0; total_real=0; total_pts=0; failed_states=""; uncoverable=""
+# Fail loudly rather than sweeping an absent table and reporting nothing (see the BROKEN guard).
+if [ "$(eval "$PSQL -tAq -c \"SELECT to_regclass('$TARGET') IS NOT NULL\"" | tr -d '[:space:]')" != "t" ]; then
+  echo "✗ gate target $TARGET does not exist" >&2
+  exit 2
+fi
+echo "[gate] scoring against: $TARGET"
+
+total_green=0; total_real=0; total_pts=0; total_base=0; failed_states=""; uncoverable=""; improved_states=""
 
 for st in $STATES; do
   STU=$(echo "$st" | tr '[:lower:]' '[:upper:]')
@@ -123,7 +139,7 @@ WITH notpub AS (
     FROM gv WHERE ${extra} > 0
 )
 SELECT s.pt, s.src_m2,
-       (SELECT l.verdict FROM tiles.legality_polygons l
+       (SELECT l.verdict FROM ${TARGET} l
         WHERE ST_Covers(l.geom, s.pt) ORDER BY orescout_rank(l.verdict) DESC LIMIT 1) AS v
 FROM sampled s;
 -- Last field decides pass/fail: false-GREENs on source polygons at or above the documented
@@ -159,18 +175,36 @@ DROP TABLE IF EXISTS ${SCRATCH};
     continue
   fi
 
-  if [ "$real" -gt 0 ]; then
-    echo "  ✗ $STU  FALSE-GREEN: $real on parcels >=400 m2 ($green raw) of $pts sampled  (RED $red / YELLOW $yellow / no-polygon $none)"
+  # Compare against the per-state baseline. Absent state => 0 (a new state must be clean).
+  base=0
+  if [ "$BASELINE_FILE" != "none" ] && [ -f "$BASELINE_FILE" ]; then
+    base=$(python3 -c "
+import json,sys
+try: print(json.load(open('$BASELINE_FILE'))['states'].get('$STU', 0))
+except Exception: print(0)")
+  fi
+  total_base=$((total_base + base))
+
+  if [ "$real" -gt "$base" ]; then
+    echo "  ✗ $STU  REGRESSION: $real above the 400 m2 floor, baseline $base (+$((real - base)))  [$green raw of $pts sampled]"
     failed_states="$failed_states $STU"
     printf '%s\n' "$OUT" | grep '^OFFENDER|' | cut -d'|' -f2-
+  elif [ "$real" -lt "$base" ]; then
+    echo "  ✓ $STU  IMPROVED: $real above the floor, baseline $base (-$((base - real)))  [$green raw of $pts sampled]"
+    echo "        ^ lower the baseline in $BASELINE_FILE to lock this in"
+    improved_states="$improved_states $STU"
+  elif [ "$real" -gt 0 ]; then
+    echo "  = $STU  at baseline: $real above the floor  [$green raw of $pts sampled]  (known PP-30 residual)"
   else
     echo "  ✓ $STU  clean: 0 above the 400 m2 floor ($green raw sub-floor slivers) of $pts sampled  (RED $red / YELLOW $yellow / no-polygon $none)"
   fi
 done
 
 echo
-echo "not-public/GREEN gate: $total_real false-GREEN on parcels >=400 m2 ($total_green raw, incl. sub-floor slivers) of $total_pts sampled (density=$DENSITY, seed=$SEED)"
+echo "not-public/GREEN gate: $total_real false-GREEN on parcels >=400 m2 vs baseline $total_base"
+echo "  ($total_green raw incl. sub-floor slivers, of $total_pts sampled; target=$TARGET, density=$DENSITY, seed=$SEED)"
+[ -n "$improved_states" ] && echo "  IMPROVED vs baseline:$improved_states — lower them in $BASELINE_FILE"
 [ -n "$uncoverable" ] && echo "  NOT-COVERABLE (no authoritative not-public layer):$uncoverable"
-[ -n "$failed_states" ] && { echo "  FAILING STATES:$failed_states"; exit 1; }
+[ -n "$failed_states" ] && { echo "  REGRESSED STATES:$failed_states"; exit 1; }
 [ -z "$uncoverable" ] || echo "  (a clean run does NOT cover the states listed above)"
 exit 0

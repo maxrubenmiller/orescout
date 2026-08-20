@@ -108,6 +108,17 @@ echo "[confirm-open ${ST}] pre-swap golden gate…"
 ./scripts/etl/gate_legality_tilebase.sh "$NEW" \
   || rfail "confirm-open ${ST}: pre-swap tileBase gate failed — ${NEW} left for inspection, live table untouched"
 
+# Output-property gate, scoped to THIS state only (~1-3 min rather than ~40 for all eight). A
+# refresh changes exactly one state's rows, so gating exactly that state is both cheaper and more
+# precise than the full sweep. Pre-swap, so a bad refresh never serves.
+if [ "${SKIP_NOTPUBLIC_GATE:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] ⚠ not-public/GREEN gate SKIPPED by SKIP_NOTPUBLIC_GATE=1"
+else
+  echo "[confirm-open ${ST}] pre-swap not-public/GREEN gate (${STU} only)…"
+  GATE_TARGET="$NEW" ./scripts/validation/gate_notpublic_green.sh "$ST" \
+    || rfail "confirm-open ${ST}: not-public/GREEN gate regressed — ${NEW} left for inspection, live table untouched"
+fi
+
 # ---- DRY RUN stop point ------------------------------------------------------
 # REFRESH_DRY_RUN=1 exercises everything above this line for real — registry lookup, upstream pull,
 # assert_schema, the clone, the carve against _new, and all three pre-swap gates — then discards the
