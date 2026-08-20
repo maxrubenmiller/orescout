@@ -95,7 +95,52 @@ atomic_swap() {
     _rx "ALTER INDEX ${sch}.\"${idx}\" RENAME TO \"$(echo "$idx" | sed 's/_new//')\";" \
       || echo "[refresh] note: kept index name $idx (rename collision)"
   done
+
+  # ...and sequence names, for the same reason. A bigserial/identity sequence created on <tbl>_new
+  # keeps its '_new' name through the table rename, so it lingers attached to the LIVE table. The
+  # next build's CREATE SEQUENCE <tbl>_new_..._seq then collides with it. Jobs that let Postgres
+  # auto-name (bigserial) never noticed — Postgres just appends a digit, which is why this schema
+  # accumulated claims_polygons_new_ogc_fid_seq1 and friends. A job that names the sequence
+  # explicitly fails outright on the second run, which is how this was finally found.
+  # Matched by ownership rather than by name pattern so nothing unrelated is touched.
+  local seq
+  for seq in $(_rq "SELECT s.relname
+                    FROM pg_class s
+                    JOIN pg_depend d ON d.objid = s.oid AND d.deptype = 'a'
+                    JOIN pg_class t ON t.oid = d.refobjid
+                    JOIN pg_namespace n ON n.oid = s.relnamespace
+                    WHERE s.relkind = 'S' AND n.nspname = '$sch'
+                      AND t.relname = '$name' AND s.relname LIKE '%\\_new%'"); do
+    _rx "ALTER SEQUENCE ${sch}.\"${seq}\" RENAME TO \"$(echo "$seq" | sed 's/_new//')\";" \
+      || echo "[refresh] note: kept sequence name $seq (rename collision)"
+  done
   echo "[refresh] swapped: $tbl is live ($(_rq "SELECT count(*) FROM $tbl") rows)"
+}
+
+# ---- legality generation stamp (review finding PP-6) -----------------------------
+# tiles.legality_polygons and its derived tables (legality_lowzoom, legality_display,
+# legality_display_lowzoom) must be built from the same generation of the source. Nothing recorded
+# that: the derived tables have no vintage column, no public.meta entry and no data_sources row, so
+# a job that rebuilt the source without the derivatives left the map contradicting the verdict with
+# no way to detect it. Two stamps, compared by scripts/test/display_sync_check.sh:
+#   stamp_legality_generation   — call right after the source table becomes live
+#   stamp_display_generation    — call after the derived tables are rebuilt; copies the source's
+#                                 current value, so a missed derived rebuild leaves them unequal.
+stamp_legality_generation() {
+  local gen="${1:-}"
+  [ -n "$gen" ] || gen="$(date -u +%Y%m%dT%H%M%SZ)"
+  _rx "INSERT INTO public.meta (key, value) VALUES ('legality_generation', '$gen')
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();" \
+    || rfail "stamp_legality_generation failed"
+  echo "[refresh] legality generation: $gen"
+}
+
+stamp_display_generation() {
+  _rx "INSERT INTO public.meta (key, value)
+       SELECT 'legality_display_generation', value FROM public.meta WHERE key = 'legality_generation'
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();" \
+    || rfail "stamp_display_generation failed"
+  echo "[refresh] display generation synced to legality generation"
 }
 
 # ---- freshness registry stamp ---------------------------------------------------

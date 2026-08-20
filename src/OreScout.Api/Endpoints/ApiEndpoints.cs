@@ -74,8 +74,15 @@ public static class ApiEndpoints
         {
             var m = new Dictionary<string, string?>();
             var sources = new List<DataSourceInfo>();
+            var regionGateActive = false;
             await using (var c = await db.OpenConnectionAsync(ct))
             {
+                // Stage-0 gate liveness (review finding PP-15). orescout_in_region fails OPEN when
+                // supported_region is empty, so report whether the gate is actually enforcing.
+                await using (var gate = new NpgsqlCommand(
+                    "SELECT EXISTS (SELECT 1 FROM public.supported_region)", c))
+                    regionGateActive = await gate.ExecuteScalarAsync(ct) is true;
+
                 await using (var cmd = new NpgsqlCommand("SELECT key, value FROM public.meta", c))
                 await using (var r = await cmd.ExecuteReaderAsync(ct))
                     while (await r.ReadAsync(ct))
@@ -111,7 +118,8 @@ public static class ApiEndpoints
             var states = cfg.GetSection("SupportedStates").Get<string[]>() ?? [];
             return Results.Ok(new MetaResponse(
                 m.GetValueOrDefault("padus_version"), m.GetValueOrDefault("padus_date"),
-                m.GetValueOrDefault("sma_date"), m.GetValueOrDefault("claims_as_of"), states, sources));
+                m.GetValueOrDefault("sma_date"), m.GetValueOrDefault("claims_as_of"), states, sources,
+                regionGateActive));
         });
 
     // ---- Geocode -----------------------------------------------------------

@@ -16,17 +16,20 @@ This runbook is split into the **mechanical spine** (scriptable, low-risk) and t
 1. [ ] Add a `base` coverage: the new state must be in PAD-US's `states[]` (it already lists all; a
        new state just gets added to that array) and have a PAD-US State GDB available.
 2. [ ] **Judgment:** find the state's authoritative public-ownership layer, confirm its license.
-3. [ ] **Judgment:** derive the `public_predicate` from that layer's owner-code domain.
-4. [ ] Add a `confirm_open` entry to `etl/sources.json` (access + confirm block + provenance).
-5. [ ] Add the state to `SupportedStates` in `src/OreScout.Api/appsettings.json`.
-6. [ ] **Judgment:** run `classifier-auditor` — triage any new PAD-US/SMA codes into
+3. [ ] **Judgment:** derive the `public_predicate` — the codes that CONFIRM the land is open.
+4. [ ] **Judgment:** derive the `nonopen_public_predicate` — codes that are public but **not open**
+       (state trust/parks/wildlife, county/city, military). **Required**; `gen_confirm_open.sh`
+       refuses to run without it. See the judgment core, item 2.
+5. [ ] Add a `confirm_open` entry to `etl/sources.json` (access + confirm block + provenance).
+6. [ ] Add the state to `SupportedStates` in `src/OreScout.Api/appsettings.json`.
+7. [ ] **Judgment:** run `classifier-auditor` — triage any new PAD-US/SMA codes into
        `db/02_classifier.sql` (default unknowns to YELLOW, never GREEN).
-7. [ ] Pull + build: `./scripts/etl/pull_sma.sh <st>` → `./scripts/etl/gen_confirm_open.sh <st>` →
+8. [ ] Pull + build: `./scripts/etl/pull_sma.sh <st>` → `./scripts/etl/gen_confirm_open.sh <st>` →
        run it (or `./scripts/etl/refresh_confirm_open.sh <st>`).
-8. [ ] **Verify:** `registry_roundtrip.sh`, `supported_states_sync.sh`, `run-fixtures.sh` (Tier-A),
+9. [ ] **Verify:** `registry_roundtrip.sh`, `supported_states_sync.sh`, `run-fixtures.sh` (Tier-A),
        `run-tier-b.sh`, and the confirm-open ±40% row-count band.
-9. [ ] Add ≥2 Tier-B golden points for the new state.
-10. [ ] Update provenance: `./scripts/etl/run.sh provenance | psql …`.
+10. [ ] Add ≥2 Tier-B golden points for the new state.
+11. [ ] Update provenance: `./scripts/etl/run.sh provenance | psql …`.
 
 `./scripts/etl/run.sh --state <XX>` prints the full per-state pipeline (dry-run) at any point.
 
@@ -39,8 +42,8 @@ Everything the registry drives. Once the `sources.json` entry exists, these need
 - **Pull** — `pull_sma.sh <st>` reads `access.{url,fields,page}` from the registry (5 BLM/ODF/IDL
   states ride the same ArcGIS adapter). Bespoke loaders (`pull_ugrc.sh`, `pull_calfire.sh`) are named
   in the entry's `loader`.
-- **Confirm-open SQL** — `gen_confirm_open.sh <st>` reads `confirm.{staging,public_predicate,crs,
-  buffer_m,sliver_min_m2}` + attribution/vintage and writes the committed `confirm_open_<st>.sql`
+- **Confirm-open SQL** — `gen_confirm_open.sh <st>` reads `confirm.{staging,public_predicate,
+  nonopen_public_predicate,crs,buffer_m,sliver_min_m2}` + attribution/vintage and writes the committed `confirm_open_<st>.sql`
   from the one canonical template (OOM-safe `ST_SubDivide`, parcel-grade carve). Bespoke states set
   `sql` to a committed path instead of `"generated"`.
 - **Refresh + gates** — `refresh_confirm_open.sh <st>` reads staging/schema_cols/loader/sql/vintage/
@@ -57,11 +60,34 @@ A registry can *hold* these but cannot *author* them. This is the actual work of
 1. **Source discovery + license.** Find the best free authoritative public-ownership layer for the
    state (BLM state SMA, a state GIS portal, etc.). Confirm the license permits ingest **and**
    display. Record `url`, `fields`, `license`, `attribution`, `upstream_ref`.
-2. **The `public_predicate`** — *the* deliverable. Every state's layer uses a different owner/manager
-   column and vocabulary (`abbr`, `category`, `adm_code`, `own`, `landmanager`, `mgmt_agncy`, …).
-   Inspect the live layer's distinct code values and decide which count as PUBLIC. Policy: public-but-
-   closed classes (DOD/DOE/MIL) **do** count as public for the buffer (closure is the classifier's
-   job); everything not matching — affirmative private, tribal, water, null — is carved back out.
+2. **The two predicates** — *the* deliverable, and the place a state is most likely to be got wrong.
+   Every state's layer uses a different owner/manager column and vocabulary (`abbr`, `category`,
+   `adm_code`, `own`, `landmanager`, `mgmt_agncy`, …). Inspect the live layer's distinct code values
+   and sort them into **three** buckets, not two:
+
+   | bucket | goes in | meaning |
+   |---|---|---|
+   | federal land-management agencies (BLM, USFS, NPS, FWS, BOR…) | `public_predicate` | confirms PAD-US's GREEN really is open |
+   | state trust / state parks / wildlife areas / county / city / military | `nonopen_public_predicate` | public, but a permit or closure is likely — must NOT confirm open |
+   | everything else — private, tribal, water, **null/unknown** | neither | carved out of the buffer entirely |
+
+   **This policy changed (review finding PP-2, 2026-08).** The original rule was that public-but-closed
+   classes counted as public "because closure is the classifier's job." That reasoning has a hole
+   exactly where PAD-US is wrong: the classifier only sees PAD-US attributes, so when PAD-US mismaps
+   state land as BLM GAP-3, nothing catches it. The app shipped "Managing agency BLM — generally open"
+   over 285 km² of Utah SITLA trust land, Colorado State Land Board sections, New Mexico State Trust
+   and DOD land, and Idaho endowment land. In California the predicate was `own_level IS NOT NULL`,
+   which counted **tribal** land as confirming open. Do not reintroduce this by putting a state or
+   military code in `public_predicate`.
+
+   Two mechanical traps that have both bitten:
+   * Write the carve as **`(predicate) IS NOT TRUE`**, never `NOT (predicate)`. For a row with a NULL
+     ownership attribute the predicate is NULL and `NOT(NULL)` is NULL, so plain `NOT` silently drops
+     every unknown-ownership parcel from the carve (PP-5). The generator does this correctly; the
+     point is to not "fix" it back.
+   * If you write a bespoke SQL file instead of using the template, **subdivide every carve input**
+     (`ST_SubDivide(..., 512)`). Feeding whole large parcels into the per-buffer-row union is what
+     OOM-crashed the dev container, and it caught out both bespoke states (CA, UT) again in 2026-08.
 3. **New classifier codes.** If the state's PAD-US/SMA data carries owner/manager codes the
    classifier's `IN (...)` lists don't recognize, they fall through to no verdict. Triage each into
    `db/02_classifier.sql` — **default unknown/ambiguous codes to YELLOW, never GREEN** (GREEN must be
@@ -81,6 +107,7 @@ A registry can *hold* these but cannot *author* them. This is the actual work of
 | Tier-B goldens | `./scripts/run-tier-b.sh <api>` | end-to-end verdict regressions (needs API up) |
 | Confirm-open band | (built into `refresh_confirm_open.sh`) | YELLOW row count outside ±40% of prior |
 | Zero unmapped | `classifier-auditor` agent | owner/manager codes with no verdict |
+| No false-GREEN | `./scripts/validation/gate_notpublic_green.sh <st>` | engine-GREEN sitting on ground the new state's own layer maps as not-public — the property the other gates do not test |
 
 The confirm-open band and the zero-false-GREEN private validation exist because SMA sources are
 GCDB/PLSS-grade and can miss parcel-sized private inholdings — the Tier-1 validation once caught 9

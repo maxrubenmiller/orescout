@@ -6,10 +6,23 @@
 #   ./scripts/etl/refresh_confirm_open.sh ca      # CA CAL FIRE (upstream ~annual)
 #
 # Sequence + gates (any failure exits non-zero; the live layer keeps its previous rows):
-#   lock -> pull to staging -> schema assertion -> confirm_open_<st>.sql in ONE TRANSACTION
-#   (psql -1: readers keep the old YELLOW rows until commit — no window where the confirm-open
-#   layer is missing, the F-4 failure mode) -> row-count band vs previous -> Tier-A fixtures ->
-#   Tier-B goldens (needs the API up; includes the confirm-open golden points) -> registry stamp.
+#   lock -> pull to staging -> schema assertion -> clone live legality to _new ->
+#   confirm_open_<st>.sql against _new in ONE TRANSACTION -> PRE-SWAP gates (0-row, row-count
+#   band vs previous, Tier-B golden tileBase) -> atomic_swap -> POST-SWAP Tier-A/Tier-B ->
+#   registry stamp.
+#
+# GATE ORDERING (review finding PP-9) — why the clone step exists:
+#   This job used to run confirm_open_<st>.sql directly against the live table with psql -1.
+#   The single transaction removed the *missing-layer* window, but it COMMITTED before any gate
+#   ran: the 0-row check, the ±40% band, and the fixture gates all executed against rows that
+#   were already serving. (The band's own error text admitted "rows ARE live".) A rebuild that
+#   succeeded in SQL but under-produced YELLOW — upstream ownership-semantics drift, a corrupt
+#   staging load — was live the moment it committed, and every point that lost its YELLOW
+#   overlay fell through to the underlying PAD-US GREEN. A drop of less than 40% passed every
+#   gate silently and got stamped fresh.
+#   Now the SQL runs against a clone and the gates decide whether it ever becomes live, per the
+#   refresh_lib.sh contract ("ANY failure exits non-zero with the LIVE table untouched") that
+#   refresh_claims.sh already honored and this job did not. The clone costs ~11s.
 #
 # NOT wired into refresh_due auto-runs for legality-adjacent safety? It IS Class-2 (auto): the
 # same scripts, newer data, gated by the fixture suites — the design's normal operation. The
@@ -60,20 +73,91 @@ $PULL
 # shellcheck disable=SC2086  # word-splitting SCHEMA_COLS is intended
 assert_schema "$STAGING" $SCHEMA_COLS
 
-echo "[confirm-open ${ST}] rebuilding rows (single transaction — old rows serve until commit)…"
-eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -1 -q" < "$SQL"
+LIVE=tiles.legality_polygons
+NEW="${LIVE}_new"
 
-after=$(_rq "SELECT count(*) FROM tiles.legality_polygons WHERE source_key='${SRC_KEY}'")
-[ "$after" -gt 0 ] || rfail "confirm-open ${ST}: rebuild produced 0 rows"
+# Structural clone of the live layer, then rebuild THIS state's rows inside it. LIKE INCLUDING ALL
+# carries the indexes, PK and CHECK constraint, but its ogc_fid default would point at the live
+# table's sequence (dropped with the old table at swap time), so the clone gets its own.
+echo "[confirm-open ${ST}] cloning ${LIVE} -> ${NEW}…"
+_rx "DROP TABLE IF EXISTS ${NEW};
+     CREATE TABLE ${NEW} (LIKE ${LIVE} INCLUDING ALL);
+     CREATE SEQUENCE ${NEW}_ogc_fid_seq OWNED BY ${NEW}.ogc_fid;
+     ALTER TABLE ${NEW} ALTER COLUMN ogc_fid SET DEFAULT nextval('${NEW}_ogc_fid_seq');
+     INSERT INTO ${NEW} SELECT * FROM ${LIVE};
+     SELECT setval('${NEW}_ogc_fid_seq', COALESCE((SELECT max(ogc_fid) FROM ${NEW}), 1));
+     GRANT SELECT ON ${NEW} TO tileserv_ro;" \
+  || rfail "confirm-open ${ST}: could not clone ${LIVE}"
+
+echo "[confirm-open ${ST}] rebuilding rows in ${NEW} (single transaction)…"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -v legality_tbl=${NEW} -1 -q" < "$SQL" \
+  || rfail "confirm-open ${ST}: SQL failed — ${NEW} left for inspection, live table untouched"
+
+# ---- PRE-SWAP gates: nothing below is serving yet ----------------------------
+after=$(_rq "SELECT count(*) FROM ${NEW} WHERE source_key='${SRC_KEY}'")
+[ "$after" -gt 0 ] || rfail "confirm-open ${ST}: rebuild produced 0 rows — live table untouched"
 if [ "$before" -gt 0 ]; then
   lo=$(( before * 60 / 100 )); hi=$(( before * 140 / 100 ))
   if [ "$after" -lt "$lo" ] || [ "$after" -gt "$hi" ]; then
-    rfail "confirm-open ${ST}: row count $after outside ±40% of previous $before — investigate before trusting (rows ARE live; rerun the previous data via git-pinned staging if needed)"
+    rfail "confirm-open ${ST}: row count $after outside ±40% of previous $before — investigate before trusting (nothing is live; ${NEW} left for inspection)"
   fi
 fi
-echo "[confirm-open ${ST}] rows: $before -> $after"
+echo "[confirm-open ${ST}] rows: $before -> $after (not yet live)"
 
-echo "[confirm-open ${ST}] fixture gates…"
+echo "[confirm-open ${ST}] pre-swap golden gate…"
+./scripts/etl/gate_legality_tilebase.sh "$NEW" \
+  || rfail "confirm-open ${ST}: pre-swap tileBase gate failed — ${NEW} left for inspection, live table untouched"
+
+# ---- DRY RUN stop point ------------------------------------------------------
+# REFRESH_DRY_RUN=1 exercises everything above this line for real — registry lookup, upstream pull,
+# assert_schema, the clone, the carve against _new, and all three pre-swap gates — then discards the
+# candidate and stops. Live is untouched by construction, because the swap is the next statement.
+#
+# Two uses. Operationally: rehearse a refresh before committing to one, e.g. when upstream has
+# changed and you want to see the row delta and the golden gate before it can serve. And as the
+# cheap integration test for this job, which is otherwise expensive to exercise (a full run rebuilds
+# the derived display chain and takes ~45-60 min).
+if [ "${REFRESH_DRY_RUN:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] DRY RUN — pre-swap gates PASSED; discarding ${NEW}, not swapping."
+  echo "[confirm-open ${ST}]   would have gone live: ${before} -> ${after} ${SRC_KEY} rows"
+  _rx "DROP TABLE IF EXISTS ${NEW};"
+  echo "[confirm-open ${ST}] ✓ dry run complete — live table untouched, nothing stamped"
+  exit 0
+fi
+
+# ---- swap, then confirm ------------------------------------------------------
+atomic_swap "$LIVE"
+stamp_legality_generation
+
+# ---- derived display tables (review finding PP-6) ----------------------------
+# This job used to rebuild ONLY tiles.legality_polygons. tiles.legality_lowzoom and both display
+# tables are derived from it and were never touched, so every Class-2 refresh silently widened the
+# gap between what /assessment says and what the map paints — and refresh_due.sh auto-runs this
+# job, so the divergence re-created itself forever. It is how the z<9 map came to paint GREEN over
+# 243 km² of blmsma_nm land the engine already called YELLOW. There is no staleness guard because
+# the derived tables carry no vintage; the generation stamp below adds one.
+# This is the slow part of the job (~10-15 min). Correctness over cadence: a fast refresh that
+# leaves the map contradicting the verdict is not a refresh worth having.
+# Each derived table builds into _new and swaps atomically (PP-31): a failure mid-build leaves the
+# live display serving its previous generation instead of an empty table.
+echo "[confirm-open ${ST}] rebuilding derived display tables (lowzoom + display partition)…"
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v lowzoom_tbl=tiles.legality_lowzoom_new" < scripts/etl/build_lowzoom.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_lowzoom failed — live low-zoom layer untouched, but it is now STALE vs legality_polygons; re-run ./scripts/etl/rebuild_legality.sh"
+count_gate tiles.legality_lowzoom 40
+atomic_swap tiles.legality_lowzoom
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_polygons -v tgt=tiles.legality_display_new" \
+  < scripts/etl/build_legality_display.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_legality_display (normal) failed — live display untouched but STALE"
+count_gate tiles.legality_display 40
+atomic_swap tiles.legality_display
+eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v src=tiles.legality_lowzoom -v tgt=tiles.legality_display_lowzoom_new -v cellsize=1.0" \
+  < scripts/etl/build_legality_display.sql >/dev/null \
+  || rfail "confirm-open ${ST}: build_legality_display (low-zoom) failed — live display untouched but STALE"
+count_gate tiles.legality_display_lowzoom 40
+atomic_swap tiles.legality_display_lowzoom
+stamp_display_generation
+
+echo "[confirm-open ${ST}] post-swap fixture gates…"
 ./scripts/run-fixtures.sh
 curl -sqf -o /dev/null --max-time 5 "$API/health" \
   || rfail "API not reachable at $API — start it and run ./scripts/run-tier-b.sh to finish the gate"

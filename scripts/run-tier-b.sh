@@ -24,7 +24,11 @@ print(",".join("(%d,%s,%s)" % (i, f["lat"], f["lng"]) for i, f in enumerate(fx))
 TILE=$(docker compose exec -T postgres psql -U postgres -d miningapp -At -F$'\t' -c "
 SELECT v.idx, COALESCE((
   SELECT verdict FROM tiles.legality_polygons l
-  WHERE ST_Contains(l.geom, ST_SetSRID(ST_MakePoint(v.lng, v.lat), 4326))
+  -- ST_Covers, not ST_Contains (review finding PP-22): the engine uses ST_Covers deliberately so
+  -- boundary points resolve most-restrictive (AssessmentService.cs:193-199). A gate that certifies
+  -- the engine must use the engine's predicate, or a golden sitting exactly on a polygon edge is
+  -- scored differently by the gate than by the code it is gating.
+  WHERE ST_Covers(l.geom, ST_SetSRID(ST_MakePoint(v.lng, v.lat), 4326))
   ORDER BY orescout_rank(l.verdict) DESC LIMIT 1), '')
 FROM (VALUES ${VALUES}) AS v(idx, lat, lng);")
 # macOS ships bash 3.2 (no associative arrays); fixture indices are 0..n so a plain

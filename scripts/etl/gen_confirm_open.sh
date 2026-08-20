@@ -35,6 +35,36 @@ KEY=$(reg_key_for_state_role "$STU" confirm_open) \
 SRC="$KEY"
 STAGING=$(reg_confirm "$KEY" staging)
 PUB=$(reg_confirm "$KEY" public_predicate)
+# Codes that ARE public but do not confirm OPEN (review finding PP-2): state trust/parks/wildlife,
+# county/local, and military. They used to sit inside public_predicate, so a PAD-US GREEN mismapped
+# over them was confirmed open by the state's own layer saying "State".
+#
+# Required. Failing loudly here is deliberate: the alternative — defaulting it to "match nothing" —
+# would silently reproduce exactly the PP-2 bug for any newly added state, and that bug shipped
+# "Managing agency BLM — generally open" over state trust land and tribal land. A missing predicate
+# is a question for a human, not something to guess.
+NONOPEN=$(reg_confirm "$KEY" nonopen_public_predicate 2>/dev/null) || {
+  cat >&2 <<EOM
+✗ ${KEY}: etl/sources.json has no confirm.nonopen_public_predicate
+
+  This field is REQUIRED (review finding PP-2). It lists the owner/manager codes in this state's
+  layer that are PUBLIC but do NOT confirm the land is open — state trust land, state parks,
+  wildlife areas, county/city land, military reservations. They must not confirm a PAD-US GREEN,
+  because where PAD-US mismaps such land as BLM/USFS the classifier has nothing to catch it.
+
+  Sort this layer's codes into three buckets:
+    public_predicate          federal land-management agencies (BLM, USFS, NPS, FWS, BOR, ...)
+    nonopen_public_predicate  state / county / city / military
+    (neither)                 private, tribal, water, null  -> carved out entirely
+
+  Example (NV):
+    "public_predicate":          "upper(abbr) IN ('BLM','FS','NPS','FWS','BR')",
+    "nonopen_public_predicate":  "upper(abbr) IN ('NVST','CNTY','PK','DOD','DOE')"
+
+  Full guidance: docs/ADD_A_STATE.md, judgment core item 2.
+EOM
+  exit 2
+}
 ATTR=$(reg_attribution "$KEY")
 VINTAGE=$(reg_vintage "$KEY")
 CRS=$(reg_confirm "$KEY" crs)
@@ -50,9 +80,18 @@ cat > "scripts/etl/confirm_open_${ST}.sql" <<EOF
 -- are carved back out of the buffer so adjacency never blankets a known-not-public parcel.
 -- Prereq: ${STAGING} loaded (scripts/etl/pull_sma.sh ${ST}); legality_polygons built (unify.sql).
 -- Idempotent: deletes prior ${SRC} rows first.
+--
+-- TARGET TABLE (review PP-8): reads and writes go to the psql variable :legality_tbl, defaulting
+-- to the live tiles.legality_polygons. rebuild_legality.sh passes tiles.legality_polygons_new so
+-- the whole sequence builds off to the side and reaches live only via atomic_swap after gating.
 SET client_min_messages TO WARNING;
 
-DELETE FROM tiles.legality_polygons WHERE source_key = '${SRC}';
+\if :{?legality_tbl}
+\else
+  \set legality_tbl tiles.legality_polygons
+\endif
+
+DELETE FROM :legality_tbl WHERE source_key = '${SRC}';
 
 DROP TABLE IF EXISTS staging.conf_notpub_${ST};
 -- SubDivide the not-public side too: wall-to-wall states (CO) have thousands of large private
@@ -60,7 +99,12 @@ DROP TABLE IF EXISTS staging.conf_notpub_${ST};
 -- Small pieces keep every LATERAL union local and bounded.
 CREATE TABLE staging.conf_notpub_${ST} AS
   SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM ${STAGING}
-  WHERE NOT (${PUB});
+  -- NOT TRUE, not NOT(...): for a row whose ownership attribute is NULL the predicate is NULL,
+  -- and NOT(NULL) is NULL, so plain NOT silently dropped every unknown-ownership parcel from the
+  -- carve — the exact rows the design says must be carved (review finding PP-5; confirm_open_ut.sql
+  -- got this right with 'owner IS NULL OR owner NOT IN (...)', the generator did not). NULL/unknown
+  -- ownership must never confirm open (PROJECT_PLAN.md:2359).
+  WHERE (${PUB}) IS NOT TRUE;
 -- PARCEL-GRADE CARVE (Tier-1 validation finding, 2026-07-12): SMA sources are GCDB/PLSS-grade
 -- and miss parcel-sized private inholdings inside blocks they map federal — the validation
 -- caught 9 real false-GREENs in CO/NM cabin/ranch country. Where county parcel data is loaded
@@ -72,6 +116,19 @@ INSERT INTO staging.conf_notpub_${ST}
   WHERE to_regclass('staging.parcels') IS NOT NULL
     AND state = '${STU}' AND owner_class = 'private';
 CREATE INDEX conf_notpub_${ST}_gix ON staging.conf_notpub_${ST} USING GIST (geom);
+
+-- NON-OPEN PUBLIC (review finding PP-2): state trust / state park / wildlife / county / military
+-- ground. It is public, so it is NOT private — but it does not confirm that PAD-US's GREEN is
+-- open, because collecting there needs a permit or is prohibited outright. These codes used to
+-- live in the public predicate, which is why the app served "Managing agency BLM — generally
+-- open" over Utah State Trust land, Colorado State Land Board sections, NM State Trust and DOD,
+-- and Idaho endowment land. Kept as its own layer so the demotion can say WHY, instead of
+-- mislabelling state land "possibly private".
+DROP TABLE IF EXISTS staging.conf_nonopen_${ST};
+CREATE TABLE staging.conf_nonopen_${ST} AS
+  SELECT ST_SubDivide(ST_MakeValid(geom), 512) AS geom FROM ${STAGING}
+  WHERE (${NONOPEN}) IS TRUE;
+CREATE INDEX conf_nonopen_${ST}_gix ON staging.conf_nonopen_${ST} USING GIST (geom);
 
 DROP TABLE IF EXISTS staging.conf_buf_${ST};
 CREATE TABLE staging.conf_buf_${ST} AS
@@ -85,25 +142,53 @@ CREATE TABLE staging.conf_buf_${ST} AS
   ) np ON true;
 CREATE INDEX conf_buf_${ST}_gix ON staging.conf_buf_${ST} USING GIST (geom);
 
-INSERT INTO tiles.legality_polygons
+INSERT INTO :legality_tbl
   (geom, verdict, reason, land_manager, unit_nm, protection_status, state_nm, data_vintage, source_key)
 SELECT ST_Multi(d.geom), 'YELLOW',
-  'Open status not confirmed by ${STU} public-ownership data (${ATTR}) — possibly private; verify before collecting.',
+  CASE WHEN d.nonopen_m2 > 400
+    THEN 'State trust / state park / military land per ${STU} ownership data (${ATTR}) — permit or closure likely; ownership sources conflict. Verify before collecting.'
+    ELSE 'Open status not confirmed by ${STU} public-ownership data (${ATTR}) — possibly private; verify before collecting.'
+  END,
   NULL, NULL, 'unconfirmed-open', '${STU}', '${VINTAGE} (confirm-open vs PAD-US)', '${SRC}'
 FROM (
-  SELECT (ST_Dump(
-            ST_CollectionExtract(
-              ST_MakeValid(ST_Difference(g.geom,
-                COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
-  FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM tiles.legality_polygons
-        WHERE state_nm='${STU}' AND verdict='GREEN' AND source_key='padus') g
-  LEFT JOIN LATERAL (
-    SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_${ST} cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
-  ) b ON true
+  SELECT frag.geom,
+         -- overlap with affirmatively-not-public ground (drives the sliver exemption below)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(np.geom))::geography)
+                   FROM staging.conf_notpub_${ST} np WHERE ST_Intersects(np.geom, frag.geom)), 0) AS notpub_m2,
+         -- overlap with public-but-not-open ground (drives which reason the user is shown)
+         COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
+                   FROM staging.conf_nonopen_${ST} no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+  FROM (
+    SELECT (ST_Dump(
+              ST_CollectionExtract(
+                ST_MakeValid(ST_Difference(g.geom,
+                  COALESCE(b.buf, ST_GeomFromText('MULTIPOLYGON EMPTY', 4326)))), 3))).geom AS geom
+    FROM (SELECT ST_Subdivide(geom, 256) AS geom FROM :legality_tbl
+          WHERE state_nm='${STU}' AND verdict='GREEN' AND source_key='padus') g
+    LEFT JOIN LATERAL (
+      SELECT ST_Union(cb.geom) AS buf FROM staging.conf_buf_${ST} cb WHERE ST_DWithin(cb.geom, g.geom, 0.003)
+    ) b ON true
+  ) frag
+  WHERE frag.geom IS NOT NULL AND NOT ST_IsEmpty(frag.geom)
 ) d
-WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom) AND ST_Area(d.geom::geography) > ${SLIVER};
+-- SLIVER FILTER (review findings PP-1 / PP-18). The ${SLIVER} m² threshold exists to drop
+-- registration noise where two sources roughly agree on a boundary. Applied to raw ST_Dump
+-- fragments it did something else: the 100 m buffer erodes a private parcel from every edge and
+-- the ST_Subdivide(...,256) chunk lines cut what is left, so a large private block survives only
+-- as crumbs — and every crumb under the threshold was discarded, leaving live GREEN over mapped
+-- private land. Measured on this data: a 2,624,031 m² NV parcel mapped PVT reduced to an 882 m²
+-- fragment and dropped.
+-- A fragment overlapping ground an authoritative source affirmatively maps as NOT public is not
+-- noise, it is the signal. Such fragments are kept down to the project's own documented
+-- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
+-- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
+-- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
+-- notpub_m2/nonopen_m2 are computed once in the subquery above, so this costs nothing extra.
+WHERE ST_Area(d.geom::geography) > ${SLIVER}
+   OR d.notpub_m2  > 400
+   OR d.nonopen_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
-FROM tiles.legality_polygons WHERE source_key = '${SRC}';
+FROM :legality_tbl WHERE source_key = '${SRC}';
 EOF
 echo "wrote scripts/etl/confirm_open_${ST}.sql (source_key=${SRC})"

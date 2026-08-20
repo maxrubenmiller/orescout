@@ -60,9 +60,18 @@ public record PinResponse(
 public record GeocodeResult(string Label, double Lat, double Lng, string? Type);
 public record GeocodeResponse(List<GeocodeResult> Results);
 
+/// <summary>
+/// RegionGateActive (review finding PP-15): false when public.supported_region is empty, which
+/// makes orescout_in_region return true for every point on earth — a documented dev convenience
+/// (db/02_classifier.sql), but in production a failed load_supported_region.sh run or an
+/// accidental TRUNCATE disables the Stage-0 gate with nothing to notice it by. The consequence is
+/// bounded (an out-of-region point matches no legality polygon, so it resolves YELLOW/UNKNOWN,
+/// never GREEN), which is why this is a signal rather than a hard failure — but it should never
+/// again be silent.
+/// </summary>
 public record MetaResponse(
     string? PadUsVersion, string? PadUsDate, string? SmaDate, string? ClaimsAsOf,
-    string[] SupportedStates, List<DataSourceInfo> DataSources);
+    string[] SupportedStates, List<DataSourceInfo> DataSources, bool RegionGateActive);
 
 /// <summary>
 /// One row of the freshness registry (public.data_sources; docs/DATA_REFRESH_PLAN.md). Additive:
