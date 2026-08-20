@@ -38,7 +38,33 @@ PUB=$(reg_confirm "$KEY" public_predicate)
 # Codes that ARE public but do not confirm OPEN (review finding PP-2): state trust/parks/wildlife,
 # county/local, and military. They used to sit inside public_predicate, so a PAD-US GREEN mismapped
 # over them was confirmed open by the state's own layer saying "State".
-NONOPEN=$(reg_confirm "$KEY" nonopen_public_predicate)
+#
+# Required. Failing loudly here is deliberate: the alternative — defaulting it to "match nothing" —
+# would silently reproduce exactly the PP-2 bug for any newly added state, and that bug shipped
+# "Managing agency BLM — generally open" over state trust land and tribal land. A missing predicate
+# is a question for a human, not something to guess.
+NONOPEN=$(reg_confirm "$KEY" nonopen_public_predicate 2>/dev/null) || {
+  cat >&2 <<EOM
+✗ ${KEY}: etl/sources.json has no confirm.nonopen_public_predicate
+
+  This field is REQUIRED (review finding PP-2). It lists the owner/manager codes in this state's
+  layer that are PUBLIC but do NOT confirm the land is open — state trust land, state parks,
+  wildlife areas, county/city land, military reservations. They must not confirm a PAD-US GREEN,
+  because where PAD-US mismaps such land as BLM/USFS the classifier has nothing to catch it.
+
+  Sort this layer's codes into three buckets:
+    public_predicate          federal land-management agencies (BLM, USFS, NPS, FWS, BOR, ...)
+    nonopen_public_predicate  state / county / city / military
+    (neither)                 private, tribal, water, null  -> carved out entirely
+
+  Example (NV):
+    "public_predicate":          "upper(abbr) IN ('BLM','FS','NPS','FWS','BR')",
+    "nonopen_public_predicate":  "upper(abbr) IN ('NVST','CNTY','PK','DOD','DOE')"
+
+  Full guidance: docs/ADD_A_STATE.md, judgment core item 2.
+EOM
+  exit 2
+}
 ATTR=$(reg_attribution "$KEY")
 VINTAGE=$(reg_vintage "$KEY")
 CRS=$(reg_confirm "$KEY" crs)
