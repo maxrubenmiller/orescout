@@ -108,6 +108,22 @@ count_gate "$LIVE" "$BAND"
 ./scripts/etl/gate_legality_tilebase.sh "$NEW" \
   || fail "pre-swap tileBase gate failed — ${NEW} left for inspection, live table untouched"
 
+# Output-property gate (review findings PP-1/2/3/5/18/30): no engine-GREEN on ground a state's own
+# authority maps as not-public. The other gates check inputs or a fixed list of golden points; this
+# one checks the property the app promises, so it catches a false-GREEN whatever produced it.
+# ~40 min for 8 states, which is ~20% on a rebuild of this size and the right place to spend it: a
+# full rebuild is when PAD-US changes underneath you, i.e. exactly when new false-GREENs appear.
+# Scored against ${NEW} so a bad rebuild never serves. Fails on REGRESSION past
+# db/fixtures/notpublic_baseline.json, not on the known PP-30 residual.
+# Set SKIP_NOTPUBLIC_GATE=1 only with a reason you would write down.
+if [ "${SKIP_NOTPUBLIC_GATE:-0}" = "1" ]; then
+  echo "[rebuild] ⚠ not-public/GREEN gate SKIPPED by SKIP_NOTPUBLIC_GATE=1"
+else
+  echo "[rebuild] not-public/GREEN gate on ${NEW} (~40 min, all states)…"
+  GATE_TARGET="$NEW" ./scripts/validation/gate_notpublic_green.sh \
+    || fail "not-public/GREEN gate regressed — ${NEW} left for inspection, live table untouched"
+fi
+
 # ---- 6. atomic swap ---------------------------------------------------------
 atomic_swap "$LIVE"
 stamp_legality_generation
