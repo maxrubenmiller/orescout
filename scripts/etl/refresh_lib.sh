@@ -95,6 +95,25 @@ atomic_swap() {
     _rx "ALTER INDEX ${sch}.\"${idx}\" RENAME TO \"$(echo "$idx" | sed 's/_new//')\";" \
       || echo "[refresh] note: kept index name $idx (rename collision)"
   done
+
+  # ...and sequence names, for the same reason. A bigserial/identity sequence created on <tbl>_new
+  # keeps its '_new' name through the table rename, so it lingers attached to the LIVE table. The
+  # next build's CREATE SEQUENCE <tbl>_new_..._seq then collides with it. Jobs that let Postgres
+  # auto-name (bigserial) never noticed — Postgres just appends a digit, which is why this schema
+  # accumulated claims_polygons_new_ogc_fid_seq1 and friends. A job that names the sequence
+  # explicitly fails outright on the second run, which is how this was finally found.
+  # Matched by ownership rather than by name pattern so nothing unrelated is touched.
+  local seq
+  for seq in $(_rq "SELECT s.relname
+                    FROM pg_class s
+                    JOIN pg_depend d ON d.objid = s.oid AND d.deptype = 'a'
+                    JOIN pg_class t ON t.oid = d.refobjid
+                    JOIN pg_namespace n ON n.oid = s.relnamespace
+                    WHERE s.relkind = 'S' AND n.nspname = '$sch'
+                      AND t.relname = '$name' AND s.relname LIKE '%\\_new%'"); do
+    _rx "ALTER SEQUENCE ${sch}.\"${seq}\" RENAME TO \"$(echo "$seq" | sed 's/_new//')\";" \
+      || echo "[refresh] note: kept sequence name $seq (rename collision)"
+  done
   echo "[refresh] swapped: $tbl is live ($(_rq "SELECT count(*) FROM $tbl") rows)"
 }
 
