@@ -7,11 +7,15 @@
 # Postgres ARE, so ten alternatives were silently dead.
 #
 # Why this matters in both directions:
-#   * The carve (confirm_open_<st>.sql) consumes owner_class='private'. A private parcel
-#     misclassified 'public' is NOT carved, so PAD-US GREEN over it survives -> false-GREEN.
+#   * The carve consumes owner_class <> 'federal' (PP-32). Anything wrongly classed 'federal' is
+#     NOT carved, so PAD-US GREEN over it survives -> false-GREEN. That is the dangerous direction.
 #   * The §6.4.1 validation frame treats owner_class='private' as ground truth. A public parcel
-#     misclassified 'private' inflates the denominator and can report false-GREENs that are not.
-# So neither direction is free, and the regex needs pinning rather than tuning by feel.
+#     wrongly classed 'private' inflates the denominator and can report false-GREENs that are not.
+# So neither direction is free, and the regexes need pinning rather than tuning by feel.
+#
+# ORDERING IS LOAD-BEARING. OTHERPUB is tested before FED because names like
+# "UNITED STATES BUREAU OF INDIAN AFFAIRS" match both, and tribal land must never resolve to the
+# class that confirms open. The last three cases below exist solely to pin that tie-break.
 #
 # Usage:  ./scripts/test/parcel_owner_regex_test.sh
 set -uo pipefail
@@ -19,9 +23,11 @@ cd "$(dirname "$0")/../.."
 
 PSQL="docker compose exec -T postgres psql -U postgres -d miningapp"
 
-# Extract the live regex from the loader so the test can never drift from what ships.
-PUB_REGEX=$(grep -m1 "^PUB_REGEX=" scripts/etl/pull_parcels.sh | sed "s/^PUB_REGEX='//; s/'$//")
-[ -n "$PUB_REGEX" ] || { echo "✗ could not extract PUB_REGEX from scripts/etl/pull_parcels.sh" >&2; exit 2; }
+# Extract the live regexes from the loader so the test can never drift from what ships.
+OTHERPUB_REGEX=$(grep -m1 "^OTHERPUB_REGEX=" scripts/etl/pull_parcels.sh | sed "s/^OTHERPUB_REGEX='//; s/'$//")
+FED_REGEX=$(grep -m1 "^FED_REGEX=" scripts/etl/pull_parcels.sh | sed "s/^FED_REGEX='//; s/'$//")
+[ -n "$OTHERPUB_REGEX" ] && [ -n "$FED_REGEX" ] \
+  || { echo "✗ could not extract OTHERPUB_REGEX/FED_REGEX from scripts/etl/pull_parcels.sh" >&2; exit 2; }
 
 pass=0; fail=0; fails=()
 
@@ -36,31 +42,35 @@ private|SMITH RANCH LLC
 private|JONES FAMILY TRUST
 private|HIGH COUNTRY CATTLE CO
 private|ROCKY MOUNTAIN ESTATES HOA
-public|STATE OF COLORADO
-public|STATE OF NEW MEXICO
-public|UNITED STATES OF AMERICA
-public|USA
-public|US GOVT
-public|BUREAU OF LAND MANAGEMENT
-public|BLM
-public|USDA FOREST SERVICE
-public|USFS
-public|CITY OF DENVER
-public|TOWN OF SILVERTON
-public|COUNTY OF GRANT
-public|COUNTY COMMISSIONERS OF PITKIN
-public|BIA
-public|PUEBLO OF ACOMA
-public|NAVAJO NATION
-public|SOUTHERN UTE INDIAN TRIBE
-public|DENVER WATER DISTRICT
-public|SCHOOL DISTRICT RE-1
-public|STATE LAND BOARD
-public|COLORADO DIVISION OF WILDLIFE
-public|NEW MEXICO GAME AND FISH
-public|NATIONAL PARK SERVICE
-public|BUREAU OF RECLAMATION
-public|CORPS OF ENGINEERS
+federal|UNITED STATES OF AMERICA
+federal|USA
+federal|US GOVT
+federal|BUREAU OF LAND MANAGEMENT
+federal|BLM
+federal|USDA FOREST SERVICE
+federal|USFS
+federal|NATIONAL PARK SERVICE
+federal|BUREAU OF RECLAMATION
+federal|CORPS OF ENGINEERS
+federal|US DEPARTMENT OF THE INTERIOR
+other_public|STATE OF COLORADO
+other_public|STATE OF NEW MEXICO
+other_public|CITY OF DENVER
+other_public|TOWN OF SILVERTON
+other_public|COUNTY OF GRANT
+other_public|COUNTY COMMISSIONERS OF PITKIN
+other_public|DENVER WATER DISTRICT
+other_public|SCHOOL DISTRICT RE-1
+other_public|STATE LAND BOARD
+other_public|COLORADO DIVISION OF WILDLIFE
+other_public|NEW MEXICO GAME AND FISH
+other_public|BIA
+other_public|PUEBLO OF ACOMA
+other_public|NAVAJO NATION
+other_public|SOUTHERN UTE INDIAN TRIBE
+other_public|UNITED STATES BUREAU OF INDIAN AFFAIRS
+other_public|US DEPARTMENT OF THE INTERIOR BUREAU OF INDIAN AFFAIRS
+other_public|PUBLIC LANDS TRUST
 EOF
 )
 
@@ -71,7 +81,11 @@ VALUES=$(printf '%s\n' "$CASES" | while IFS='|' read -r exp owner; do
 done | sed 's/,$//')
 
 OUT=$(printf '%s' "
-SELECT v.exp, v.owner, CASE WHEN upper(v.owner) ~ '${PUB_REGEX}' THEN 'public' ELSE 'private' END
+SELECT v.exp, v.owner,
+       CASE WHEN v.owner IS NULL OR btrim(v.owner) = '' THEN 'unknown'
+            WHEN upper(v.owner) ~ '${OTHERPUB_REGEX}' THEN 'other_public'
+            WHEN upper(v.owner) ~ '${FED_REGEX}'      THEN 'federal'
+            ELSE 'private' END
 FROM (VALUES ${VALUES}) AS v(exp, owner);" | eval "$PSQL -tAq -F'|'") \
   || { echo "✗ regex query failed — is the stack up?" >&2; exit 1; }
 

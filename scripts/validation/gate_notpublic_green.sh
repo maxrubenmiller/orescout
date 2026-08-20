@@ -14,7 +14,10 @@
 #   not-public ground := rows of the state's authoritative ownership layer where the registry's
 #                        public_predicate IS NOT TRUE  (note: NOT TRUE, so NULL/unknown counts
 #                        as not-public — a NULL attribute must never confirm open)
-#                        plus, when GATE_PARCELS=1, assessor parcels with owner_class='private'
+#                        plus, when GATE_PARCELS=1, assessor parcels that are affirmatively
+#                        not-open: owner_class IN ('private','other_public'). NOT 'unknown' — the
+#                        carve conservatively carves unknown, but a GREEN on genuinely unknown
+#                        ownership is not PROVABLY wrong, and this gate reports proof.
 #   sample           := ST_PointOnSurface of every such polygon (guaranteed interior), plus,
 #                        when GATE_DENSITY=1, seeded area-scaled interior points for big ones
 #   score            := the engine's own Stage-1 query — ST_Covers + ORDER BY orescout_rank DESC
@@ -115,7 +118,7 @@ WITH notpub AS (
   UNION ALL
   SELECT ST_MakeValid(geom) FROM staging.parcels
    WHERE ${PARCELS_ON} AND to_regclass('staging.parcels') IS NOT NULL
-     AND state='$STU' AND owner_class='private'
+     AND state='$STU' AND owner_class IN ('private','other_public')
 ), region AS (
   SELECT ST_Union(geom) AS geom FROM public.supported_region WHERE state_code = '$STU'
 ), g AS (

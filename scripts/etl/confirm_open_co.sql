@@ -40,7 +40,15 @@ INSERT INTO staging.conf_notpub_co
   SELECT ST_SubDivide(ST_MakeValid(geom), 512)
   FROM staging.parcels
   WHERE to_regclass('staging.parcels') IS NOT NULL
-    AND state = 'CO' AND owner_class = 'private';
+    -- Review finding PP-32. Was owner_class='private', which meant state/county/city/tribal
+    -- parcels — public but NOT open — silently confirmed that PAD-US's GREEN was open, and left
+    -- 'unknown' (doubt) unprotected too. Only affirmatively FEDERAL ownership supports an open
+    -- reading, so everything else is carved.
+    -- Written as an explicit IN rather than <> 'federal' so it degrades correctly against
+    -- pre-PP-32 data: a staging.parcels built before the four-class split has no 'federal' rows,
+    -- and <> 'federal' would then match its old catch-all 'public' class and over-carve genuinely
+    -- public ground. The IN list simply matches less until the parcels are re-pulled.
+    AND state = 'CO' AND owner_class IN ('private','other_public','unknown');
 CREATE INDEX conf_notpub_co_gix ON staging.conf_notpub_co USING GIST (geom);
 
 -- NON-OPEN PUBLIC (review finding PP-2): state trust / state park / wildlife / county / military

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Parcel ground-truth adapters for the Tier-1 private-land validation (TODO Track 2; harness:
 # scripts/validation/). Each source maps into the ONE staging.parcels contract:
-#   parcel_id · state · geom(MultiPolygon,4326) · owner_class('private'|'public'|'unknown') · source_key
+#   parcel_id · state · geom(MultiPolygon,4326) · owner_class · source_key
+#   owner_class: 'private' | 'other_public' | 'federal' | 'unknown'  (PP-32; was 3 classes)
 #
 #   ./scripts/etl/pull_parcels.sh ut    # UGRC SGID statewide parcels — explicit OWN_TYPE flag
 #   ./scripts/etl/pull_parcels.sh co    # CO OIT statewide composite — owner-name regex classing
@@ -13,9 +14,16 @@
 #   * UT pulls OWN_TYPE='Private' rows only (the validation samples private parcels; the public
 #     side of the frame comes from tiles.legality_polygons, not the parcel fabric).
 #   * CO/NM have no ownership-class field: owner_class is derived from owner-name regex —
-#     government-pattern names => 'public', empty/unparseable => 'unknown', else 'private'.
-#     The regex is deliberately GREEDY toward 'public'/'unknown': misclassifying a public parcel
-#     as private would create a FALSE false-GREEN in the validation, so doubt excludes.
+#     tribal/state/county/city names => 'other_public', federal agencies => 'federal',
+#     empty/unparseable => 'unknown', else 'private'.
+#     Consumers must read these correctly, because 'not private' no longer means 'open':
+#       carve (confirm_open_*.sql)  protects owner_class <> 'federal'  — private, other_public
+#                                   and unknown all get carved; only federal confirms open.
+#       §6.4.1 validation frame     samples owner_class = 'private' — affirmative private ground
+#                                   truth, now more accurate since city/county/tribal moved out.
+#     Before PP-32 there was one 'public' class and the carve protected only 'private', so a
+#     city park, a county yard or tribal land silently counted as confirming that PAD-US's GREEN
+#     was open.
 #   * PRIVACY: owner names are used ONLY transiently for classification and are NOT loaded into
 #     staging.parcels (classification happens in the transform; names never reach Postgres).
 #     Nothing with names is ever committed to the repo (fixtures carry APN + class + geometry).
@@ -52,7 +60,26 @@ die() { echo "[$(date +%H:%M:%S)] ERROR: $*" >&2; exit 1; }
 # frame, where greedy-toward-public is conservative; for the carve it is the dangerous direction.
 # `\mSTATE OF` anchors to a word start: 'STATE OF COLORADO' matches, 'ESTATE OF' does not,
 # 'INTERSTATE OFFICE PARK LLC' does not.
-PUB_REGEX='(UNITED STATES|^USA\y|U S A|US GOVT|BUREAU OF LAND|\yBLM\y|FOREST SERVICE|USDA|USFS|DEPT OF AGRICULTURE|DEPARTMENT OF (THE )?INTERIOR|\mSTATE OF|\yCITY OF\y|\yTOWN OF\y|\yCOUNTY OF\y|COUNTY COMMISSIONERS|SCHOOL DISTRICT|HOUSING AUTHORITY|WATER DISTRICT|FIRE DISTRICT|IRRIGATION DISTRICT|\yDISTRICT\y.*(WATER|FIRE|SCHOOL)|NATIONAL PARK|FISH AND WILDLIFE|BUREAU OF RECLAMATION|CORPS OF ENGINEERS|INDIAN TRIBE|\yTRIBE\y|\yNATION\y|\yPUEBLO OF\y|\yBIA\y|LAND BOARD|DIVISION OF WILDLIFE|PARKS AND WILDLIFE|GAME (AND|&) FISH|PUBLIC LANDS?)'
+# OWNER CLASSES (review finding PP-32). Three classes were not enough. The carve protects only
+# owner_class='private', so anything else is treated as confirming that PAD-US's GREEN is open —
+# which is fine for BLM and USFS and wrong for a city park, a county yard, or tribal land. Splitting
+# the old single PUB_REGEX in two lets 'public but not open' be its own class, the same distinction
+# PP-2 established for the SMA layer.
+#
+# OTHER_PUB is tested FIRST, deliberately. A name like "UNITED STATES BUREAU OF INDIAN AFFAIRS"
+# matches both patterns; tribal land must never come out as open, so ambiguity resolves to the
+# non-confirming class. Safe direction on a tie.
+#
+# Word boundaries are \y and word-start is \m — Postgres ARE, not PCRE. \b is BACKSPACE here and
+# silently matches nothing (PP-27). scripts/test/parcel_owner_regex_test.sh pins this in Postgres.
+
+# Public, but NOT open: state / county / city / special district / tribal. Also BIA, which is a
+# federal agency administering land that is emphatically not open for collecting. 'PUBLIC LAND(S)'
+# lives here rather than in FED because it is ambiguous, and ambiguity must not confirm open.
+OTHERPUB_REGEX='(\mSTATE OF|\yCITY OF\y|\yTOWN OF\y|\yCOUNTY OF\y|COUNTY COMMISSIONERS|SCHOOL DISTRICT|HOUSING AUTHORITY|WATER DISTRICT|FIRE DISTRICT|IRRIGATION DISTRICT|\yDISTRICT\y.*(WATER|FIRE|SCHOOL)|INDIAN TRIBE|\yTRIBE\y|\yNATION\y|\yPUEBLO OF\y|\yBIA\y|BUREAU OF INDIAN AFFAIRS|LAND BOARD|DIVISION OF WILDLIFE|PARKS AND WILDLIFE|GAME (AND|&) FISH|PUBLIC LANDS?)'
+
+# Federal land-management agencies whose ownership DOES support an open reading.
+FED_REGEX='(UNITED STATES|^USA\y|U S A|US GOVT|BUREAU OF LAND|\yBLM\y|FOREST SERVICE|USDA|USFS|DEPT OF AGRICULTURE|DEPARTMENT OF (THE )?INTERIOR|NATIONAL PARK|FISH AND WILDLIFE|BUREAU OF RECLAMATION|CORPS OF ENGINEERS)'
 
 # paginated ArcGIS GeoJSON pull -> files (mirrors pull_mrds.sh conventions)
 pull_pages() { # <query_url> <where> <fields> <prefix>
@@ -102,11 +129,30 @@ CREATE TABLE IF NOT EXISTS staging.parcels (
     parcel_id   text,
     state       text,
     geom        geometry(MultiPolygon, 4326),
-    owner_class text CHECK (owner_class IN ('private','public','unknown')),
+    owner_class text CHECK (owner_class IN ('private','federal','other_public','unknown')),
     source_key  text
 );
 CREATE INDEX IF NOT EXISTS parcels_geom_idx ON staging.parcels USING GIST (geom);
 CREATE INDEX IF NOT EXISTS parcels_class_idx ON staging.parcels (owner_class, state);
+SQL
+  # CREATE TABLE IF NOT EXISTS leaves an EXISTING table's CHECK constraint alone, so a table built
+  # before PP-32 still forbids 'federal'/'other_public' and every insert would fail. Migrate it.
+  PSQL -q <<'SQL'
+DO $$
+DECLARE con text;
+BEGIN
+  SELECT conname INTO con FROM pg_constraint
+   WHERE conrelid = 'staging.parcels'::regclass AND contype = 'c'
+     AND pg_get_constraintdef(oid) LIKE '%owner_class%'
+     AND pg_get_constraintdef(oid) NOT LIKE '%other_public%';
+  IF con IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE staging.parcels DROP CONSTRAINT %I', con);
+    ALTER TABLE staging.parcels
+      ADD CONSTRAINT parcels_owner_class_check
+      CHECK (owner_class IN ('private','federal','other_public','unknown'));
+    RAISE NOTICE 'migrated staging.parcels owner_class CHECK for PP-32 classes';
+  END IF;
+END $$;
 SQL
 }
 
@@ -152,7 +198,8 @@ SELECT 'co:' || coalesce(parcel_id, 'fid' || ogc_fid), 'CO',
        ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3)),
        CASE
          WHEN owner IS NULL OR btrim(owner) = '' THEN 'unknown'
-         WHEN upper(owner) ~ '${PUB_REGEX}' THEN 'public'
+         WHEN upper(owner) ~ '${OTHERPUB_REGEX}' THEN 'other_public'
+         WHEN upper(owner) ~ '${FED_REGEX}' THEN 'federal'
          ELSE 'private'
        END,
        'co_composite'
@@ -190,7 +237,8 @@ SELECT 'nm:' || coalesce(upc, 'fid' || ogc_fid), 'NM',
        ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3)),
        CASE
          WHEN coalesce(ownerall, owner1) IS NULL OR btrim(coalesce(ownerall, owner1)) = '' THEN 'unknown'
-         WHEN upper(coalesce(ownerall, owner1)) ~ '${PUB_REGEX}' THEN 'public'
+         WHEN upper(coalesce(ownerall, owner1)) ~ '${OTHERPUB_REGEX}' THEN 'other_public'
+         WHEN upper(coalesce(ownerall, owner1)) ~ '${FED_REGEX}' THEN 'federal'
          ELSE 'private'
        END,
        'nm_ose'
