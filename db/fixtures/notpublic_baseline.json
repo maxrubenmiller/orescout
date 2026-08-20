@@ -8,13 +8,14 @@
     "false-GREEN at all."
   ],
   "_why_not_zero_everywhere": [
-    "These are not 'acceptable bugs'. Every count below is attributable to review finding PP-30:",
-    "the confirm-open carve selects its input by the PAD-US state_nm ATTRIBUTE, so a GREEN polygon",
-    "labelled with one state but physically covering another is judged by the wrong authority, or by",
-    "none. 730 km2 across the 8 states sits in that gap. The fix (a post-carve sweeper) is specified",
-    "in docs/REVIEW_PREPROD_BACKLOG.md and not yet built.",
-    "Adopting the gate at these numbers rather than waiting for PP-30 is deliberate: it starts",
-    "catching REGRESSIONS immediately, during exactly the waves where the carve is being changed."
+    "These are not 'acceptable bugs'. They are measured residuals that no fix has yet removed.",
+    "ATTRIBUTION CORRECTED 2026-08-20. This file previously asserted that every count below was",
+    "review finding PP-30 (the carve scoped by state_nm). Running the PP-30 sweeper against a clone",
+    "disproved that: it removed 7 of 18 (NV 7->1, AZ 3->2) and left CA 4, UT 2, CO 1, ID 1 and NV's",
+    "last 1 untouched. So roughly a third of the residual was PP-30 and the rest has an unidentified",
+    "cause, tracked as PP-35. Do not repeat the original claim.",
+    "Adopting the gate at these numbers rather than waiting for a full explanation is deliberate: it",
+    "starts catching REGRESSIONS immediately, during exactly the waves where the carve is changing."
   ],
   "_rules": [
     "NEVER auto-update this file. Lowering a number is a deliberate human commit that says a fix",
@@ -34,5 +35,6 @@
     "NV": 7,
     "OR": 0,
     "UT": 2
-  }
+  },
+  "_pending": "NV->1 and AZ->2 are proven on a clone but NOT yet applied to live data. Lower them only after the sweeper runs against the live layer (Wave D), or the gate will fail against a table that still contains them."
 }
