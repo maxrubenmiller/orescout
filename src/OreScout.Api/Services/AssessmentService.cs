@@ -152,9 +152,19 @@ public class AssessmentService(NpgsqlDataSource db, IClaimsService claims, IConf
             .GroupBy(c => string.IsNullOrWhiteSpace(c.Status) ? "unknown" : c.Status!.ToLowerInvariant())
             .OrderByDescending(g => g.Count())
             .Select(g => $"{g.Count()} {g.Key}");
-        return $"Mining claim(s) within 100m: {claims.Count} ({string.Join(", ", byStatus)}). " +
-               "A claimant holds the mineral rights here — do not prospect or collect without their permission. " +
-               "Verify claim status before entering.";
+        // Wording per review finding PP-28 (owner-approved 2026-08-19). The previous text —
+        // "A claimant holds the mineral rights here" — overstated on two axes:
+        //   * distance: ClaimsService queries a 100 m buffer, so this fires for claims up to 100 m
+        //     away; the user may be standing outside every one of them. Hence "on or next to".
+        //   * status: the MLRS layer is "Not Closed", which includes Pending and Filed. Those do
+        //     not yet confer mineral rights. Hence "may hold", with the per-status breakdown moved
+        //     up front so the reader sees "1 pending" before the claim of rights, not after.
+        // The prohibition itself is unchanged and deliberately still absolute — the 2026-07-15
+        // red-lane rewording removed an UNDERSTATEMENT ("casual collecting may still be allowed")
+        // and that must not creep back in while fixing the overstatement.
+        return $"Mining claim(s) within 100m ({string.Join(", ", byStatus)}): " +
+               "Someone may hold the mineral rights on or next to this point — do not prospect or " +
+               "collect without verifying the claims and/or getting the claimant's permission.";
     }
 
     private static (string status, string? ambiguity, string reason) NoData() =>
