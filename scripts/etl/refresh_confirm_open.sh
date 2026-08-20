@@ -5,6 +5,11 @@
 #   ./scripts/etl/refresh_confirm_open.sh ut      # Utah SGID/SITLA (upstream revises weekly)
 #   ./scripts/etl/refresh_confirm_open.sh ca      # CA CAL FIRE (upstream ~annual)
 #
+# Env:
+#   REFRESH_DRY_RUN=1         run every pre-swap gate, then discard and stop (live untouched)
+#   ORESCOUT_DEFER_DERIVED=1  skip the global derived rebuild; the CALLER must run it (PP-33)
+#   SKIP_NOTPUBLIC_GATE=1     skip the output-property gate (say why in writing)
+#
 # Sequence + gates (any failure exits non-zero; the live layer keeps its previous rows):
 #   lock -> pull to staging -> schema assertion -> clone live legality to _new ->
 #   confirm_open_<st>.sql against _new in ONE TRANSACTION -> PRE-SWAP gates (0-row, row-count
@@ -57,6 +62,17 @@ esac
 if [ "$(reg_sql "$KEY")" = "generated" ]; then
   SQL="scripts/etl/confirm_open_${ST}.sql"
   [ -f "$SQL" ] || { echo "✗ $SQL missing — run ./scripts/etl/gen_confirm_open.sh ${ST} first" >&2; exit 2; }
+  # Registry-vs-SQL drift gate (review finding PP-12). This used to be an existence check only, so
+  # the job would happily execute a committed file that no longer matched the registry claiming to
+  # define it — a registry edit did nothing until someone remembered to regenerate, and a hand-edit
+  # to a "GENERATED, do not edit" file survived indefinitely. Cheap: regenerates to a temp dir and
+  # diffs; it never writes to scripts/etl.
+  ./scripts/test/gen_drift_check.sh >/dev/null 2>&1 || {
+    echo "✗ ${ST}: committed confirm_open SQL has DRIFTED from etl/sources.json." >&2
+    echo "  Run ./scripts/test/gen_drift_check.sh to see the diff. Refusing to refresh with SQL" >&2
+    echo "  that does not match the registry — the registry is supposed to be the source of truth." >&2
+    exit 2
+  }
 else
   SQL="$(reg_sql "$KEY")"
 fi
@@ -151,6 +167,29 @@ stamp_legality_generation
 # leaves the map contradicting the verdict is not a refresh worth having.
 # Each derived table builds into _new and swaps atomically (PP-31): a failure mid-build leaves the
 # live display serving its previous generation instead of an empty table.
+#
+# BATCHING (review finding PP-33). The three derived tables are global — they are computed from the
+# WHOLE of legality_polygons, not from one state's rows — so a per-state refresh has to rebuild all
+# of them, and refreshing N states rebuilds them N times with the first N-1 results discarded. All 8
+# states would be ~3.3 h of derived rebuilds, ~2.9 h of it wasted.
+#
+# ORESCOUT_DEFER_DERIVED=1 skips the rebuild AND the display stamp, leaving the caller to run the
+# chain once after the last state. refresh_due.sh does exactly that. A standalone run never defers,
+# so an operator refreshing one state by hand is never left with a stale map by surprise.
+#
+# The deferral deliberately re-opens PP-6's window (map contradicting the verdict) between here and
+# the caller's trailing rebuild. That is acceptable ONLY because PP-6's own guard now exists: the
+# two generation stamps disagree in that interval, so display_sync_check.sh check A fails and says
+# the derived tables are stale. Detectable and alarmed, rather than silent, is the whole difference.
+if [ "${ORESCOUT_DEFER_DERIVED:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] derived display rebuild DEFERRED to the caller (PP-33 batching)."
+  echo "[confirm-open ${ST}]   legality_generation is stamped; legality_display_generation is NOT."
+  echo "[confirm-open ${ST}]   display_sync_check.sh will FAIL until the caller rebuilds the derived chain."
+  stamp_source "$SRC_KEY" confirm_open "$VINTAGE (refreshed $(date +%Y-%m-%d))" "$MAXAGE" "$REF" ok
+  echo "[confirm-open ${ST}] ✓ refreshed, gated, stamped (derived deferred)"
+  exit 0
+fi
+
 echo "[confirm-open ${ST}] rebuilding derived display tables (lowzoom + display partition)…"
 eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -q -v lowzoom_tbl=tiles.legality_lowzoom_new" < scripts/etl/build_lowzoom.sql >/dev/null \
   || rfail "confirm-open ${ST}: build_lowzoom failed — live low-zoom layer untouched, but it is now STALE vs legality_polygons; re-run ./scripts/etl/rebuild_legality.sh"

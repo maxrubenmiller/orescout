@@ -146,9 +146,34 @@ ng_c=$(lineno "$C" 'GATE_TARGET="\$NEW" ./scripts/validation/gate_notpublic_gree
 chk "refresh_confirm_open.sh: not-public gate precedes atomic_swap (line $ng_c < $cswap_ln)" $?
 
 # The dry-run stop must sit BEFORE the swap, or it is not a dry run.
-dry_ln=$(lineno "$C" 'REFRESH_DRY_RUN')
+dry_ln=$(lineno "$C" 'if \[ "${REFRESH_DRY_RUN:-0}" = "1" \]')
 [ "$dry_ln" -gt 0 ] && [ "$cswap_ln" -gt 0 ] && [ "$dry_ln" -lt "$cswap_ln" ]
 chk "refresh_confirm_open.sh: DRY_RUN stop precedes atomic_swap (line $dry_ln < $cswap_ln)" $?
+
+echo "== F. PP-33 deferral is wired safely =="
+# The deferral must skip the derived rebuild AND the display stamp. Skipping the rebuild while still
+# stamping would tell display_sync_check the derived tables are current when they are not — turning
+# the PP-6 guard into a liar, which is strictly worse than not deferring at all.
+def_ln=$(lineno "$C" 'if \[ "${ORESCOUT_DEFER_DERIVED:-0}" = "1" \]')
+lz_ln=$(lineno "$C" 'build_lowzoom.sql')
+[ "$def_ln" -gt 0 ] && [ "$lz_ln" -gt 0 ] && [ "$def_ln" -lt "$lz_ln" ]
+chk "refresh_confirm_open.sh: defer branch precedes the derived rebuild (line $def_ln < $lz_ln)" $?
+
+# The defer branch must exit before stamp_display_generation is reachable.
+stampd_ln=$(lineno "$C" '^stamp_display_generation')
+awk -v a="$def_ln" -v b="$stampd_ln" 'NR>a && NR<b && /^  exit 0$/ {found=1} END {exit !found}' "$C"
+chk "refresh_confirm_open.sh: defer branch exits before stamp_display_generation (line $def_ln .. $stampd_ln)" $?
+
+grep -q 'ORESCOUT_DEFER_DERIVED=1 ./scripts/etl/refresh_confirm_open.sh' scripts/etl/refresh_due.sh
+chk "refresh_due.sh: runs per-state refreshes deferred" $?
+grep -q 'stamp_display_generation' scripts/etl/refresh_due.sh
+chk "refresh_due.sh: stamps the display generation after its own trailing rebuild" $?
+
+# PP-12: the job mapping must come from the registry, not a hardcoded list of two states.
+grep -q 'confirm_state_for_key' scripts/etl/refresh_due.sh
+chk "refresh_due.sh: confirm-open job mapping is registry-derived (PP-12)" $?
+! grep -qE '^\s*(ugrc_ut|calfire_ca)\)\s*cmd=' scripts/etl/refresh_due.sh
+chk "refresh_due.sh: no hardcoded per-state confirm-open case arms remain" $?
 
 echo
 echo "rebuild atomicity (PP-8/PP-9): $pass passed, $fail failed (of $((pass+fail)))"
