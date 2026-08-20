@@ -147,10 +147,19 @@ BEGIN
      AND pg_get_constraintdef(oid) NOT LIKE '%other_public%';
   IF con IS NOT NULL THEN
     EXECUTE format('ALTER TABLE staging.parcels DROP CONSTRAINT %I', con);
+    -- NOT VALID: enforce on new rows, tolerate pre-PP-32 rows still carrying the old catch-all
+    -- 'public' class. Those cannot be reclassified in place — splitting 'public' into federal vs
+    -- other_public needs the owner NAMES, which are deliberately never persisted (privacy: the raw
+    -- tables are dropped at load). They are replaced state-by-state as each source is re-pulled.
+    -- Once every state has been re-pulled:
+    --   ALTER TABLE staging.parcels VALIDATE CONSTRAINT parcels_owner_class_check;
+    -- Without NOT VALID this ALTER fails outright against any table built before PP-32, which is
+    -- exactly what happened on the first attempt — loudly, and with the whole DO block rolling
+    -- back, so no data was touched.
     ALTER TABLE staging.parcels
       ADD CONSTRAINT parcels_owner_class_check
-      CHECK (owner_class IN ('private','federal','other_public','unknown'));
-    RAISE NOTICE 'migrated staging.parcels owner_class CHECK for PP-32 classes';
+      CHECK (owner_class IN ('private','federal','other_public','unknown')) NOT VALID;
+    RAISE NOTICE 'migrated staging.parcels owner_class CHECK for PP-32 (NOT VALID; legacy rows tolerated until re-pull)';
   END IF;
 END $$;
 SQL

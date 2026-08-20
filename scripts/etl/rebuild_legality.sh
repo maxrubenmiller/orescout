@@ -100,6 +100,17 @@ for f in scripts/etl/confirm_open_*.sql; do
   echo "[rebuild]   +$n ${key} rows"
 done
 
+# ---- 4b. cross-border sweep (review finding PP-30) --------------------------
+# Each confirm_open_<st>.sql selects its input by the PAD-US state_nm ATTRIBUTE, so a GREEN polygon
+# labelled with one state but physically covering another is never judged by the authority for the
+# ground it actually sits on. This sweeps that residue for every state, writing under its own
+# source_key so it stays auditable and revertible independently of any state's carve.
+# Runs AFTER every confirm_open step (it reads their conf_notpub_* staging tables) and BEFORE the
+# gates, so its output is gated like everything else rather than trusted.
+echo "[rebuild] cross-border sweep -> ${NEW}…"
+./scripts/etl/sweep_crossborder.sh "$NEW" \
+  || fail "cross-border sweep failed — ${NEW} left for inspection, live table untouched"
+
 # ---- 5. PRE-SWAP GATES (live table still untouched) -------------------------
 # Everything below this line that fails leaves the live table exactly as it was, with ${NEW}
 # on disk for inspection. This is the PP-8 fix: gates BEFORE the rows can be served.
