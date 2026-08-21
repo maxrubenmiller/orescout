@@ -22,19 +22,24 @@
     "landed; raising one is an admission that something regressed and needs its own justification.",
     "A gate whose baseline quietly follows reality is not a gate."
   ],
-  "_recorded": "2026-08-19",
-  "_recorded_against": "tiles.legality_polygons generation 20260818T011749Z (232,574 rows)",
+  "_recorded": "2026-08-21",
+  "_recorded_against": "tiles.legality_polygons generation 20260821T034529Z (229,923 rows), post PP-30 sweep + PP-32 parcel classes",
   "_measured_by": "GATE_DENSITY=0, seed 42, region-clipped, parcels off",
-  "_total_at_record": 18,
+  "_total_at_record": 11,
   "states": {
-    "AZ": 3,
+    "AZ": 2,
     "CA": 4,
     "CO": 1,
     "ID": 1,
     "NM": 0,
-    "NV": 7,
+    "NV": 1,
     "OR": 0,
     "UT": 2
   },
-  "_pending": "NV->1 and AZ->2 are proven on a clone but NOT yet applied to live data. Lower them only after the sweeper runs against the live layer (Wave D), or the gate will fail against a table that still contains them."
+  "_history": [
+    "2026-08-19: 18 total (CA 4, UT 2, NV 7, AZ 3, CO 1, NM 0, OR 0, ID 1).",
+    "2026-08-21: 11 total. The PP-30 cross-border sweep removed NV 7->1 and AZ 3->2 and changed",
+    "            nothing else, which is what falsified the original claim that all 18 were PP-30.",
+    "            The remaining 11 are PP-35: cause unidentified, diagnosis pending."
+  ]
 }
