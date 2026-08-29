@@ -9,6 +9,13 @@
 #   REFRESH_DRY_RUN=1         run every pre-swap gate, then discard and stop (live untouched)
 #   ORESCOUT_DEFER_DERIVED=1  skip the global derived rebuild; the CALLER must run it (PP-33)
 #   SKIP_NOTPUBLIC_GATE=1     skip the output-property gate (say why in writing)
+#   CONFIRM_OPEN_BAND_PCT=N   widen the ±40% row-count band. ONLY for a change known to move row
+#                             counts legitimately (PP-36). Prints the area delta and says loudly
+#                             that it is in force. Do not use it to push through a surprise.
+#   REFRESH_SKIP_PULL=1       re-carve from the EXISTING staging data, no upstream pull. For when
+#                             the carve SQL changed but the ownership data did not (e.g. PP-36).
+#                             Every gate still runs. Deliberately does NOT stamp a new vintage:
+#                             nothing was refreshed, so resetting the max_age clock would be a lie.
 #
 # Sequence + gates (any failure exits non-zero; the live layer keeps its previous rows):
 #   lock -> pull to staging -> schema assertion -> clone live legality to _new ->
@@ -83,8 +90,12 @@ echo "[confirm-open ${ST}] previous row count…"
 before=$(_rq "SELECT count(*) FROM tiles.legality_polygons WHERE source_key='${SRC_KEY}'")
 echo "[confirm-open ${ST}] live ${SRC_KEY} rows before: $before"
 
-echo "[confirm-open ${ST}] pulling upstream -> ${STAGING}…"
-$PULL
+if [ "${REFRESH_SKIP_PULL:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] REFRESH_SKIP_PULL=1 — re-carving from existing ${STAGING}, no pull"
+else
+  echo "[confirm-open ${ST}] pulling upstream -> ${STAGING}…"
+  $PULL
+fi
 
 # shellcheck disable=SC2086  # word-splitting SCHEMA_COLS is intended
 assert_schema "$STAGING" $SCHEMA_COLS
@@ -113,7 +124,21 @@ eval "$REFRESH_PSQL -v ON_ERROR_STOP=1 -v legality_tbl=${NEW} -1 -q" < "$SQL" \
 after=$(_rq "SELECT count(*) FROM ${NEW} WHERE source_key='${SRC_KEY}'")
 [ "$after" -gt 0 ] || rfail "confirm-open ${ST}: rebuild produced 0 rows — live table untouched"
 if [ "$before" -gt 0 ]; then
-  lo=$(( before * 60 / 100 )); hi=$(( before * 140 / 100 ))
+  # The band defaults to +/-40% and MUST stay there for routine refreshes: it is what catches an
+  # under-producing rebuild before it can serve. CONFIRM_OPEN_BAND_PCT exists only for a change
+  # that is KNOWN to move row counts legitimately — PP-36 keeps sub-floor fragments of large
+  # parcels, which raised ID from 19,848 to 28,954 rows (+45.9%) while the AREA moved just 365.18
+  # -> 366.70 km2 (+0.4%). Row count is the wrong invariant for that change; area is the right one,
+  # so the override prints both and says loudly that it is in force.
+  BAND="${CONFIRM_OPEN_BAND_PCT:-40}"
+  if [ "$BAND" != "40" ]; then
+    a_before=$(_rq "SELECT COALESCE(round((sum(ST_Area(geom::geography))/1e6)::numeric,2),0) FROM ${LIVE} WHERE source_key='${SRC_KEY}'")
+    a_after=$(_rq "SELECT COALESCE(round((sum(ST_Area(geom::geography))/1e6)::numeric,2),0) FROM ${NEW} WHERE source_key='${SRC_KEY}'")
+    echo "[confirm-open ${ST}] !! COUNT BAND WIDENED to ±${BAND}% by CONFIRM_OPEN_BAND_PCT (default 40)"
+    echo "[confirm-open ${ST}] !! rows ${before} -> ${after} · area ${a_before} -> ${a_after} km2"
+    echo "[confirm-open ${ST}] !! area is the invariant that matters here — check it, not the count"
+  fi
+  lo=$(( before * (100 - BAND) / 100 )); hi=$(( before * (100 + BAND) / 100 ))
   if [ "$after" -lt "$lo" ] || [ "$after" -gt "$hi" ]; then
     rfail "confirm-open ${ST}: row count $after outside ±40% of previous $before — investigate before trusting (nothing is live; ${NEW} left for inspection)"
   fi
@@ -185,7 +210,11 @@ if [ "${ORESCOUT_DEFER_DERIVED:-0}" = "1" ]; then
   echo "[confirm-open ${ST}] derived display rebuild DEFERRED to the caller (PP-33 batching)."
   echo "[confirm-open ${ST}]   legality_generation is stamped; legality_display_generation is NOT."
   echo "[confirm-open ${ST}]   display_sync_check.sh will FAIL until the caller rebuilds the derived chain."
+  if [ "${REFRESH_SKIP_PULL:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] skipping vintage stamp — no upstream pull happened"
+else
   stamp_source "$SRC_KEY" confirm_open "$VINTAGE (refreshed $(date +%Y-%m-%d))" "$MAXAGE" "$REF" ok
+fi
   echo "[confirm-open ${ST}] ✓ refreshed, gated, stamped (derived deferred)"
   exit 0
 fi
@@ -213,5 +242,9 @@ curl -sqf -o /dev/null --max-time 5 "$API/health" \
   || rfail "API not reachable at $API — start it and run ./scripts/run-tier-b.sh to finish the gate"
 ./scripts/run-tier-b.sh "$API"
 
-stamp_source "$SRC_KEY" confirm_open "$VINTAGE (refreshed $(date +%Y-%m-%d))" "$MAXAGE" "$REF" ok
+if [ "${REFRESH_SKIP_PULL:-0}" = "1" ]; then
+  echo "[confirm-open ${ST}] skipping vintage stamp — no upstream pull happened"
+else
+  stamp_source "$SRC_KEY" confirm_open "$VINTAGE (refreshed $(date +%Y-%m-%d))" "$MAXAGE" "$REF" ok
+fi
 echo "[confirm-open ${ST}] ✓ refreshed, gated, stamped"
