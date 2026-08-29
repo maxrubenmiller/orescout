@@ -88,7 +88,12 @@ FROM (
          COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(n.geom))::geography)
                    FROM staging.ugrc_notpub n WHERE ST_Intersects(n.geom, frag.geom)), 0) AS notpub_m2,
          COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
-                   FROM staging.ugrc_nonopen no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+                   FROM staging.ugrc_nonopen no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2,
+         -- PP-36: size of the SOURCE polygon, not the fragment. See the filter below.
+         COALESCE((SELECT max(ST_Area(n.geom::geography))
+                   FROM staging.ugrc_notpub n WHERE ST_Intersects(n.geom, frag.geom)), 0) AS notpub_src_m2,
+         COALESCE((SELECT max(ST_Area(no.geom::geography))
+                   FROM staging.ugrc_nonopen no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_src_m2
   FROM (
     SELECT (ST_Dump(
               ST_CollectionExtract(
@@ -111,8 +116,15 @@ FROM (
 -- crumbs. A fragment overlapping affirmatively-not-public ground is signal, not noise, and is kept
 -- down to the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374).
 WHERE ST_Area(d.geom::geography) > 500
+-- PP-36. The tests above measure the FRAGMENT. Subdivide chunk lines and buffer edges cut a
+-- large parcel into pieces, so a piece can fall under the floor while the parcel it came off
+-- is enormous — measured on ID, a 366 m² fragment of a 667,003 m² PRIVATE parcel, dropped.
+-- gate_notpublic_green.sh judges the SOURCE polygon, which is why it disagreed with the carve.
+-- Keep a fragment when the ground it sits on clears the floor. Can only ADD yellow.
    OR d.notpub_m2  > 400
-   OR d.nonopen_m2 > 400;
+   OR d.nonopen_m2 > 400
+   OR d.notpub_src_m2  > 400
+   OR d.nonopen_src_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'ugrc_ut';

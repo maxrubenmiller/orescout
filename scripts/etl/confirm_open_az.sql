@@ -91,7 +91,13 @@ FROM (
                    FROM staging.conf_notpub_az np WHERE ST_Intersects(np.geom, frag.geom)), 0) AS notpub_m2,
          -- overlap with public-but-not-open ground (drives which reason the user is shown)
          COALESCE((SELECT ST_Area(ST_Intersection(frag.geom, ST_Union(no.geom))::geography)
-                   FROM staging.conf_nonopen_az no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2
+                   FROM staging.conf_nonopen_az no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_m2,
+         -- PP-36. Size of the SOURCE polygon this fragment came off, not the fragment. See the
+         -- filter below for why the distinction is the whole point.
+         COALESCE((SELECT max(ST_Area(np.geom::geography))
+                   FROM staging.conf_notpub_az np WHERE ST_Intersects(np.geom, frag.geom)), 0) AS notpub_src_m2,
+         COALESCE((SELECT max(ST_Area(no.geom::geography))
+                   FROM staging.conf_nonopen_az no WHERE ST_Intersects(no.geom, frag.geom)), 0) AS nonopen_src_m2
   FROM (
     SELECT (ST_Dump(
               ST_CollectionExtract(
@@ -117,10 +123,31 @@ FROM (
 -- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
 -- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
 -- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
--- notpub_m2/nonopen_m2 are computed once in the subquery above, so this costs nothing extra.
+--
+-- PP-36. The three tests above all measure the FRAGMENT, and lowering the threshold (PP-1/PP-18
+-- took it 1000 -> 400 for notpub-overlapping pieces) only moved the edge; the BASIS was the bug.
+-- Subdivide chunk lines and buffer edges cut a large private parcel into pieces, and a piece can
+-- measure less than the floor while the parcel it belongs to is enormous. Measured on ID
+-- (42.031603, -115.564597): a 366 m² fragment whose notpub_m2 was also 366 — failing both
+-- ST_Area > 1000 and notpub_m2 > 400 — carved off a parcel of 667,003 m² that sma_id maps
+-- PRIVATE. It was dropped, and the app served GREEN there.
+--
+-- This is also exactly why gate_notpublic_green.sh disagreed with the carve and the residuals
+-- looked unexplained: the gate selects SOURCE polygons >= 400 m², so it judges the parcel while
+-- the carve judged the fragment. Same number, different subject.
+--
+-- So: keep a fragment when the ground it sits on clears the floor, however small the fragment.
+-- Can only ADD yellow, never remove it.
+--
+-- CAVEAT: conf_notpub_/conf_nonopen_ hold ST_SubDivide(...,512) pieces, so notpub_src_m2 is the
+-- area of a PIECE of the parcel, not the whole parcel. Still vastly coarser than the fragment and
+-- it fixes the measured cases; doing it exactly would need the pre-subdivide area carried through
+-- as a column.
 WHERE ST_Area(d.geom::geography) > 1000
    OR d.notpub_m2  > 400
-   OR d.nonopen_m2 > 400;
+   OR d.nonopen_m2 > 400
+   OR d.notpub_src_m2  > 400
+   OR d.nonopen_src_m2 > 400;
 
 SELECT count(*) AS unconfirmed_polys, round((sum(ST_Area(geom::geography))/1e6)::numeric, 2) AS km2
 FROM :legality_tbl WHERE source_key = 'blmsma_az';

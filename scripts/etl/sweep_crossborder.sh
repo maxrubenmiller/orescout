@@ -65,7 +65,10 @@ SELECT ST_Multi(d.geom), 'YELLOW',
   'Open status not confirmed by ${STU} public-ownership data (${ATTR}) — possibly private; verify before collecting.',
   NULL, NULL, 'unconfirmed-open', '${STU}', '${VINTAGE} (cross-border sweep vs PAD-US)', 'crossborder_sweep'
 FROM (
-  SELECT (ST_Dump(ST_CollectionExtract(ST_MakeValid(ST_Intersection(g.geom, np.geom)), 3))).geom AS geom
+  SELECT (ST_Dump(ST_CollectionExtract(ST_MakeValid(ST_Intersection(g.geom, np.geom)), 3))).geom AS geom,
+         -- PP-36: carry the SOURCE parcel's area through, so the floor below can be applied to the
+         -- ground rather than to however much of it happens to overlap this GREEN chunk.
+         ST_Area(np.geom::geography) AS src_m2
   FROM ${NOTPUB} np
   JOIN (SELECT ST_Subdivide(geom, 256) AS geom FROM ${TBL}
         WHERE verdict = 'GREEN' AND source_key = 'padus'
@@ -73,7 +76,12 @@ FROM (
     ON ST_Intersects(np.geom, g.geom)
 ) d
 WHERE d.geom IS NOT NULL AND NOT ST_IsEmpty(d.geom)
-  AND ST_Area(d.geom::geography) > ${FLOOR};
+  -- PP-36. This used to test the INTERSECTION only, which is the same fragment-vs-parcel basis error
+  -- the carve had. Measured: the AZ residual at (37.000016, -113.196138) is a 1,575 m² not-public
+  -- parcel whose overlap with the mislabelled GREEN was 362 m² — under the floor, so the sweep saw
+  -- it and dropped it, while gate_notpublic_green.sh flagged it because the gate judges the parcel.
+  -- Keep the overlap when EITHER it or the ground it came from clears the floor.
+  AND (ST_Area(d.geom::geography) > ${FLOOR} OR d.src_m2 > ${FLOOR});
 SELECT count(*) || '|' || COALESCE(round((sum(ST_Area(geom::geography))/1e6)::numeric, 3), 0)
 FROM ${TBL} WHERE source_key = 'crossborder_sweep' AND state_nm = '${STU}';
 SQL")
