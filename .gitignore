@@ -40,3 +40,4 @@ claims_pull.geojson
 pgdata/
 diag_waterways.png
 diag_snapshot.png
+backups/
