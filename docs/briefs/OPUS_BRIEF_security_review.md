@@ -1,6 +1,7 @@
 # Brief — OreScout pre-production security review
 
-**For:** a fresh Opus session (or `/code-review ultra`, using this file as the scope).
+**For:** a fresh Opus session, a Fable orchestration (see the note near the end first), the
+`security-reviewer` subagent, or `/code-review ultra` — using this file as the scope in every case.
 **Written:** 2026-08-29, by the session that completed the false-GREEN remediation.
 **Status of this dimension:** zero coverage from anyone. Explicitly scoped OUT of the Fable
 pre-production audit and OUT of the remediation that followed. Nothing here has ever been reviewed.
