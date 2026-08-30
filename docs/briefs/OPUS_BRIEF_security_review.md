@@ -104,6 +104,24 @@ what it never got to.
 Please also give a straight answer to one question: **what must be true before this app is exposed to
 the public internet?** Ranked, and separated into "blocks launch" versus "should be fixed soon."
 
+## If a multi-agent orchestrator (e.g. Fable) executes this
+
+Fable ran this project's pre-production audit and the record is instructive — it was productive (26
+findings, 6 real critical false-GREENs, all since fixed) and it had three specific weaknesses. If you
+are that orchestrator, or you are commissioning one, hold it to these:
+
+1. **Honour the stopping rule.** Round 1 stopped after ONE finder round when its own rule was two
+   consecutive dry rounds. The tail was not empty: PP-30, PP-32 and PP-36 were all found afterwards
+   by other means, and PP-32 was a HIGH that had been stripping protection from city/county/tribal
+   parcels. Either run to two dry rounds, or state plainly that you stopped early and why.
+2. **Preserve the verification evidence.** In the Round-1 ledger the skeptic verdicts are truncated
+   mid-sentence and the sub-agent transcripts are gone, so no finding could rest on them and every
+   repro had to be re-verified by hand. Whatever adversarial or skeptic pass you run, its output must
+   survive into the deliverable in full.
+3. **Split the two jobs by shape.** Job 1 (the existing surface) is broad, independent and rewards
+   fan-out. Job 2 (the auth design, §"the two jobs" above) is a single deep judgement question —
+   parallel agents synthesise into something blander than one considered opinion. Do not fan it out.
+
 ## Context worth reading first
 
 * `docs/REVIEW_PREPROD_PRODUCTION_TRIAGE.md` — PR-1..PR-7, the production-readiness findings. PR-4
