@@ -105,6 +105,25 @@ its own gates — see `docs/REVIEW_PREPROD_BACKLOG.md`. Do not re-audit verdict 
 6. Dependency posture across NuGet and npm — known-vulnerable versions, and licences.
 7. Is the tile server safe to expose directly, or does it belong behind the API/CDN?
 
+## Unmade decisions you must work around
+
+**The deployment target is not decided** — neither the host nor whether Postgres will be managed or
+self-run. Do not wait for it and do not assume one. Most of this brief is deployment-independent:
+injection paths, secrets in git history, error leakage, input validation, dependency posture, the
+`tileserv_ro` grants, and the CORS configuration in code are all reviewable today and stay valid.
+
+Where a finding *is* contingent, do two things:
+
+1. **Mark it contingent** and say what it depends on, so it is not re-litigated later.
+2. **Say which hosting choice would resolve it.** This review is an *input* to the deployment
+   decision, not merely a consumer of it — several open items (PR-1 per-process rate limiting, PR-6
+   CDN and cache headers, the off-box half of PR-7, job scheduling) collapse differently depending on
+   the answer. If managed Postgres or a particular host removes a class of finding, that is
+   decision-relevant information and worth stating plainly.
+
+Also unmade: **private beta vs public launch**. It changes whether some findings block or merely
+want fixing. Where it matters, give both answers rather than picking one.
+
 ## Constraints — please respect these
 
 * **Read-only first.** The database holds ~290,000 rows of real ETL output that took hours to build
