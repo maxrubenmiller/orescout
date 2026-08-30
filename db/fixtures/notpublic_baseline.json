@@ -39,24 +39,52 @@
     "landed; raising one is an admission that something regressed and needs its own justification.",
     "A gate whose baseline quietly follows reality is not a gate."
   ],
-  "_recorded": "2026-08-21",
-  "_recorded_against": "tiles.legality_polygons generation 20260821T034529Z (229,923 rows), post PP-30 sweep + PP-32 parcel classes",
+  "_recorded": "2026-08-29 (PP-36 applied to ID/UT/AZ/NV/CO + cross-border sweep re-run)",
+  "_recorded_against": "tiles.legality_polygons 289,679 rows, post PP-36 parcel-basis carve on 5 of 8 states + crossborder_sweep 764 rows",
   "_measured_by": "GATE_DENSITY=0, seed 42, region-clipped, parcels off",
-  "_total_at_record": 11,
+  "_total_at_record": 4,
   "states": {
-    "AZ": 2,
+    "AZ": 0,
     "CA": 4,
-    "CO": 1,
-    "ID": 1,
+    "CO": 0,
+    "ID": 0,
     "NM": 0,
-    "NV": 1,
+    "NV": 0,
     "OR": 0,
-    "UT": 2
+    "UT": 0
   },
   "_history": [
     "2026-08-19: 18 total (CA 4, UT 2, NV 7, AZ 3, CO 1, NM 0, OR 0, ID 1).",
     "2026-08-21: 11 total. The PP-30 cross-border sweep removed NV 7->1 and AZ 3->2 and changed",
     "            nothing else, which is what falsified the original claim that all 18 were PP-30.",
-    "            The remaining 11 are PP-35: cause unidentified, diagnosis pending."
+    "            The remaining 11 are PP-35: cause unidentified, diagnosis pending.",
+    {
+      "date": "2026-08-29",
+      "from": 11,
+      "to": 4,
+      "per_state_before": {
+        "AZ": 2,
+        "CA": 4,
+        "CO": 1,
+        "ID": 1,
+        "NM": 0,
+        "NV": 1,
+        "OR": 0,
+        "UT": 2
+      },
+      "per_state_after": {
+        "AZ": 0,
+        "CA": 4,
+        "CO": 0,
+        "ID": 0,
+        "NM": 0,
+        "NV": 0,
+        "OR": 0,
+        "UT": 0
+      },
+      "why": "PP-36: the sliver filter thresholded the FRAGMENT rather than the source PARCEL. Carves now keep a fragment when the ground it sits on clears the 400 m2 floor however small the fragment; sweep_crossborder.sh got the same basis fix against the intersection. Re-carved ID/UT/AZ/NV/CO and re-ran the sweep across all 8 states. Every non-CA state is now 0. Lowered deliberately by a human commit, not automatically.",
+      "remaining": "CA 4, all structural: CAL FIRE maps public ownership only, so those four sit inside the 100 m confirm-open buffer with nothing in calfire_notpub to punch a hole in it. PP-36 cannot reach them. Closing this needs CA parcel data.",
+      "not_recarved": "CA, NM, OR still carry the pre-PP-36 predicate. NM and OR are already 0; CA is structural. Both catch up at the next full rebuild."
+    }
   ]
 }

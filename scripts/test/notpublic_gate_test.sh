@@ -60,28 +60,43 @@ GATE_TARGET=tiles.__definitely_not_a_table $GATE nv >/dev/null 2>&1
 chk "nonexistent target table exits 2 rather than sweeping nothing" $?
 
 echo "== C. the gate FAILS on a regression past baseline =="
-# Force a regression by holding NV to zero. NV genuinely has a non-zero known residual (PP-30), so
-# this is a real measurement being compared against a stricter bar — not a synthetic fixture.
-python3 -c "
+# Pick the state with the LARGEST recorded residual and hold it to zero. This used to hardcode NV,
+# which broke the moment NV was actually fixed (PP-36 took it 1 -> 0): forcing a baseline of 0 on a
+# state that genuinely has 0 produces no regression, and three checks failed for a GOOD reason.
+# Deriving the state keeps this a real measurement against a stricter bar rather than a fixture that
+# silently rots every time the pipeline improves.
+RS=$(python3 -c "
+import json;d=json.load(open('$BASE'))['states']
+k=max(d,key=lambda x:d[x])
+print(k if d[k]>0 else '')")
+if [ -z "$RS" ]; then
+  # Genuinely wonderful, and genuinely untestable this way. Say so instead of passing vacuously.
+  echo "  ✗ BROKEN: every state's baseline is 0, so regression detection cannot be exercised."
+  echo "    Rewrite C/D against a synthetic baseline of -1, or retire them." >&2
+  fail=$((fail+1))
+else
+  rsl=$(echo "$RS" | tr '[:upper:]' '[:lower:]')
+  python3 -c "
 import json
-d=json.load(open('$BASE')); d['states']['NV']=0
+d=json.load(open('$BASE')); d['states']['$RS']=0
 json.dump(d, open('$TMP/zero.json','w'))"
-GATE_BASELINE="$TMP/zero.json" $GATE nv > "$TMP/regress.out" 2>&1
-rc=$?
-[ "$rc" -ne 0 ]
-chk "exits non-zero when NV exceeds a baseline of 0 (got exit $rc)" $?
-grep -q 'REGRESSION' "$TMP/regress.out"
-chk "reports the word REGRESSION with the delta" $?
-grep -q 'REGRESSED STATES' "$TMP/regress.out"
-chk "names the regressed state in the summary" $?
+  GATE_BASELINE="$TMP/zero.json" $GATE "$rsl" > "$TMP/regress.out" 2>&1
+  rc=$?
+  [ "$rc" -ne 0 ]
+  chk "exits non-zero when $RS exceeds a baseline of 0 (got exit $rc)" $?
+  grep -q 'REGRESSION' "$TMP/regress.out"
+  chk "reports the word REGRESSION with the delta" $?
+  grep -q 'REGRESSED STATES' "$TMP/regress.out"
+  chk "names the regressed state in the summary" $?
 
-echo "== D. the gate PASSES at its recorded baseline =="
-$GATE nv > "$TMP/atbase.out" 2>&1
-rc=$?
-[ "$rc" -eq 0 ]
-chk "exits 0 when NV is at its recorded baseline (got exit $rc)" $?
-grep -q 'at baseline' "$TMP/atbase.out"
-chk "reports 'at baseline' rather than a clean pass, so the residual stays visible" $?
+  echo "== D. the gate PASSES at its recorded baseline =="
+  $GATE "$rsl" > "$TMP/atbase.out" 2>&1
+  rc=$?
+  [ "$rc" -eq 0 ]
+  chk "exits 0 when $RS is at its recorded baseline (got exit $rc)" $?
+  grep -q 'at baseline' "$TMP/atbase.out"
+  chk "reports 'at baseline' rather than a clean pass, so the residual stays visible" $?
+fi
 
 echo
 echo "not-public gate: $pass passed, $fail failed (of $((pass+fail)))"
