@@ -17,7 +17,31 @@ RED / YELLOW / GREEN verdicts over public-land and mining-claim data across 8 we
 **It has never been deployed.** The threat model is therefore *pre-launch*: the question is not
 "what is being exploited" but "what must be true before this is exposed to the public internet."
 
-## The two jobs — please do both
+## How to run this
+
+**Job 1 and Job 2 are separately runnable, and should be run separately.** They have different
+shapes: Job 1 is broad and parallelises well; Job 2 is one deep judgement question that fan-out makes
+worse. Nothing about running Job 1 first constrains Job 2.
+
+**Run 1 — Job 1 (discovery).** Suits a multi-agent orchestration. Read the orchestrator note near the
+end of this file first, then:
+
+> Read `docs/briefs/OPUS_BRIEF_security_review.md` and execute **Job 1 only**. Run to your stopping
+> rule — two consecutive dry rounds — or state plainly that you stopped early and why. Write the
+> ledger to `docs/REVIEW_SECURITY_AUDIT.md` and **include the verification evidence inline in that
+> file**: sub-agent transcripts do not survive the run, so anything not written into the deliverable
+> is lost. Do not attempt Job 2.
+
+**Run 2 — Job 2 (the auth design).** A focused session, conversational, no fan-out. Its value is in
+being interrogated as it goes, so do not delegate it to a sub-agent that returns a summary.
+
+> Read `docs/briefs/OPUS_BRIEF_security_review.md` and work through **Job 2 only** with me.
+
+**The deliverable must be a committed file.** The Round-1 ledger survived because it was committed
+(`368fbbd`); its skeptic transcripts did not, because they were not. Ask for the file, and ask for
+the evidence to be in it.
+
+## The two jobs
 
 **Job 1 — review the surface that exists.** Much of it will not change before launch and is worth
 reviewing now: the SQL surface across the API and ETL, the database role separation, secrets
