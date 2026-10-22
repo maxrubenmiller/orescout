@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — Half-2 spatial unify (PROJECT_PLAN.md §6.6.1).
+-- OreScout — Half-2 spatial unify (docs/planning/PROJECT_PLAN.md §6.6.1).
 -- Builds tiles.legality_polygons from staging by baking in the Stage-1 verdict
 -- (orescout_base_verdict) per feature. The assessment engine and the map tiles
 -- both read the resulting `verdict`.

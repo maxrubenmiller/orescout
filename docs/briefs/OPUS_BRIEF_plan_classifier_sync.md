@@ -5,7 +5,7 @@
 match the CODE — never the reverse. Any edit to the classifier itself is out of scope (red-lane).**
 
 ## The problem
-`PROJECT_PLAN.md` §6.4 (Stage-1 decision table) and the §6.6.1 code sample predate two
+`docs/planning/PROJECT_PLAN.md` §6.4 (Stage-1 decision table) and the §6.6.1 code sample predate two
 reconciliations and drift from the shipped classifier:
 - §6.4 PRIORITY 1 / the §6.6.1 sample still list **`NWRA`** and **`WIL`** — codes deliberately
   dropped 2026-06-18 when the real PAD-US domain was confirmed (they don't occur).
@@ -27,12 +27,12 @@ reconciliations and drift from the shipped classifier:
 ## Acceptance
 - Every code in §6.4's lists appears in the corresponding classifier list and vice versa
   (show a diff-style check in your report — e.g. sorted lists side by side).
-- `git diff` touches ONLY `PROJECT_PLAN.md` (+ a changelog line at the file bottom if the doc's
+- `git diff` touches ONLY `docs/planning/PROJECT_PLAN.md` (+ a changelog line at the file bottom if the doc's
   convention calls for it).
 - `./scripts/run-fixtures.sh` still 36/36 (proves you didn't touch the classifier).
 
 ## Machine gotchas
 `~/.curlrc` adds retries (use `curl -q` if you probe anything); docker compose from the main
 checkout works as-is. (Updated 2026-07-12: no concurrent work in flight.) You touch only
-PROJECT_PLAN.md §6.4/§6.6.1/§6.4.2 — note §6.13's status block was rewritten on 2026-07-12 for
+docs/planning/PROJECT_PLAN.md §6.4/§6.6.1/§6.4.2 — note §6.13's status block was rewritten on 2026-07-12 for
 the sources-registry refactor; it is current, leave it alone.

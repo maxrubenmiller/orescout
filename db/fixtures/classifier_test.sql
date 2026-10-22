@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — Tier-A classifier fixtures, runnable form (PROJECT_PLAN.md §6.4.2)
+-- OreScout — Tier-A classifier fixtures, runnable form (docs/planning/PROJECT_PLAN.md §6.4.2)
 --
 -- Exercises orescout_base_verdict() against known attribute tuples. No data load
 -- required. Run with ON_ERROR_STOP=1 so any mismatch makes psql exit non-zero

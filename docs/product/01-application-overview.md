@@ -2,7 +2,7 @@
 
 **Audience:** internal stakeholders, new team members, and anyone who needs to understand what OreScout is, how it works, and why it was built the way it was — without reading the codebase.
 
-**Status of this document:** describes the application **as built on 2026-08-20**. Where something is planned rather than built, it is labelled. Derived from `PROJECT_PLAN.md`, the pre-production review docs, and — where documentation and code disagreed — from the source code itself.
+**Status of this document:** describes the application **as built on 2026-08-20**. Where something is planned rather than built, it is labelled. Derived from `docs/planning/PROJECT_PLAN.md`, the pre-production review docs, and — where documentation and code disagreed — from the source code itself.
 
 **Companion documents:**
 - [`02-legality-engine.md`](02-legality-engine.md) — how the legal verdict is actually decided, and every safety check behind it.
@@ -468,7 +468,7 @@ Most of what that audit found has since been fixed. What remains open:
 If you go into the repository's engineering docs, be aware that several of them have drifted:
 
 - `README.md` still describes the PAD-US version, polygon counts, and claim counts from an earlier era, and refers to a "PAD-US 4.2 upgrade." **There is no PAD-US 4.2** — 4.1 is current, and the "4.2" label was anticipatory. Do not put it in stakeholder material.
-- `PROJECT_PLAN.md` is the stated source of truth for design intent and the decisions log, and is excellent for *why*. For *what the system does today*, prefer the code and the pre-production review documents.
+- `docs/planning/PROJECT_PLAN.md` is the stated source of truth for design intent and the decisions log, and is excellent for *why*. For *what the system does today*, prefer the code and the pre-production review documents.
 - Several fixture and row counts appear in multiple documents with different values. The most recent audit run wins.
 
 This document, and its two companions, were written by reading the code where documentation and implementation disagreed.

@@ -9,7 +9,7 @@ public interface IAssessmentService
 }
 
 /// <summary>
-/// The /assessment engine (PROJECT_PLAN.md §5.2 / §6.4). Implements the contract end-to-end:
+/// The /assessment engine (docs/planning/PROJECT_PLAN.md §5.2 / §6.4). Implements the contract end-to-end:
 ///   Stage 0  in-region gate -> OUT_OF_REGION
 ///   Stage 1  read the baked `verdict` from tiles.legality_polygons (most-restrictive overlap)
 ///   Stage 2  live claims overlay

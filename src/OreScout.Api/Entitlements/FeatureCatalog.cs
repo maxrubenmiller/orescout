@@ -4,7 +4,7 @@ namespace OreScout.Api.Entitlements;
 /// Gateable capability tiers. Everything ships <see cref="Free"/> today; flipping a capability to
 /// <see cref="Paid"/> (and teaching <see cref="IEntitlementService"/> to read the account's plan) is
 /// how a feature goes behind the paywall — with no change to the feature's own code.
-/// PROJECT_PLAN.md §6.14 / decision #45.
+/// docs/planning/PROJECT_PLAN.md §6.14 / decision #45.
 /// </summary>
 public enum FeatureTier { Free, Paid }
 
@@ -12,7 +12,7 @@ public enum FeatureTier { Free, Paid }
 public record Feature(string Id, string Label, FeatureTier Tier);
 
 /// <summary>
-/// THE canonical list of gateable capabilities (PROJECT_PLAN.md §6.14). Single source of truth: the
+/// THE canonical list of gateable capabilities (docs/planning/PROJECT_PLAN.md §6.14). Single source of truth: the
 /// API gates against these ids, and the frontend renders its layer list + lock affordance from
 /// <c>/api/v1/entitlements</c>, which is derived from this catalog. To make a new capability
 /// paywall-ready: add it here, then gate it at its serving point with
@@ -33,7 +33,7 @@ public static class FeatureCatalog
     // API-served capabilities — gate at the endpoint.
     public const string ExportGpx = "export.gpx";
 
-    // Future — the access-routing feature (MVUM/trails, see DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md).
+    // Future — the access-routing feature (MVUM/trails, see docs/research/DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md).
     public const string RoutingAccess = "routing.access";
 
     /// <summary>All gateable capabilities. Everything <see cref="FeatureTier.Free"/> today (decision #45 — the seam, not the paywall).</summary>

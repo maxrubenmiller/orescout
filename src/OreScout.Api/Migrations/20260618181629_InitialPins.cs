@@ -37,7 +37,7 @@ namespace OreScout.Api.Migrations
                     table.CheckConstraint("ck_pins_status", "status IN ('want_to_visit','visited')");
                 });
 
-            // DB-side concerns EF doesn't model directly (PROJECT_PLAN.md §6.5):
+            // DB-side concerns EF doesn't model directly (docs/planning/PROJECT_PLAN.md §6.5):
             // a generated geometry column, spatial/tag indexes, and the updated_at trigger.
             migrationBuilder.Sql("""
                 ALTER TABLE public.pins

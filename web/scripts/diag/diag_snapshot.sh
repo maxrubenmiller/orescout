@@ -3,7 +3,7 @@
 # then cleans up. See diag_snapshot.mjs. Idempotent-ish: deletes its own test pins at the end.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
+cd "$SCRIPT_DIR/../../.."
 KEY="${ORESCOUT_API_KEY:-dev-local-key-change-me}"
 API="http://localhost:5167/api/v1"
 H=(-H "X-Api-Key: $KEY" -H "Content-Type: application/json")

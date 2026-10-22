@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# POC private-land coverage validation (PROJECT_PLAN.md §6.4.1).
+# POC private-land coverage validation (docs/planning/PROJECT_PLAN.md §6.4.1).
 #
 # Hunts for FALSE-GREEN on known-private land (the trespass-risk defect; zero-tolerance).
 # Ground truth = curated known private inholdings (independent of PAD-US — see §6.4.1).

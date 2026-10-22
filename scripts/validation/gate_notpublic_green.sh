@@ -25,7 +25,7 @@
 #   FAIL             := any sampled point on a source polygon >= 400 m² scores GREEN
 #
 # Both counts are printed. Only the >=400 m² one gates, because the carve deliberately does not
-# rescue sub-400 m² fragments — that is its documented design (PROJECT_PLAN.md:2374, "validation
+# rescue sub-400 m² fragments — that is its documented design (docs/planning/PROJECT_PLAN.md:2374, "validation
 # frame floor 400 m², recorded not hidden"), not a leak. Failing on them would hold the gate to a
 # standard the pipeline never claimed. The distinction is not cosmetic: measured in CO, 337 raw
 # residuals collapse to exactly 1 real parcel once the floor is applied (median sliver: 6 m²).
@@ -146,7 +146,7 @@ SELECT s.pt, s.src_m2,
         WHERE ST_Covers(l.geom, s.pt) ORDER BY orescout_rank(l.verdict) DESC LIMIT 1) AS v
 FROM sampled s;
 -- Last field decides pass/fail: false-GREENs on source polygons at or above the documented
--- 400 m2 meaningful-parcel floor (PROJECT_PLAN.md:2374). Sub-floor fragments are counted and
+-- 400 m2 meaningful-parcel floor (docs/planning/PROJECT_PLAN.md:2374). Sub-floor fragments are counted and
 -- printed but never gate: the carve documents that it does not rescue them. NOTE: no double
 -- quotes in this string - it lives inside a double-quoted bash assignment and they terminate it.
 SELECT 'SUMMARY|' || count(*) || '|' || count(*) FILTER (WHERE v='GREEN') || '|' ||

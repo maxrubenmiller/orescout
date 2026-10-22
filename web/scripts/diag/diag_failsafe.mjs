@@ -1,4 +1,4 @@
-// Fail-safe / freshness diag (IMP-04, IMP-09, IMP-10). Run: node web/diag_failsafe.mjs [url]
+// Fail-safe / freshness diag (IMP-04, IMP-09, IMP-10). Run: node web/scripts/diag/diag_failsafe.mjs [url]
 //   (a) hatch-sprite fail-safe: with the 'hatch' image removed, the YELLOW under-layer
 //       `legality-ambiguous-base` still renders over a known-YELLOW area.
 //   (b) catch-all `legality-unknown-verdict` layer exists (and renders nothing on clean data).

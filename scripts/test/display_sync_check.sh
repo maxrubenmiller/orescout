@@ -48,7 +48,7 @@ echo "== B. served low-zoom GREEN does not cover engine RED/YELLOW (PP-7) =="
 # restrictive than the map. Fable's PP-23 is the same artifact class and was correctly refuted as
 # an accepted residual.
 #
-# The threshold is the project's own 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374). Any
+# The threshold is the project's own 400 m² "meaningful parcel" floor (docs/planning/PROJECT_PLAN.md:2374). Any
 # green piece sharing MORE than that with engine RED/YELLOW is a real affirmative false-open and
 # fails. Measured before the PP-7 fix: green-over-RED clusters to 0.33 km² and green-over-YELLOW to
 # 5.84 km². Measured after: worst single overlap 3 m², median 0.

@@ -1,4 +1,4 @@
-// Type-ahead geocode dropdown diag (decision #40). Run: node web/diag_geocode.mjs [url]
+// Type-ahead geocode dropdown diag (decision #40). Run: node web/scripts/diag/diag_geocode.mjs [url]
 //  (a) a place name shows multiple candidates, ALL region-limited to the 8 supported states
 //  (b) the dropdown caps at ~5 rows and scrolls when there are more
 //  (c) selecting a place FLIES but does NOT assess (no verdict panel) — the intent rule

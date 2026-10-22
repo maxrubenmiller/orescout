@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tile-budget check for the Tier-B prospecting overlay (TIER_B_FABLE_BRIEF.md "Risks": a dense
+# Tile-budget check for the Tier-B prospecting overlay (docs/briefs/TIER_B_FABLE_BRIEF.md "Risks": a dense
 # point layer must not recreate the legality layer's low-zoom tile timeouts, F-3).
 # Fetches a concurrent viewport of tiles at the layer's minzoom band (z7 = where High appears)
 # plus a z10 tile (Moderate band): all must be HTTP 200 and <= 500 KB.

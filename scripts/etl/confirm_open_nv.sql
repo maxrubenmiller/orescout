@@ -29,7 +29,7 @@ CREATE TABLE staging.conf_notpub_nv AS
   -- and NOT(NULL) is NULL, so plain NOT silently dropped every unknown-ownership parcel from the
   -- carve — the exact rows the design says must be carved (review finding PP-5; confirm_open_ut.sql
   -- got this right with 'owner IS NULL OR owner NOT IN (...)', the generator did not). NULL/unknown
-  -- ownership must never confirm open (PROJECT_PLAN.md:2359).
+  -- ownership must never confirm open (docs/planning/PROJECT_PLAN.md:2359).
   WHERE (upper(abbr) IN ('BLM','FS','NPS','FWS','BR')) IS NOT TRUE;
 -- PARCEL-GRADE CARVE (Tier-1 validation finding, 2026-07-12): SMA sources are GCDB/PLSS-grade
 -- and miss parcel-sized private inholdings inside blocks they map federal — the validation
@@ -120,7 +120,7 @@ FROM (
 -- fragment and dropped.
 -- A fragment overlapping ground an authoritative source affirmatively maps as NOT public is not
 -- noise, it is the signal. Such fragments are kept down to the project's own documented
--- "meaningful parcel" floor of 400 m² (PROJECT_PLAN.md:2374, "recorded not hidden") rather than
+-- "meaningful parcel" floor of 400 m² (docs/planning/PROJECT_PLAN.md:2374, "recorded not hidden") rather than
 -- the coarser per-state sliver threshold. Below that floor both are boundary artifacts.
 -- Deliberately asymmetric: extra YELLOW is safe, missing YELLOW is not.
 --

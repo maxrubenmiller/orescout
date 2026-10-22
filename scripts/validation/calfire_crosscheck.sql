@@ -1,6 +1,6 @@
 -- CA Confirm-Open cross-check: how accurate is PAD-US "open" (GREEN) for CA, measured
 -- against the authoritative CA public-ownership layer (CAL FIRE, staging.calfire_ownership)?
--- PROJECT_PLAN §6.4.1 (Confirm-Open) / DATA_SOURCE_INVESTIGATION.md.
+-- PROJECT_PLAN §6.4.1 (Confirm-Open) / docs/research/DATA_SOURCE_INVESTIGATION.md.
 --
 -- Prereq: ./scripts/etl/pull_calfire.sh  (loads + indexes staging.calfire_ownership; this script
 -- also ST_MakeValid-repairs it). Run: docker compose exec -T postgres psql -U postgres -d miningapp -f /…/calfire_crosscheck.sql

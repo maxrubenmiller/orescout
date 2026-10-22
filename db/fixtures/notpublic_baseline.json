@@ -2,7 +2,7 @@
   "_what": "Per-state ceiling of KNOWN, ACCEPTED false-GREENs for scripts/validation/gate_notpublic_green.sh.",
   "_how_it_gates": [
     "The gate counts false-GREENs on not-public source parcels at or above the documented 400 m2",
-    "meaningful-parcel floor (PROJECT_PLAN.md:2374), per state, region-clipped. It FAILS if a state",
+    "meaningful-parcel floor (docs/planning/PROJECT_PLAN.md:2374), per state, region-clipped. It FAILS if a state",
     "EXCEEDS its number here. Equal is a pass; fewer is a pass and is reported as an improvement.",
     "A state absent from this file is held to ZERO - a newly added state must introduce no",
     "false-GREEN at all."

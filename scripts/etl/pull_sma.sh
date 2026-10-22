@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ingest a state's surface-management/ownership layer into staging for the confirm-open
 # cross-check (PROJECT_PLAN §6.4.1/§6.13; TODO Track 2 — expansion beyond CA/UT).
-# Sources verified live 2026-07-11 (research report in DATA_SOURCE_INVESTIGATION.md):
+# Sources verified live 2026-07-11 (research report in docs/research/DATA_SOURCE_INVESTIGATION.md):
 # every layer is detailed (14k–270k polys) and carries AFFIRMATIVE Private — the Utah-style
 # buffer-carve works in all six states.
 #

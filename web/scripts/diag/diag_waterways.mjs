@@ -52,5 +52,5 @@ console.log(JSON.stringify(r, null, 2));
 console.log('--- waterways tile responses ---');
 console.log(tileLog.slice(0, 8).join('\n') || '(none)');
 await page.screenshot({ path: 'diag_waterways.png' });
-console.log('screenshot -> web/diag_waterways.png');
+console.log('screenshot -> web/scripts/diag/diag_waterways.png');
 await browser.close();

@@ -7,7 +7,7 @@ using OreScout.Api.Models;
 namespace OreScout.Api.Middleware;
 
 /// <summary>
-/// The central 5xx chokepoint (PROJECT_PLAN.md §6.3, decisions #12 + #33). It splits failures into:
+/// The central 5xx chokepoint (docs/planning/PROJECT_PLAN.md §6.3, decisions #12 + #33). It splits failures into:
 ///   • a CORE DEPENDENCY being unavailable (PostGIS unreachable) → HTTP 503 + Retry-After (retryable),
 ///   • a genuine bug → HTTP 500,
 /// logs every 5xx with method+path for prod alerting (503 pages infra; 500 is a dev-backlog bug), and

@@ -12,7 +12,7 @@ public interface IGeocoder
 }
 
 /// <summary>
-/// Proxies Nominatim/OSM (PROJECT_PLAN.md §6.2). Keeps the geocoder choice internal and lets us
+/// Proxies Nominatim/OSM (docs/planning/PROJECT_PLAN.md §6.2). Keeps the geocoder choice internal and lets us
 /// swap providers later without touching clients. Sends a descriptive User-Agent and honors the
 /// OSM usage policy two ways (§6.10): a 24h in-memory cache keyed on the normalized query (empty
 /// result lists are cached too — "no matches" is an answer), and a process-wide gate that spaces

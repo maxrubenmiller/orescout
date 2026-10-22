@@ -1,13 +1,10 @@
-# OreScout
+# OreScout — developer notes
 
-A decision-support tool for amateur miners, prospectors, and rockhounds that answers one
-question: **"Can I legally collect rocks / pan for gold / prospect *here*?"** — backed by public
-land-management and mining-claim data, shown on a map with color-coded legality overlays.
+Build history, data runbooks and deferred enhancements. This was the project README during
+development; the current overview is the [project README](../README.md).
 
-> **Source of truth:** the full engineering plan lives in [`PROJECT_PLAN.md`](PROJECT_PLAN.md)
-> (vision, scope, data sources, architecture, rules engine, schema, ETL, decisions log). This
-> README covers getting started and **deferred / future enhancements** that are intentionally out
-> of scope for the POC.
+> **Source of truth:** the full engineering plan lives in [`docs/planning/PROJECT_PLAN.md`](planning/PROJECT_PLAN.md)
+> (vision, scope, data sources, architecture, rules engine, schema, ETL, decisions log).
 
 ## Status
 
@@ -33,7 +30,7 @@ land-management and mining-claim data, shown on a map with color-coded legality 
   Sawtooth Wilderness (ID) → RED, open BLM → GREEN, downtown Denver → no-data UNKNOWN (private).
   Overlays render across all states (tile bounds now span the full 8-state region).
 - *Source is the live PAD-US v3.0 layer; data-currency upgrade to PAD-US 4.2 is a documented
-  follow-up (TODO.md / ScienceBase item 65294599d34e44db0e2ed7cf).*
+  follow-up (docs/planning/TODO.md / ScienceBase item 65294599d34e44db0e2ed7cf).*
 
 **Overlay tiles + region gate are live:**
 - pg_tileserv publishes **only** `tiles.legality_polygons` (verified: `public.pins` is not exposed)
@@ -56,7 +53,7 @@ vector tiles; the frontend "Active mining claims" layer renders them orange (min
 per-point live MLRS check in `/assessment` is unchanged. (Still to automate: a nightly schedule.)
 
 **Still to do:** PAD-US 4.2 data-currency upgrade; PostGIS→503 edge case; frontend polish. The
-SMA cross-check was evaluated and dropped (decision #28 — LimitedScale too coarse). See `TODO.md`.
+SMA cross-check was evaluated and dropped (decision #28 — LimitedScale too coarse). See `docs/planning/TODO.md`.
 
 ### Rebuild the legality layer (PAD-US 4.1)
 ```bash
@@ -75,8 +72,8 @@ docker compose up -d postgres
 
 ### Per-state source registry (§6.13) — adding a state
 
-Every per-state parameter lives in **[`etl/sources.json`](etl/sources.json)** (the single source of
-truth; field spec in [`etl/sources.schema.md`](etl/sources.schema.md), read via
+Every per-state parameter lives in **[`etl/sources.json`](../etl/sources.json)** (the single source of
+truth; field spec in [`etl/sources.schema.md`](../etl/sources.schema.md), read via
 `scripts/etl/registry_lib.sh`). The 🔒 invariant: **adding a state = one registry entry** (+ a small
 classifier mapping only for a new attribute vocabulary) — the engine, tiles, and frontend never change.
 
@@ -88,7 +85,7 @@ classifier mapping only for a new attribute vocabulary) — the engine, tiles, a
 ```
 
 **Full runbook (mechanical spine + judgment core + verification gates):
-[`docs/ADD_A_STATE.md`](docs/ADD_A_STATE.md).**
+[`docs/ADD_A_STATE.md`](ADD_A_STATE.md).**
 
 ## Quick start
 
@@ -114,7 +111,7 @@ curl -H "X-Api-Key: dev-local-key-change-me" "localhost:5167/api/v1/assessment?l
 ```
 
 Tile server (optional until overlays exist): `docker compose up -d pg_tileserv`. Full bootstrap
-order and the production path are in [`PROJECT_PLAN.md`](PROJECT_PLAN.md) §6.8 / §6.11.
+order and the production path are in [`docs/planning/PROJECT_PLAN.md`](planning/PROJECT_PLAN.md) §6.8 / §6.11.
 
 ---
 
@@ -177,9 +174,9 @@ point — it's a lead for exploring the drainage upstream, not a dig-here.
 | **USGS MRDS** (already ingested for the gold-occurrence overlay) | historic producer locations for Signal 3 | static, pre-2011 · public domain |
 
 The engine is **commodity-generic**: pathfinder sets, method filters, thresholds, and popup
-wording live in [`config/prospectivity.json`](config/prospectivity.json) — gold is simply the
-first populated entry. Ingest runbook below; scoring details in `PROJECT_PLAN.md` §5.3 and
-`TIER_B_FABLE_BRIEF.md`.
+wording live in [`config/prospectivity.json`](../config/prospectivity.json) — gold is simply the
+first populated entry. Ingest runbook below; scoring details in `docs/planning/PROJECT_PLAN.md` §5.3 and
+`docs/briefs/TIER_B_FABLE_BRIEF.md`.
 
 ### Runbook: (re)build the prospecting layer
 
@@ -261,7 +258,7 @@ Pass `DATABASE_URL` as a secret/env var.
   page someone if it goes stale.
 
 **Cadence:** nightly (~3am). The source updates near-daily (`Modified` was yesterday), so daily
-captures it. PROJECT_PLAN.md §6.6.2.
+captures it. docs/planning/PROJECT_PLAN.md §6.6.2.
 
 ### Pin export: GPX + KML
 

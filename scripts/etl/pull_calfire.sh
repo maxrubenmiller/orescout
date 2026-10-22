@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ingest CA CAL FIRE/FRAP public-ownership ("Land Ownership") into staging for the
-# Confirm-Open cross-check (PROJECT_PLAN §6.4.1, decision #30; DATA_SOURCE_INVESTIGATION.md).
+# Confirm-Open cross-check (PROJECT_PLAN §6.4.1, decision #30; docs/research/DATA_SOURCE_INVESTIGATION.md).
 #
 # Source: the official CAL FIRE org (egis.CALFIRE) hosted view on ArcGIS Online
 # (svcs1.arcgis.com — reachable; egis.fire.ca.gov itself is not). PUBLIC ownership only

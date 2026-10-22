@@ -5,7 +5,7 @@
 //  (c) save-form state is per-location: saving at B never leaks "✓ Saved" onto a revisited,
 //      CACHED point A (react-query keeps Result mounted on cached revisits — the original bug)
 //  (d) GPX-export failure and pin-delete failure show visible feedback (were silent)
-// Creates and deletes its own test pin. Run: node web/diag_states.mjs [url]  (default :5173)
+// Creates and deletes its own test pin. Run: node web/scripts/diag/diag_states.mjs [url]  (default :5173)
 import { chromium } from 'playwright';
 
 const url = process.argv[2] || 'http://localhost:5173';

@@ -5,7 +5,7 @@ namespace OreScout.Api.Entitlements;
 /// authenticates with a single static API key (§6.2) — so every request resolves to
 /// <see cref="Anonymous"/> with the implicit full plan. When the JWT identity migration lands
 /// (§6.2 / decision #11) build this from the authenticated principal's claims in
-/// <see cref="FromHttpContext"/>; call sites do not change. PROJECT_PLAN.md §6.14.
+/// <see cref="FromHttpContext"/>; call sites do not change. docs/planning/PROJECT_PLAN.md §6.14.
 /// </summary>
 public record EntitlementPrincipal(string? UserId, string Plan)
 {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression check for IMP-02 (PROJECT_PLAN.md §6.4): boundary-inclusive verdict lookup +
+# Regression check for IMP-02 (docs/planning/PROJECT_PLAN.md §6.4): boundary-inclusive verdict lookup +
 # the two standing warnings.
 #   1. A point exactly ON a RED polygon boundary resolves most-restrictive (RED), not to the
 #      surrounding open polygon (ST_Covers, not ST_Contains).

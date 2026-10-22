@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — database bootstrap (PROJECT_PLAN.md §6.5 / §6.8 / §6.11)
+-- OreScout — database bootstrap (docs/planning/PROJECT_PLAN.md §6.5 / §6.8 / §6.11)
 --
 -- Owns: extensions, schemas, the low-privilege pg_tileserv role, the `meta`
 -- table, and the `supported_region` table used by the Stage-0 in-region gate.

@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — waterways overlay build (PROJECT_PLAN.md §6.13 `reference` role).
+-- OreScout — waterways overlay build (docs/planning/PROJECT_PLAN.md §6.13 `reference` role).
 -- Promotes staging.nhdplus_hr_flowlines (USGS NHDPlus HR NHDFlowline: FType=460 streams
 -- + FCode=55800 artificial paths, loaded by scripts/etl/pull_nhdplus_hr.sh) into tiles.waterways.
 -- Replaces the former CDFW `ca_streams` build (docs/WATERWAYS_NHDPLUS_HR_PLAN.md).

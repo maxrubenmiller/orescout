@@ -1,5 +1,5 @@
 {
-  "_comment": "Tier-A classifier fixtures (PROJECT_PLAN.md §6.4.2). Pure attribute -> verdict, no geometry, no data load required. Mirrors db/fixtures/classifier_test.sql which is the runnable form. Literals confirmed against live PAD-US NV data (§6.6.1.1, 2026-06-18). expected=null means 'no signal' (rank 0) -> the request-time no-data/UNKNOWN path.",
+  "_comment": "Tier-A classifier fixtures (docs/planning/PROJECT_PLAN.md §6.4.2). Pure attribute -> verdict, no geometry, no data load required. Mirrors db/fixtures/classifier_test.sql which is the runnable form. Literals confirmed against live PAD-US NV data (§6.6.1.1, 2026-06-18). expected=null means 'no signal' (rank 0) -> the request-time no-data/UNKNOWN path.",
   "cases": [
     {
       "des_tp": "NP",

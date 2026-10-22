@@ -41,3 +41,6 @@ pgdata/
 diag_waterways.png
 diag_snapshot.png
 backups/
+
+# ---- Headless browser diag screenshots ----
+diag_*.png

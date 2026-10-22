@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ingest MRDS GOLD occurrences (USGS Mineral Resources Data System) for the 8 states into
 # staging for the REFERENCE-ONLY gold overlay (Tier A; PROJECT_PLAN §6.13 `reference` role;
-# DATA_SOURCE_INVESTIGATION.md MRDS section). Display-only: it serves tiles and NEVER feeds the
+# docs/research/DATA_SOURCE_INVESTIGATION.md MRDS section). Display-only: it serves tiles and NEVER feeds the
 # verdict engine (mineral occurrences aren't a legality input) — upholds the §6.13 invariant.
 #
 # Source: USGS MRDS "Compact" FeatureServer. Gold-filtered (CODE_LIST LIKE '%AU%'), clipped to

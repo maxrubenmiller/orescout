@@ -114,7 +114,7 @@ FROM (
 -- real private ground: the 100 m buffer erodes a parcel from every edge and the ST_Subdivide
 -- chunk lines cut the remainder, so a large private block can survive only as sub-threshold
 -- crumbs. A fragment overlapping affirmatively-not-public ground is signal, not noise, and is kept
--- down to the project's documented 400 m² "meaningful parcel" floor (PROJECT_PLAN.md:2374).
+-- down to the project's documented 400 m² "meaningful parcel" floor (docs/planning/PROJECT_PLAN.md:2374).
 WHERE ST_Area(d.geom::geography) > 500
 -- PP-36. The tests above measure the FRAGMENT. Subdivide chunk lines and buffer edges cut a
 -- large parcel into pieces, so a piece can fall under the floor while the parcel it came off

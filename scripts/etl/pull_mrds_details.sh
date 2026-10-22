@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ingest the MRDS *related tables* (Commodity / Materials / Names) that enrich the gold popup
-# (BACKLOG.md "Enrich the gold popup"). REFERENCE-ONLY, additive: it feeds extra display columns
+# (docs/planning/BACKLOG.md "Enrich the gold popup"). REFERENCE-ONLY, additive: it feeds extra display columns
 # on tiles.mrds and NEVER touches the verdict engine (upholds the §6.13 `reference` invariant).
 #
 # ── Source (join-key trap resolved empirically; see docs/briefs/OPUS_BRIEF_mrds_enrichment.md) ──

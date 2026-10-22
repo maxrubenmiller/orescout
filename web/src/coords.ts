@@ -2,7 +2,7 @@ import type { LatLng } from './types';
 
 // Parse a coordinate string. Handles decimal ("39.5, -117.0") and DMS
 // ("39°30'N 117°00'W", "39 30 00 N", "N39 30"). Returns null if not parseable
-// (caller falls back to geocoding). PROJECT_PLAN.md §4.3.
+// (caller falls back to geocoding). docs/planning/PROJECT_PLAN.md §4.3.
 
 const DECIMAL = /^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/;
 
