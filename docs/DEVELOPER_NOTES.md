@@ -3,8 +3,8 @@
 Build history, data runbooks and deferred enhancements. This was the project README during
 development; the current overview is the [project README](../README.md).
 
-> **Source of truth:** the full engineering plan lives in [`docs/planning/PROJECT_PLAN.md`](planning/PROJECT_PLAN.md)
-> (vision, scope, data sources, architecture, rules engine, schema, ETL, decisions log).
+> References to `PROJECT_PLAN`, `TODO`, `BACKLOG` and decision numbers point to the engineering
+> plan and planning docs, which are kept private.
 
 ## Status
 
@@ -111,7 +111,7 @@ curl -H "X-Api-Key: dev-local-key-change-me" "localhost:5167/api/v1/assessment?l
 ```
 
 Tile server (optional until overlays exist): `docker compose up -d pg_tileserv`. Full bootstrap
-order and the production path are in [`docs/planning/PROJECT_PLAN.md`](planning/PROJECT_PLAN.md) §6.8 / §6.11.
+order and the production path are in the engineering plan (§6.8 / §6.11).
 
 ---
 

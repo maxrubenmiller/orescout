@@ -47,3 +47,13 @@ diag_*.png
 
 # ---- Private: security audit ledger (kept locally, never published) ----
 docs/REVIEW_SECURITY_AUDIT.md
+
+# ---- Private: planning, reviews and research (kept locally, never published) ----
+/docs/planning/
+/docs/research/
+/docs/PLANNING_INPUTS.md
+/docs/LAUNCH_SEQUENCE.md
+/docs/DATA_REFRESH_PLAN.md
+/docs/WATERWAYS_NHDPLUS_HR_PLAN.md
+/docs/NON_FEDERAL_LAND_COLLECTING_RULES.md
+/docs/REVIEW_*.md

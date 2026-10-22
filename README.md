@@ -139,11 +139,12 @@ Known gaps are listed in [docs/product/01-application-overview.md](docs/product/
 | | |
 |---|---|
 | [docs/product/](docs/product/) | Product overview, the legality engine, external data sources (the best place to start) |
-| [docs/planning/PROJECT_PLAN.md](docs/planning/PROJECT_PLAN.md) | The full engineering plan and decisions log |
 | [docs/DEVELOPER_NOTES.md](docs/DEVELOPER_NOTES.md) | Build history, data runbooks, the prospecting-score math |
-| [docs/research/](docs/research/) | Data-source investigations |
-| [docs/](docs/) | Review reports, refresh plan, launch sequence |
 | [docs/briefs/](docs/briefs/) | AI-assisted review workflow (below) |
+
+The engineering plan, review reports and research notes are kept private. Code comments cite
+them (e.g. `PROJECT_PLAN §6.2`, `docs/REVIEW_*`); the product docs above
+cover the architecture and the key decisions.
 
 ### AI-assisted development
 
@@ -151,8 +152,7 @@ I used Claude Code as a development tool. Larger pieces of work were scoped in w
 before handing them to agents: feature builds such as the access/trails overlay and the
 prospecting score, and two audits (pre-production correctness and security) run as multi-agent
 passes, with each finding checked by an independent verifier. The briefs are in
-[docs/briefs/](docs/briefs/), the project's custom agents in [.claude/agents/](.claude/agents/),
-and the audit reports in [docs/](docs/).
+[docs/briefs/](docs/briefs/) and the project's custom agents in [.claude/agents/](.claude/agents/).
 
 ## License
 

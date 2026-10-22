@@ -6,8 +6,8 @@ will be verified. The agent works against that, not an open-ended prompt.
 
 | Brief | Kind | Outcome |
 |---|---|---|
-| [FABLE_REVIEW_BRIEF.md](FABLE_REVIEW_BRIEF.md) | Architecture & correctness review | [../REVIEW_PASS_A.md](../REVIEW_PASS_A.md) |
-| [FABLE_PREPROD_AUDIT_BRIEF.md](FABLE_PREPROD_AUDIT_BRIEF.md) | Pre-production audit (multi-agent, verified findings) | [../REVIEW_PREPROD_AUDIT.md](../REVIEW_PREPROD_AUDIT.md), [../REVIEW_PREPROD_BACKLOG.md](../REVIEW_PREPROD_BACKLOG.md) |
+| [FABLE_REVIEW_BRIEF.md](FABLE_REVIEW_BRIEF.md) | Architecture & correctness review | Findings kept private; fixes merged |
+| [FABLE_PREPROD_AUDIT_BRIEF.md](FABLE_PREPROD_AUDIT_BRIEF.md) | Pre-production audit (multi-agent, verified findings) | Findings kept private; fixes merged |
 | [OPUS_BRIEF_security_review.md](OPUS_BRIEF_security_review.md) | Security audit | Findings kept private; fixes tracked in commits |
 | [TIER_B_FABLE_BRIEF.md](TIER_B_FABLE_BRIEF.md) | Feature build: prospecting-potential score | Prospecting overlay |
 | [FABLE_MVUM_BRIEF.md](FABLE_MVUM_BRIEF.md) | Feature build: access & trails overlay | Access overlay |
