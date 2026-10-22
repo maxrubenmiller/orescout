@@ -94,7 +94,7 @@ flowchart LR
 
 ## Running it locally
 
-Prerequisites: Docker, .NET 10 SDK, Node 22+.
+Prerequisites: Docker, .NET 10 SDK, Node 24+.
 
 ```bash
 # 1. Database + tile server (applies db/01_init.sql and db/02_classifier.sql on first boot)
