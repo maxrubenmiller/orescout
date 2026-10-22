@@ -8,7 +8,7 @@ READER besides the map: `build_prospectivity.sql` consumes `geom` + `is_producer
 Your change must be **additive** — never drop/rename existing columns, and rebuild via the
 atomic-swap pattern so the table never disappears mid-read.
 
-## The goal (from BACKLOG.md, "Enrich the gold popup")
+## The goal (from docs/planning/BACKLOG.md, "Enrich the gold popup")
 The tiled layer carries only site/status/commodity-codes/grade/URL. The MRDS service exposes three
 **related tables** keyed by `Record_ID` with much richer detail:
 - **Commodity** — full commodity names with major-vs-minor `Importance` (far better than the raw
@@ -45,7 +45,7 @@ no silent gaps (repo invariant: stated bounds, kept/dropped counts).
    minors + minerals + alt names as compact secondary lines; keep max-width ~260-280px and the
    historic-record note. Keep `commodities` (raw CODE_LIST) rendering as fallback when the new
    fields are null.
-4. `web/diag_mrds.mjs`: extend with assertions that a known enriched site's popup shows a full
+4. `web/scripts/diag/diag_mrds.mjs`: extend with assertions that a known enriched site's popup shows a full
    commodity name and a minerals line (pick a stable famous site and pin it; report which).
 
 ## Acceptance
@@ -56,7 +56,7 @@ no silent gaps (repo invariant: stated bounds, kept/dropped counts).
 - Prospectivity untouched: `./scripts/test/check_prospectivity_fixtures.sh` 3/3 AND
   `SELECT count(*) FROM tiles.prospectivity` unchanged (its build is NOT rerun by this task).
 - Legality untouched: `./scripts/run-fixtures.sh` + `./scripts/run-tier-b.sh` green.
-- `node web/diag_mrds.mjs` extended and green; tile budget: an MRDS-dense z9 tile stays < 500 KB
+- `node web/scripts/diag/diag_mrds.mjs` extended and green; tile budget: an MRDS-dense z9 tile stays < 500 KB
   (`curl -sq -o /dev/null -w '%{size_download}'` on a Grass Valley tile before/after — report both).
 - tsc/eslint clean.
 

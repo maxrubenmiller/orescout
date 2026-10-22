@@ -1,6 +1,6 @@
 namespace OreScout.Api.Models;
 
-// ---- Assessment (canonical response — PROJECT_PLAN.md §6.2) -----------------
+// ---- Assessment (canonical response — docs/planning/PROJECT_PLAN.md §6.2) -----------------
 // Serialized camelCase (ASP.NET web defaults). warnings/cannotModel/dataGaps are
 // always arrays (never null). collectingStatus ∈ GREEN|YELLOW|RED|OUT_OF_REGION.
 // ambiguityType ∈ KNOWN|UNKNOWN|null (non-null only when collectingStatus=YELLOW).

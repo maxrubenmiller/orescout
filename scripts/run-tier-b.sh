@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tier-B golden-coordinate integration fixtures (PROJECT_PLAN.md §6.4.2). For each point asserts:
+# Tier-B golden-coordinate integration fixtures (docs/planning/PROJECT_PLAN.md §6.4.2). For each point asserts:
 #   1) live /assessment collectingStatus (+ ambiguityType where pinned) == expected, AND
 #   2) the direct tiles.legality_polygons most-restrictive lookup == expected tileBase
 # i.e. the C# assessment engine and the baked tile data agree at real coordinates of known type.

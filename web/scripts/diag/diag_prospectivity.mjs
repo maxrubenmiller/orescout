@@ -1,5 +1,5 @@
-// Prospecting-potential overlay diag (Tier B). Run: node web/diag_prospectivity.mjs [url]
-// Modeled on web/diag_mrds.mjs. Asserts:
+// Prospecting-potential overlay diag (Tier B). Run: node web/scripts/diag/diag_prospectivity.mjs [url]
+// Modeled on web/scripts/diag/diag_mrds.mjs. Asserts:
 //  (a) toggling "Prospecting potential (gold)" renders High star symbols over Sierra gold country
 //  (b) Moderate markers appear at z11 and do NOT render below z10
 //  (c) clicking a marker opens the popup with the tier headline + the exact upstream-note and
@@ -16,12 +16,12 @@ import { fileURLToPath } from 'node:url';
 const url = process.argv[2] || 'http://localhost:5173';
 const API = 'http://localhost:5167/api/v1';
 const API_KEY = 'dev-local-key-change-me';
-const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const failures = [];
 const check = (n, c, d = '') => { console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${d ? ` :: ${d}` : ''}`); if (!c) failures.push(n); };
 
 // The strings the popup must render — read from the same config the frontend imports.
-const cfg = JSON.parse(readFileSync(new URL('../config/prospectivity.json', import.meta.url), 'utf8'));
+const cfg = JSON.parse(readFileSync(new URL('../../../config/prospectivity.json', import.meta.url), 'utf8'));
 const gold = cfg.commodities.find((c) => c.key === 'gold');
 const UPSTREAM = gold.strings.upstream_note;
 const WHY = gold.strings.pathfinder_blurb;

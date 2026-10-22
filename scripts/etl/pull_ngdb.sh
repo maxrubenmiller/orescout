@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ingest the USGS NGDB 2026 consolidated geochemistry release into staging for the Tier-B
-# prospecting-potential composite (TIER_B_FABLE_BRIEF.md; PROJECT_PLAN §5.3, decision #42).
+# prospecting-potential composite (docs/briefs/TIER_B_FABLE_BRIEF.md; PROJECT_PLAN §5.3, decision #42).
 # REFERENCE-ONLY pipeline: feeds tiles.prospectivity, never the verdict engine (§6.13).
 #
 # Source: "Geochemical data for rock, sediment, soil, and mineral samples, US & territories,

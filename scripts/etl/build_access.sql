@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — access & trails overlay build (PROJECT_PLAN.md §5.4 / §6.13 `reference` role).
+-- OreScout — access & trails overlay build (docs/planning/PROJECT_PLAN.md §5.4 / §6.13 `reference` role).
 -- Promotes the four staged federal sources (loaded by scripts/etl/pull_access.sh):
 --   staging.access_mvum_roads   USFS MVUM Roads   (per-vehicle-class open flags)
 --   staging.access_mvum_trails  USFS MVUM Trails  (same flag vocabulary)
@@ -11,7 +11,7 @@
 -- REFERENCE-ONLY: display tiles; never feeds orescout_base_verdict / the assessment engine
 -- (how you reach a spot is not a legality input). Upholds the §6.13 invariant.
 --
--- The shipped column→bucket mapping (FABLE_MVUM_BRIEF.md "Mode-enum spec"; deviations documented):
+-- The shipped column→bucket mapping (docs/briefs/FABLE_MVUM_BRIEF.md "Mode-enum spec"; deviations documented):
 --   MVUM Roads/Trails: flag value 'open' (lowercase in EDW) per vehicle class.
 --     drive    = passengervehicle open AND operationalmaintlevel 3–5 (suitable for passenger
 --                cars). DEVIATION (the brief's own parenthetical alternative): 97.6% of staged

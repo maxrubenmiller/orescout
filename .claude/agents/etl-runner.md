@@ -16,7 +16,7 @@ Ingest flows: **pull script → `staging.*` table → `unify.sql` (bakes verdict
 - Claims: `refresh_claims.sh [states...]` (defaults to all 8) → `tiles.claims_polygons`.
 
 ## Working rules
-- **Verify every load.** After a pull/load, run the count query the script prints (e.g. `SELECT count(*) FROM staging.<t>`) and compare to the expected magnitude documented in README.md / PROJECT_PLAN.md (e.g. ~86,913 PAD-US features, 487,842 claims). A load that returns 0 or an order-of-magnitude surprise is a FAILURE to investigate, not a pass.
+- **Verify every load.** After a pull/load, run the count query the script prints (e.g. `SELECT count(*) FROM staging.<t>`) and compare to the expected magnitude documented in README.md / docs/planning/PROJECT_PLAN.md (e.g. ~86,913 PAD-US features, 487,842 claims). A load that returns 0 or an order-of-magnitude surprise is a FAILURE to investigate, not a pass.
 - **Idempotency.** Most loaders delete their prior rows first (by `source_key`). Confirm the delete/insert both ran; a delete with a failed insert leaves a hole.
 - **Geometry.** `unify.sql` uses `ST_MakeValid`; large wall-to-wall states can OOM the union step — the fix is `ST_SubDivide(...,512)` (see the CO OOM note in confirm_open SQL). If a build hangs or OOMs, check whether subdivide is applied before escalating.
 - **Read before running.** Read the script and its header comment first — they document prereqs, source URLs, and the `staging.*` target. Many depend on an earlier step (e.g. confirm-open needs `staging.sma_<st>` loaded and `unify.sql` already run).

@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — legality DISPLAY overlay (UI_CHANGES.md Changes 1 + 2).
+-- OreScout — legality DISPLAY overlay (docs/planning/UI_CHANGES.md Changes 1 + 2).
 -- Builds a display-only, dissolved, most-restrictive PARTITION of the legality
 -- polygons so the map renders uniform color per verdict (no overlap darkening —
 -- Change 1) with GREEN absent under YELLOW and YELLOW absent under RED (Change 2).

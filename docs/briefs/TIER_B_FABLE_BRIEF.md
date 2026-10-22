@@ -38,13 +38,13 @@ appears that the locked decisions don't cover, **ask the owner** — a short que
 >    the reality check).
 
 ## Mission
-Build OreScout's **prospecting-potential overlay** (`PROJECT_PLAN.md` §5.3): a map layer that answers
+Build OreScout's **prospecting-potential overlay** (`docs/planning/PROJECT_PLAN.md` §5.3): a map layer that answers
 *"where is it genuinely worth checking for gold?"* from USGS geochemistry. The whole point is to
 surface **where it's worth looking — not where gold atoms happen to exist** (trace gold is
 everywhere). It is a display-only overlay that **never touches the legality verdict engine**.
 
 ## Read first (ground yourself — don't re-derive what's settled)
-- `PROJECT_PLAN.md` **§5.3** (the composite design: the three signals, tier output, upstream caveat,
+- `docs/planning/PROJECT_PLAN.md` **§5.3** (the composite design: the three signals, tier output, upstream caveat,
   the precomputed-static approach), **§6.13** (per-state source registry + the invariant guarantee),
   **§6.4.1** (Confirm-Open ethos — "must be earned").
   ⚠ *Where §5.3 and this brief conflict, the brief wins* — §5.3 predates the spike and the scope
@@ -52,12 +52,12 @@ everywhere). It is a display-only overlay that **never touches the legality verd
   3-tier display incl. an opt-in "Low/Trace" toggle (locked to 2 tiers, rest hidden), Au-led scoring
   (Au is censored → pathfinder-led), and the `/api/prospecting?bbox` endpoint (superseded — see
   *Architecture clarifications*). Updating §5.3 is part of your docs deliverable.
-- `DATA_SOURCE_INVESTIGATION.md` → **"Prospecting-potential research — NGDB & WBD spike"**. This is
+- `docs/research/DATA_SOURCE_INVESTIGATION.md` → **"Prospecting-potential research — NGDB & WBD spike"**. This is
   your validated data foundation — access URLs, formats, exact field names, coverage, and the
   gotchas. Trust it; verify specifics as you actually load.
-- `BACKLOG.md` → Prospecting Intelligence.
+- `docs/planning/BACKLOG.md` → Prospecting Intelligence.
 - **Your build templates already in the repo:** the MRDS gold overlay (`scripts/etl/pull_mrds.sh`,
-  `scripts/etl/build_mrds.sql`, `tiles.mrds`, `web/diag_mrds.mjs`) and the waterways overlay — same
+  `scripts/etl/build_mrds.sql`, `tiles.mrds`, `web/scripts/diag/diag_mrds.mjs`) and the waterways overlay — same
   `reference`-role, ETL→tiles→toggle→popup pattern you'll follow. Mirror the tolerance-box hover/click.
 
 ## Locked product decisions (non-negotiable — the owner's calls)
@@ -125,7 +125,7 @@ everywhere). It is a display-only overlay that **never touches the legality verd
    its popup carries the line *"Earned by chemistry alone — no recorded historic producer nearby
    (historic records are incomplete)."* Legend shows both variants.
 
-## The data (validated in the spike — detail in `DATA_SOURCE_INVESTIGATION.md`)
+## The data (validated in the spike — detail in `docs/research/DATA_SOURCE_INVESTIGATION.md`)
 - **NGDB** — the 2026 consolidated release (CC0, DOI `10.5066/P1FXE9GK`, **Parquet ≈283 MB**).
   Download-and-host. Long/tidy: `tbl_geol` (site: `latitude`/`longitude`, `state`, `primary_class`
   medium) + `tbl_chem` (elements as ROWS: `species`, `qualified_value`, `units`, `analytic_method`,
@@ -143,7 +143,7 @@ everywhere). It is a display-only overlay that **never touches the legality verd
   sample is grouped by the HUC12 that *contains* it, full stop, and the upstream note is static
   text. So `tohuc` text sinks (`OCEAN`, `CLOSED BASIN`, …) only need to be *tolerated at load*
   (don't type the column as a HUC code / don't crash); keep the column for the later
-  waterway-intelligence work (`BACKLOG.md`), but nothing in this build routes through it.
+  waterway-intelligence work (`docs/planning/BACKLOG.md`), but nothing in this build routes through it.
 
 ## The build (the WHAT — you design the HOW)
 1. **Ingest** NGDB (Parquet) + WBD (HUC12+HUC10) into PostGIS, download-and-host (mirror
@@ -273,7 +273,7 @@ it, don't route around it.
   minzoom.
 
 ## Acceptance criteria (prove it works)
-- Data ingested + composite computed; a **headless diag** (model it on `web/diag_mrds.mjs`) proving:
+- Data ingested + composite computed; a **headless diag** (model it on `web/scripts/diag/diag_mrds.mjs`) proving:
   - the toggle renders **High** glyphs over known gold country (Sierra Mother Lode viewport) at
     its minzoom, and Moderate appears by z≈10;
   - the popup shows tier + anomaly element/percentile + pathfinders **+ the pathfinder "why"
@@ -307,10 +307,10 @@ it, don't route around it.
 
 ## Deliverables & working style
 - The working feature on a branch, merge-ready.
-- **Docs to the project's conventions:** a decision-log entry (`PROJECT_PLAN.md` §9 — next free
+- **Docs to the project's conventions:** a decision-log entry (`docs/planning/PROJECT_PLAN.md` §9 — next free
   number is **#42**), a **§5.3 update** (mark implemented per #41/#42 *and* record the supersessions:
   pathfinders As/Sb/Ag not Hg, 2-tier display, pathfinder-led scoring, tiles-only instead of
-  `/api/prospecting`), a `BACKLOG.md` update, a `DATA_SOURCE_INVESTIGATION.md` note on what you
+  `/api/prospecting`), a `docs/planning/BACKLOG.md` update, a `docs/research/DATA_SOURCE_INVESTIGATION.md` note on what you
   actually ingested (vintages, counts, any surprises — incl. the WBD region-list outcome), and a
   **README runbook** for the NGDB/WBD ingest.
 - A regression diag + the golden fixtures above.

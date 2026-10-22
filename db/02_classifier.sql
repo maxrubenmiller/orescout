@@ -1,5 +1,5 @@
 -- ============================================================================
--- OreScout — Rules Engine, Stage-1 classifier (PROJECT_PLAN.md §6.4 / §6.6.1 "Half 1")
+-- OreScout — Rules Engine, Stage-1 classifier (docs/planning/PROJECT_PLAN.md §6.4 / §6.6.1 "Half 1")
 --
 -- The SINGLE source of truth for the base-verdict rules. Pure functions, no
 -- geometry — runnable and unit-testable now with no data loaded (Tier-A fixtures,

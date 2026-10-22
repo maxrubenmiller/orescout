@@ -21,7 +21,7 @@ export function outOfScopeMaskFilter(supportedStates: string[]): FilterSpecifica
 // MVT vector-layer name as ENCODED IN THE TILE by pg_tileserv = the full schema-qualified
 // table id (verified by decoding a .pbf). NOTE: the TileJSON `vector_layers[].id` reports it
 // WITHOUT the schema, which is misleading — the tile itself uses `tiles.legality_display`.
-// UI_CHANGES.md Changes 1+2: the MAP renders the display-only PARTITION tables (dissolved per
+// docs/planning/UI_CHANGES.md Changes 1+2: the MAP renders the display-only PARTITION tables (dissolved per
 // verdict + most-restrictive clip) so fills are uniform (no overlap darkening) and green is absent
 // under yellow. The VERDICT ENGINE still queries tiles.legality_polygons — this repoint is
 // display-only and cannot change a verdict.
@@ -88,7 +88,7 @@ export function basemapTiles(b: Basemap): { tiles: string[]; attribution: string
         attribution: '© Mapbox © Maxar',
       };
     }
-    // Keyless fallback for local dev (Esri World Imagery). See PROJECT_PLAN.md §7.
+    // Keyless fallback for local dev (Esri World Imagery). See docs/planning/PROJECT_PLAN.md §7.
     return {
       tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       attribution: 'Imagery © Esri',
@@ -464,7 +464,7 @@ function legalityLayerSet(
     },
     // Fail-safe under-layer for YELLOW: a fill-pattern layer renders NOTHING if the 'hatch'
     // sprite is missing (fill-color is ignored when a pattern is set), which would silently
-    // hide ambiguous land. This strengthened neutral-grey wash (UI_CHANGES.md Change 2 — clearer
+    // hide ambiguous land. This strengthened neutral-grey wash (docs/planning/UI_CHANGES.md Change 2 — clearer
     // sprite degrades to a visible wash instead of invisible.
     {
       id: `legality-ambiguous-base${suffix}`, type: 'fill', source, 'source-layer': srcLayer, ...zoom,

@@ -1,4 +1,4 @@
-// MRDS gold-overlay diag (Tier A). Run: node web/diag_mrds.mjs [url]
+// MRDS gold-overlay diag (Tier A). Run: node web/scripts/diag/diag_mrds.mjs [url]
 //  (a) toggling "Gold occurrences (MRDS)" renders gold points over CA gold country
 //  (b) the overlay is additive — legality source intact, no tile-error banner
 //  (c) clicking a gold point opens the reference popup with site name + status

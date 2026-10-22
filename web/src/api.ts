@@ -1,10 +1,10 @@
-// Single typed API client (PROJECT_PLAN.md §6.12). All requests go through here:
+// Single typed API client (docs/planning/PROJECT_PLAN.md §6.12). All requests go through here:
 // injects base URL + X-Api-Key, centralizes error handling against { error: { code, message } }.
 import type {
   Assessment, CreatePinRequest, Entitlements, GeocodeResult, Meta, Pin, PinStatus,
 } from './types';
 
-// API runs on 5167 (not 5000 — macOS AirPlay Receiver squats 5000). See PROJECT_PLAN.md §6.8 / #34.
+// API runs on 5167 (not 5000 — macOS AirPlay Receiver squats 5000). See docs/planning/PROJECT_PLAN.md §6.8 / #34.
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5167/api/v1';
 const KEY = import.meta.env.VITE_API_KEY ?? '';
 

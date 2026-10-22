@@ -173,4 +173,4 @@ are that orchestrator, or you are commissioning one, hold it to these:
 * `docs/LAUNCH_SEQUENCE.md` — the agreed plan: ship gold, then extend to the rockhounding market.
 * `docs/PLANNING_INPUTS.md` — open decisions, including the deployment target, which is still unmade
   and materially affects several of your answers.
-* `PROJECT_PLAN.md` §6.2 (auth/CORS), §6.14 (entitlements).
+* `docs/planning/PROJECT_PLAN.md` §6.2 (auth/CORS), §6.14 (entitlements).

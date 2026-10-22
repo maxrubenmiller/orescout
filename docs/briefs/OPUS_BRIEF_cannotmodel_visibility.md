@@ -21,9 +21,9 @@ model (RMP local rules, Monument proclamations, ESA closures, riparian setbacks)
 ## Acceptance
 - `npx tsc -b` + `npx eslint src` clean (repo is currently at ZERO lint errors — keep it there).
 - Full frontend diag suite still green against http://localhost:5173 (they exercise the panel):
-  `node web/diag_states.mjs` (11), `./web/diag_snapshot.sh` (12 — run from repo root),
-  `node web/diag_failsafe.mjs http://localhost:5173`, `node web/diag_mrds.mjs`,
-  `node web/diag_prospectivity.mjs`. None of them assert the `<details>` element, but verify.
+  `node web/scripts/diag/diag_states.mjs` (11), `./web/scripts/diag/diag_snapshot.sh` (12 — run from repo root),
+  `node web/scripts/diag/diag_failsafe.mjs http://localhost:5173`, `node web/scripts/diag/diag_mrds.mjs`,
+  `node web/scripts/diag/diag_prospectivity.mjs`. None of them assert the `<details>` element, but verify.
 - Desktop + mobile screenshots of a verdict panel showing the visible not-modeled block.
 
 ## Coordination

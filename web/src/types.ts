@@ -1,4 +1,4 @@
-// Canonical API types (mirror PROJECT_PLAN.md §6.2). Keep in sync with the C# DTOs.
+// Canonical API types (mirror docs/planning/PROJECT_PLAN.md §6.2). Keep in sync with the C# DTOs.
 
 export type CollectingStatus = 'GREEN' | 'YELLOW' | 'RED' | 'OUT_OF_REGION';
 export type AmbiguityType = 'KNOWN' | 'UNKNOWN' | null;

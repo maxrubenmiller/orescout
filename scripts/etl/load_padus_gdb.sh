@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Load PAD-US 4.1 into staging from the per-state GDB downloads (PROJECT_PLAN.md §6.6.1).
+# Load PAD-US 4.1 into staging from the per-state GDB downloads (docs/planning/PROJECT_PLAN.md §6.6.1).
 # REPLACES the live-REST pull (pull_states_padus.sh): the AGOL query API rate-limits bulk
 # extraction, so we ingest from the authoritative ScienceBase "State Downloads" bulk files.
 #

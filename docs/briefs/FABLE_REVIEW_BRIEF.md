@@ -63,12 +63,12 @@ lookup → **Stage 2** live BLM MLRS claims overlay. Overlays are served as vect
 schema; MapLibre filters on `verdict`.
 
 ## Start here (reading path)
-1. `PROJECT_PLAN.md` — the design bible. Priorities: **§5** (rules engine), **§6.2** (canonical API),
+1. `docs/planning/PROJECT_PLAN.md` — the design bible. Priorities: **§5** (rules engine), **§6.2** (canonical API),
    **§6.3** (failure behavior), **§6.4 / 6.4.1 / 6.4.2** (rules engine, Confirm-Open, fixtures),
    **§6.6.1** (ETL), **§6.13** (per-state source registry + the 🔒 invariant), **§9** (the 35-entry
    decision log).
-2. `TODO.md` (Definition of Done + done/open), `PRODUCTION_READINESS.md` (post-POC scope),
-   `DATA_SOURCE_INVESTIGATION.md` (data decisions).
+2. `docs/planning/TODO.md` (Definition of Done + done/open), `docs/planning/PRODUCTION_READINESS.md` (post-POC scope),
+   `docs/research/DATA_SOURCE_INVESTIGATION.md` (data decisions).
 3. Code: `src/OreScout.Api/` (`Endpoints/ApiEndpoints.cs`, `Services/AssessmentService.cs`,
    `Services/*ClaimsService*`, `Middleware/`, `Models/Models.cs`, `Data/`), `db/02_classifier.sql`,
    `scripts/etl/*.sql` + `*.sh`, `web/src/` (`hooks.ts`, `api.ts`, `map/style.ts`, `store.ts`,
@@ -80,7 +80,7 @@ claim empirically:**
 - **Stand the app up** (`docker compose up -d`; API on :5167; web on :5173 — see README quick start)
   and **run every test harness**, reporting empirical pass/fail:
   `./scripts/run-fixtures.sh` (Tier-A classifier), `./scripts/run-tier-b.sh` (Tier-B golden
-  coordinates), `scripts/test/postgis_down_503.sh` (503 path), the `web/diag_*.mjs` headless checks.
+  coordinates), `scripts/test/postgis_down_503.sh` (503 path), the `web/scripts/diag/diag_*.mjs` headless checks.
   Then **try to add cases that break them.**
 - **Every finding needs a reproduction** — a command, coordinate, or request that demonstrates it.
   Anything you can't reproduce or verify goes under **Open questions**, not Findings.
@@ -151,12 +151,12 @@ Pass B goes deep on whatever warrants it.)*
     per click; caching / CDN; what it costs at N users.
 12. **Observability / SLOs, CI & test maturity, accessibility (a11y).**
 
-**Concrete deliverable for the production half:** validate and extend `PRODUCTION_READINESS.md`
+**Concrete deliverable for the production half:** validate and extend `docs/planning/PRODUCTION_READINESS.md`
 against a real launch checklist for a legal-adjacent public geo app, and flag what's missing.
 
 ## Out of scope (in-flight — don't flag)
 The frontend-polish items already being worked: **geocode results dropdown**, **loading/empty/error-
-state QA**, and the **KNOWN-vs-UNKNOWN ("possibly private") message wording** (see `TODO.md` → "Frontend
+state QA**, and the **KNOWN-vs-UNKNOWN ("possibly private") message wording** (see `docs/planning/TODO.md` → "Frontend
 follow-ups"). Skip these.
 
 ## Severity rubric (so severities actually mean something — use it, don't inflate)

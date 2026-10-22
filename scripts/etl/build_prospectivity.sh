@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the Tier-B prospecting-potential composite (TIER_B_FABLE_BRIEF.md; §5.3, decision #42):
+# Build the Tier-B prospecting-potential composite (docs/briefs/TIER_B_FABLE_BRIEF.md; §5.3, decision #42):
 # config -> staging.prospectivity_config (jsonb), then build_prospectivity.sql computes the
 # composite and rebuilds tiles.prospectivity. Fails loud on any assertion (completeness check,
 # empty output). REFERENCE-ONLY: never touches the verdict engine or legality tiles.

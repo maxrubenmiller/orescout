@@ -23,12 +23,12 @@ rig, or hike in?"* It is a `reference`-role overlay that **never touches the leg
 — same contract as `tiles.waterways`, `tiles.mrds`, `tiles.prospectivity`.
 
 ## Read first (ground yourself — don't re-derive what's settled)
-- **`DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md`** — this is your validated data foundation: source
+- **`docs/research/DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md`** — this is your validated data foundation: source
   tables, endpoints, per-mode attribute names, the 8-state coverage matrix, license notes, the
   host-vs-live decision, and the open-questions/spikes list. Trust it; verify specifics as you load.
   Where this brief and that doc conflict, **the brief wins** (the doc predates the scope lock — e.g.
   it surveys state layers + OSM + routing topology that are all deferred here).
-- **`PROJECT_PLAN.md` §6.13** (per-state source registry + the 🔒 invariant), **§5.x** (the
+- **`docs/planning/PROJECT_PLAN.md` §6.13** (per-state source registry + the 🔒 invariant), **§5.x** (the
   data-source/overlay sections — your new overlay gets a new **§5.4**).
 - **`etl/sources.json`** + **`etl/sources.schema.md`** — the registry is now a real JSON file (it did
   not exist when earlier overlays were built). Your new source is **one entry here**. Read by
@@ -38,9 +38,9 @@ rig, or hike in?"* It is a `reference`-role overlay that **never touches the leg
     `scripts/etl/build_waterways.sql` (staging→`tiles.waterways`, clip to `public.supported_region`
     via the `_region8` union, per-row `state_code` point-in-polygon), the master+sub-toggle UI in
     `web/src/store.ts` (`waterways` / `waterwaysPerennial` / `waterwaysIntermittent`), the styling in
-    `web/src/map/style.ts`, and the headless proof `web/diag_waterways.mjs`.
+    `web/src/map/style.ts`, and the headless proof `web/scripts/diag/diag_waterways.mjs`.
   - MRDS overlay: `scripts/etl/pull_mrds.sh`, `scripts/etl/build_mrds.sql`, `tiles.mrds`,
-    `web/diag_mrds.mjs` — the `reference`-role ETL→tiles→toggle→popup pattern.
+    `web/scripts/diag/diag_mrds.mjs` — the `reference`-role ETL→tiles→toggle→popup pattern.
 - **`docs/ADD_A_STATE.md`** — the registry-driven ETL runbook conventions.
 
 ## Locked product decisions (non-negotiable — owner's calls, resolved 2026-07-14)
@@ -198,7 +198,7 @@ design problem — surface it, don't route around it.
   they're sparse, flag it rather than shipping an empty enum.
 
 ## Acceptance criteria (prove it works)
-- Data ingested + `tiles.access` built; a **headless diag** (model it on `web/diag_waterways.mjs`)
+- Data ingested + `tiles.access` built; a **headless diag** (model it on `web/scripts/diag/diag_waterways.mjs`)
   proving:
   - the master toggle renders lines; each sub-toggle (Drive / Off-road / Hike-in) independently
     shows/hides its class; roads appear only at/after their gated minzoom.
@@ -217,14 +217,14 @@ design problem — surface it, don't route around it.
 
 ## Deliverables & working style
 - The working overlay on a branch, merge-ready.
-- **Docs to the project's conventions:** a decision-log entry in `PROJECT_PLAN.md` §9 (**next free
+- **Docs to the project's conventions:** a decision-log entry in `docs/planning/PROJECT_PLAN.md` §9 (**next free
   number — verify at write time; #45 is the current highest, so likely #46**), a new **§5.4** for the
-  access & trails overlay, the `etl/sources.json` entry, a `BACKLOG.md` update (mark the
+  access & trails overlay, the `etl/sources.json` entry, a `docs/planning/BACKLOG.md` update (mark the
   MVUM/access-routing item as ingest+display done, routing engine still open), and a note in
-  `DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md` recording what you actually ingested (sources, vintages,
+  `docs/research/DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md` recording what you actually ingested (sources, vintages,
   counts, the `travel_mode` mapping you shipped, and any surprises — esp. the NV attribute-quality
   read).
-- A regression diag (`web/diag_access.mjs` or similar) + the source×mode reality table.
+- A regression diag (`web/scripts/diag/diag_access.mjs` or similar) + the source×mode reality table.
 - **Report honestly:** what's verified vs assumed (the USFS license string and the BLM GTLF GDB URL
   are the two flagged unknowns), any data surprises, what you deferred and why.
 

@@ -146,7 +146,7 @@ public static class ApiEndpoints
     private static void MapAssessment(RouteGroupBuilder g) => g.MapGet("/assessment",
         async (double lat, double lng, IAssessmentService svc, CancellationToken ct) =>
         {
-            if (lat is < -90 or > 90 || lng is < -180 or > 180)
+            if (!ValidCoordinates(lat, lng))
                 return Err(400, "invalid_coordinates", "lat must be -90..90 and lng -180..180.");
             return Results.Ok(await svc.AssessAsync(lat, lng, ct));
         });
@@ -167,7 +167,7 @@ public static class ApiEndpoints
         g.MapPost("/pins", async (CreatePinRequest req, OreScoutDbContext db,
             IAssessmentService svc, CancellationToken ct) =>
         {
-            if (req.Lat is < -90 or > 90 || req.Lng is < -180 or > 180)
+            if (!ValidCoordinates(req.Lat, req.Lng))
                 return Err(400, "invalid_coordinates", "lat must be -90..90 and lng -180..180.");
             if (ValidateMetadata(req.Title, req.Notes) is { } err)
                 return err;
@@ -244,6 +244,14 @@ public static class ApiEndpoints
     }
 
     // ---- Helpers -----------------------------------------------------------
+    /// <summary>
+    /// Range check that also rejects NaN/Infinity: NaN compares false to every bound, so a plain
+    /// range test let it through (and a persisted NaN pin then broke GET /pins for everyone).
+    /// </summary>
+    private static bool ValidCoordinates(double lat, double lng) =>
+        double.IsFinite(lat) && double.IsFinite(lng)
+        && lat is >= -90 and <= 90 && lng is >= -180 and <= 180;
+
     private static IResult Err(int status, string code, string message) =>
         Results.Json(new ApiError(new ApiErrorBody(code, message)), statusCode: status);
 

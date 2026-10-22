@@ -31,7 +31,7 @@ source scripts/etl/registry_lib.sh
 
 TBL="${1:?usage: sweep_crossborder.sh <legality_table> [state ...]}"; shift
 PSQL="${REFRESH_PSQL:-docker compose exec -T postgres psql -U postgres -d miningapp}"
-FLOOR=400   # the documented meaningful-parcel floor (PROJECT_PLAN.md:2374)
+FLOOR=400   # the documented meaningful-parcel floor (docs/planning/PROJECT_PLAN.md:2374)
 
 if [ "$#" -gt 0 ]; then STATES="$*"; else STATES=$(reg_states_for_role confirm_open | tr '\n' ' '); fi
 

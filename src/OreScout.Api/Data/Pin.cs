@@ -1,7 +1,7 @@
 namespace OreScout.Api.Data;
 
 /// <summary>
-/// A saved location (PROJECT_PLAN.md §4.2 / §6.5). Owned by EF Core migrations.
+/// A saved location (docs/planning/PROJECT_PLAN.md §4.2 / §6.5). Owned by EF Core migrations.
 /// The `geom` generated column, GIST/GIN indexes, and updated_at trigger are added
 /// as raw SQL in the migration (they are DB-side concerns EF doesn't model directly).
 /// </summary>

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nightly claims refresh (PROJECT_PLAN.md §6.6.2): pull all not-closed BLM MLRS mining
+# Nightly claims refresh (docs/planning/PROJECT_PLAN.md §6.6.2): pull all not-closed BLM MLRS mining
 # claims for the 8 states into tiles.claims_polygons (full replace), served as vector
 # tiles by pg_tileserv for the "Active mining claims" overlay.
 #

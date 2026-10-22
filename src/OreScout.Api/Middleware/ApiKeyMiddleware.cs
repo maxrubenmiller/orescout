@@ -4,7 +4,7 @@ using OreScout.Api.Models;
 namespace OreScout.Api.Middleware;
 
 /// <summary>
-/// POC auth (PROJECT_PLAN.md §6.2): a single static key on the X-Api-Key header.
+/// POC auth (docs/planning/PROJECT_PLAN.md §6.2): a single static key on the X-Api-Key header.
 /// NOT a security control — it only deters trivial drive-by hits for a private,
 /// single-user POC. /api/v1/health is exempt so monitoring can reach it.
 /// Replaced wholesale by JWT bearer when OreScout goes public (§6.2 migration).

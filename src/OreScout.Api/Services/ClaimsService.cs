@@ -14,7 +14,7 @@ public interface IClaimsService
 }
 
 /// <summary>
-/// Live anti-claim-jumping check against BLM MLRS (PROJECT_PLAN.md §5.1 / §6.4 Stage 2).
+/// Live anti-claim-jumping check against BLM MLRS (docs/planning/PROJECT_PLAN.md §5.1 / §6.4 Stage 2).
 /// Queries the "Not Closed" claims layer with a 100m buffer around the point (raw point-
 /// intersect misses gaps between PLSS aliquots). On any failure/timeout it returns
 /// (null, dataGap) so the assessment degrades to a partial result rather than failing (§6.3).

@@ -33,17 +33,17 @@ can produce or display a verdict.
   addressed** (Alta closed by confirm-open across all 8 states; tiles by the low-zoom layer; YELLOW
   fail-safes added; etc.). Your job re: Pass-A is a **regression check** — verify each fix *stayed*
   fixed and didn't get undone by later work — not to re-report them.
-- **`FABLE_REVIEW_BRIEF.md`** — the Pass-A brief (conventions, safety framing). Same operating ethos.
-- **`PROJECT_PLAN.md`** — §-numbered architecture-of-record: §5 (data sources/overlays), §6.4/§6.4.1
+- **`docs/briefs/FABLE_REVIEW_BRIEF.md`** — the Pass-A brief (conventions, safety framing). Same operating ethos.
+- **`docs/planning/PROJECT_PLAN.md`** — §-numbered architecture-of-record: §5 (data sources/overlays), §6.4/§6.4.1
   (verdict engine + Confirm-Open ethos — "GREEN must be earned"), §6.13 (registry-driven ETL
   invariant), §6.14 (paywall seam), §9 decision log (#42–#46), the Changelog.
-- **`PRODUCTION_READINESS.md`** (Phases 1–4 + gates), **`BACKLOG.md`**, **`TODO.md`**, **`UI_CHANGES.md`**.
+- **`docs/planning/PRODUCTION_READINESS.md`** (Phases 1–4 + gates), **`docs/planning/BACKLOG.md`**, **`docs/planning/TODO.md`**, **`docs/planning/UI_CHANGES.md`**.
 - **The verdict engine:** `src/OreScout.Api/Services/AssessmentService.cs` (Stage 0 in-region →
   Stage 1 most-restrictive baked verdict → Stage 2 live claims), `db/02_classifier.sql`,
   `scripts/etl/unify.sql`, `scripts/etl/confirm_open_*.sql`, `etl/sources.json` + `registry_lib.sh`.
 - **The regression harnesses** (your evidence base — run them): `scripts/run-fixtures.sh` (Tier-A),
   `scripts/run-tier-b.sh` (Tier-B), `scripts/validation/run_tier1_validation.sh` +
-  `validate_private_coverage.sh`, `scripts/test/*.sh`, `web/diag_*.mjs`.
+  `validate_private_coverage.sh`, `scripts/test/*.sh`, `web/scripts/diag/diag_*.mjs`.
 
 ## Scope — what is NEW since Pass-A (the primary review surface)
 All of this landed *after* Pass-A and has **not** had a dedicated adversarial review:
@@ -56,7 +56,7 @@ All of this landed *after* Pass-A and has **not** had a dedicated adversarial re
    can a registry edit silently corrupt a verdict? Are the two bespoke loaders (CA calfire / UT ugrc)
    and the unguarded MRDS main URL a drift risk?
 3. **Reference-role overlays** — `tiles.access` (#46), `tiles.prospectivity` (#42), `tiles.waterways`,
-   `tiles.mrds`, and **`tiles.legality_display`** (the new dissolved display partition, UI_CHANGES.md).
+   `tiles.mrds`, and **`tiles.legality_display`** (the new dissolved display partition, docs/planning/UI_CHANGES.md).
    Verify the invariant **exhaustively**: NONE may influence a verdict. `/assessment` must be
    byte-identical with each layer's data present vs absent; the pg_tileserv catalog and the
    low-priv `tileserv_ro` role must be isolated; no engine code references these tables.

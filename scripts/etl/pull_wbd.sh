@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ingest USGS WBD watershed polygons (HUC12 + HUC10) for the Tier-B prospecting composite
-# (TIER_B_FABLE_BRIEF.md; PROJECT_PLAN §5.3, decision #42). REFERENCE-ONLY pipeline (§6.13).
+# (docs/briefs/TIER_B_FABLE_BRIEF.md; PROJECT_PLAN §5.3, decision #42). REFERENCE-ONLY pipeline (§6.13).
 #
 # Source: the NATIONAL WBD FileGDB snapshot (public domain, ~2.6 GB) from The National Map
 # staged products. The national file deliberately sidesteps the HU2-region-list risk the brief

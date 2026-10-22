@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ingest the ACCESS & TRAILS federal backbone (4 sources) into staging for the reference-only
-# access overlay (PROJECT_PLAN §5.4 / §6.13 `reference` role; FABLE_MVUM_BRIEF.md;
-# DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md). Display-only: serves tiles.access and NEVER feeds
+# access overlay (PROJECT_PLAN §5.4 / §6.13 `reference` role; docs/briefs/FABLE_MVUM_BRIEF.md;
+# docs/research/DATA_SOURCE_INVESTIGATION_MVUM_TRAILS.md). Display-only: serves tiles.access and NEVER feeds
 # the verdict engine (a road/trail is not a legality input) — upholds the §6.13 invariant.
 #
 # Sources (all read from etl/sources.json `access.sources` — no hardcoded URLs here):

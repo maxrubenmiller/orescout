@@ -1,4 +1,4 @@
-// Visual check for UI_CHANGES.md Changes 1+2 (legality display partition).
+// Visual check for docs/planning/UI_CHANGES.md Changes 1+2 (legality display partition).
 // Screenshots a mixed-verdict NV region: (1) default (prohibited+ambiguous) to show uniform red +
 // stronger grey; (2) with Confirmed-open ON to show uniform green + ambiguity winning over green.
 import { chromium } from 'playwright';
@@ -35,7 +35,7 @@ async function shot(name, zoom) {
     };
   });
   await page.screenshot({ path: `diag_legality_${name}.png` });
-  console.log(`  ${name} (z${counts.zoom}): red=${counts.red} ambiguous=${counts.ambiguous} green=${counts.open} -> web/diag_legality_${name}.png`);
+  console.log(`  ${name} (z${counts.zoom}): red=${counts.red} ambiguous=${counts.ambiguous} green=${counts.open} -> web/scripts/diag/diag_legality_${name}.png`);
 }
 
 console.log('1) default layers (prohibited + ambiguous), regional z8:');

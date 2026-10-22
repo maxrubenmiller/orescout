@@ -1,7 +1,7 @@
 namespace OreScout.Api.Entitlements;
 
 /// <summary>
-/// The single server-side entitlement chokepoint (PROJECT_PLAN.md §6.14 / decision #45). Every
+/// The single server-side entitlement chokepoint (docs/planning/PROJECT_PLAN.md §6.14 / decision #45). Every
 /// paywall decision routes through here. TODAY it is a stub that grants everything — the seam exists
 /// so that gating a feature later is a change *in this service*, not scattered across feature code.
 /// </summary>

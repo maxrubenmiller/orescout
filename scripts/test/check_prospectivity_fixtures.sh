@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Golden-watershed regression gate for the Tier-B prospecting composite (TIER_B_FABLE_BRIEF.md).
+# Golden-watershed regression gate for the Tier-B prospecting composite (docs/briefs/TIER_B_FABLE_BRIEF.md).
 # Asserts tiles.prospectivity against db/fixtures/prospectivity.json: known districts stay High,
 # the quiet control stays empty (the locked "hide below Moderate" as a testable data property).
 # Run after every prospectivity ETL rebuild (build_prospectivity.sh points here).

@@ -1,7 +1,7 @@
 {
   "$schema": "./sources.schema.md",
   "_comment": [
-    "OreScout per-state source registry (PROJECT_PLAN.md \u00a76.13). SINGLE SOURCE OF TRUTH for",
+    "OreScout per-state source registry (docs/planning/PROJECT_PLAN.md \u00a76.13). SINGLE SOURCE OF TRUTH for",
     "which data sources exist per state and every per-state parameter. The \ud83d\udd12 invariant:",
     "adding a state = ONE entry here (+ a classifier mapping only for a genuinely new attribute",
     "vocabulary). The engine, tiles, and UI never change. See etl/sources.schema.md for the field",

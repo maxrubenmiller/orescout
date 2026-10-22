@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Populate public.supported_region — the 8-state boundary for the Stage-0 in-region
-# gate (PROJECT_PLAN.md §6.4). While this table is empty the gate is disabled
+# gate (docs/planning/PROJECT_PLAN.md §6.4). While this table is empty the gate is disabled
 # (orescout_in_region returns true); once populated it enforces OUT_OF_REGION.
 #
 # Source: Census TIGERweb States (token-free), server-generalized. The same all-states

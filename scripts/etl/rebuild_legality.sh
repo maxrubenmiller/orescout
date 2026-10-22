@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild the unified legality layer SAFELY (IMP-03; PROJECT_PLAN.md §6.6.1 + §6.4.1).
+# Rebuild the unified legality layer SAFELY (IMP-03; docs/planning/PROJECT_PLAN.md §6.6.1 + §6.4.1).
 #
 # unify.sql rebuilds the legality table with PAD-US rows only; the confirm-open rows (e.g. CA
 # CAL FIRE, source_key='calfire_ca') come from separate scripts/etl/confirm_open_*.sql scripts.
@@ -152,7 +152,7 @@ count_gate tiles.legality_lowzoom 40
 atomic_swap tiles.legality_lowzoom
 echo "[rebuild]   legality_lowzoom: $lz rows"
 
-# Dissolved most-restrictive DISPLAY partition (UI_CHANGES.md Changes 1+2): uniform per-verdict
+# Dissolved most-restrictive DISPLAY partition (docs/planning/UI_CHANGES.md Changes 1+2): uniform per-verdict
 # fills (no overlap darkening) + green clipped from under yellow. Reference/DISPLAY ONLY — the
 # verdict engine keeps querying tiles.legality_polygons, so this never changes a verdict. Built
 # from BOTH source tiers; low-zoom uses a coarser grid for lighter z0-8 tiles.

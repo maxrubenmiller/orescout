@@ -1,4 +1,4 @@
-// Access & trails overlay diag (§5.4 — MVUM/GTLF ingest+display). Run: node web/diag_access.mjs [url]
+// Access & trails overlay diag (§5.4 — MVUM/GTLF ingest+display). Run: node web/scripts/diag/diag_access.mjs [url]
 //  (a) the "Access & trails" master toggle renders travel-mode lines over a known motorized area
 //      (Schell Creek Range / Ely NV — Humboldt-Toiyabe NF + BLM route country)
 //  (b) each sub-toggle (Drive / Off-road / Hike-in) independently shows/hides its class

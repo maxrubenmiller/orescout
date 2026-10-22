@@ -107,7 +107,7 @@ FROM (
 ) d
 -- Sliver filter, same correction as every other state (PP-1/PP-18): the 2000 m² threshold is for
 -- registration noise, but a fragment overlapping affirmatively-not-public or not-open ground is
--- signal and is kept down to the documented 400 m² floor (PROJECT_PLAN.md:2374).
+-- signal and is kept down to the documented 400 m² floor (docs/planning/PROJECT_PLAN.md:2374).
 WHERE ST_Area(d.geom::geography) > 2000
 -- PP-36. The tests above measure the FRAGMENT. Subdivide chunk lines and buffer edges cut a
 -- large parcel into pieces, so a piece can fall under the floor while the parcel it came off

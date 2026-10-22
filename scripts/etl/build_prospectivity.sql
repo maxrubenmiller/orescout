@@ -1,6 +1,6 @@
 -- ============================================================================
 -- OreScout — Tier-B prospecting-potential composite (PROJECT_PLAN §5.3; decision #42;
--- TIER_B_FABLE_BRIEF.md scoring spec). REFERENCE-ONLY (§6.13): builds tiles.prospectivity,
+-- docs/briefs/TIER_B_FABLE_BRIEF.md scoring spec). REFERENCE-ONLY (§6.13): builds tiles.prospectivity,
 -- never touches the verdict engine or legality tiles.
 --
 -- Driven by staging.prospectivity_config (jsonb from config/prospectivity.json — loaded by

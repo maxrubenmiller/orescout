@@ -1,4 +1,4 @@
-# OreScout dev infrastructure (PROJECT_PLAN.md §6.8).
+# OreScout dev infrastructure (docs/planning/PROJECT_PLAN.md §6.8).
 # Postgres+PostGIS and pg_tileserv run in Docker; the API and React app run natively.
 #
 # On first boot the files in ./db (01_init.sql, 02_classifier.sql) auto-run via the
@@ -11,9 +11,9 @@ services:
     environment:
       POSTGRES_DB: miningapp
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}   # local-only default; see .env.example
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # localhost only — never expose Postgres on the LAN
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db:/docker-entrypoint-initdb.d:ro
@@ -37,7 +37,7 @@ services:
       # this; locally a longer statement window beats intermittent blank overlay tiles.
       TS_DBTIMEOUT: "30"
     ports:
-      - "7800:7800"
+      - "127.0.0.1:7800:7800"
     depends_on:
       postgres:
         condition: service_healthy

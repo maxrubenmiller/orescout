@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regression check for PROJECT_PLAN.md §6.3 / decision #33: when PostGIS is unreachable the API
+# Regression check for docs/planning/PROJECT_PLAN.md §6.3 / decision #33: when PostGIS is unreachable the API
 # must return HTTP 503 (NOT a generic 500), with a Retry-After header, CORS headers intact, and the
 # canonical { error: { code, message } } body. PostGIS-backed endpoints (/assessment, /meta, /pins,
 # and /health by its own logic) all share the behavior.
