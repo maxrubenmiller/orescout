@@ -44,3 +44,6 @@ backups/
 
 # ---- Headless browser diag screenshots ----
 diag_*.png
+
+# ---- Private: security audit ledger (kept locally, never published) ----
+docs/REVIEW_SECURITY_AUDIT.md
